@@ -1,0 +1,303 @@
+"""
+Account Statement Service
+خدمة كشوفات حسابات العملاء والموردين
+"""
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, or_
+from datetime import date
+from typing import Optional, List
+
+from app import models, schemas
+
+
+def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
+    """
+    الحصول على ملخص مالي لجهة التعامل
+    """
+    contact = db.query(models.Contact).filter(models.Contact.contact_id == contact_id).first()
+    if not contact:
+        raise ValueError(f"Contact with id {contact_id} not found")
+    
+    # تحديد نوع جهة التعامل
+    if contact.is_customer and contact.is_supplier:
+        contact_type = "BOTH"
+    elif contact.is_customer:
+        contact_type = "CUSTOMER"
+    else:
+        contact_type = "SUPPLIER"
+    
+    # حساب إجمالي المبيعات
+    total_sales = db.query(func.sum(models.Sale.total_sale_amount)).filter(
+        models.Sale.customer_id == contact_id
+    ).scalar() or 0.0
+    
+    # حساب إجمالي المبالغ المستلمة من العميل
+    total_received = db.query(func.sum(models.Payment.amount)).filter(
+        and_(
+            models.Payment.contact_id == contact_id,
+            models.Payment.transaction_type == 'SALE'
+        )
+    ).scalar() or 0.0
+    
+    # حساب إجمالي المشتريات
+    total_purchases = db.query(func.sum(models.Purchase.total_cost)).filter(
+        models.Purchase.supplier_id == contact_id
+    ).scalar() or 0.0
+    
+    # حساب إجمالي المبالغ المدفوعة للمورد
+    total_paid = db.query(func.sum(models.Payment.amount)).filter(
+        and_(
+            models.Payment.contact_id == contact_id,
+            models.Payment.transaction_type == 'PURCHASE'
+        )
+    ).scalar() or 0.0
+    
+    # حساب الرصيد المستحق
+    # للعميل: المبيعات - المستلم (موجب = لنا عليه)
+    # للمورد: المشتريات - المدفوع (موجب = علينا له)
+    customer_balance = total_sales - total_received  # ديون لنا
+    supplier_balance = total_purchases - total_paid  # ديون علينا
+    
+    if contact_type == "CUSTOMER":
+        balance_due = customer_balance
+    elif contact_type == "SUPPLIER":
+        balance_due = -supplier_balance  # سالب يعني علينا له
+    else:
+        balance_due = customer_balance - supplier_balance  # صافي
+    
+    return schemas.ContactSummary(
+        contact_id=contact_id,
+        contact_name=contact.name,
+        contact_type=contact_type,
+        total_sales=total_sales,
+        total_purchases=total_purchases,
+        total_received=total_received,
+        total_paid=total_paid,
+        balance_due=balance_due
+    )
+
+
+def get_account_statement(
+    db: Session, 
+    contact_id: int, 
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None
+) -> schemas.AccountStatement:
+    """
+    الحصول على كشف حساب تفصيلي لجهة التعامل
+    """
+    contact = db.query(models.Contact).filter(models.Contact.contact_id == contact_id).first()
+    if not contact:
+        raise ValueError(f"Contact with id {contact_id} not found")
+    
+    # التواريخ الافتراضية
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        # افتراضياً أول السنة
+        start_date = date(end_date.year, 1, 1)
+    
+    entries: List[schemas.AccountStatementEntry] = []
+    running_balance = 0.0
+    
+    # حساب الرصيد الافتتاحي (قبل تاريخ البداية)
+    opening_balance = _calculate_opening_balance(db, contact_id, start_date)
+    running_balance = opening_balance
+    
+    # جمع جميع المعاملات
+    transactions = []
+    
+    # المبيعات (للعملاء)
+    if contact.is_customer:
+        sales = db.query(models.Sale).filter(
+            and_(
+                models.Sale.customer_id == contact_id,
+                models.Sale.sale_date >= start_date,
+                models.Sale.sale_date <= end_date
+            )
+        ).all()
+        
+        for sale in sales:
+            crop_name = sale.crop.crop_name if sale.crop else "محصول"
+            transactions.append({
+                'date': sale.sale_date,
+                'description': f"فاتورة مبيعات - {crop_name} ({sale.quantity_sold_kg} كجم)",
+                'reference_type': 'SALE',
+                'reference_id': sale.sale_id,
+                'debit': sale.total_sale_amount,  # مدين = العميل مدين لنا
+                'credit': 0.0
+            })
+    
+    # المشتريات (للموردين)
+    if contact.is_supplier:
+        purchases = db.query(models.Purchase).filter(
+            and_(
+                models.Purchase.supplier_id == contact_id,
+                models.Purchase.purchase_date >= start_date,
+                models.Purchase.purchase_date <= end_date
+            )
+        ).all()
+        
+        for purchase in purchases:
+            crop_name = purchase.crop.crop_name if purchase.crop else "محصول"
+            transactions.append({
+                'date': purchase.purchase_date,
+                'description': f"فاتورة مشتريات - {crop_name} ({purchase.quantity_kg} كجم)",
+                'reference_type': 'PURCHASE',
+                'reference_id': purchase.purchase_id,
+                'debit': 0.0,
+                'credit': purchase.total_cost  # دائن = نحن مدينون للمورد
+            })
+    
+    # المدفوعات
+    payments = db.query(models.Payment).filter(
+        and_(
+            models.Payment.contact_id == contact_id,
+            models.Payment.payment_date >= start_date,
+            models.Payment.payment_date <= end_date
+        )
+    ).all()
+    
+    for payment in payments:
+        if payment.transaction_type == 'SALE':
+            # تحصيل من عميل
+            transactions.append({
+                'date': payment.payment_date,
+                'description': f"تحصيل نقدي - {payment.payment_method}",
+                'reference_type': 'PAYMENT',
+                'reference_id': payment.payment_id,
+                'debit': 0.0,
+                'credit': payment.amount  # دائن = قلل دين العميل
+            })
+        elif payment.transaction_type == 'PURCHASE':
+            # دفع لمورد
+            transactions.append({
+                'date': payment.payment_date,
+                'description': f"سداد نقدي - {payment.payment_method}",
+                'reference_type': 'PAYMENT',
+                'reference_id': payment.payment_id,
+                'debit': payment.amount,  # مدين = قلل دينا للمورد
+                'credit': 0.0
+            })
+    
+    # ترتيب المعاملات حسب التاريخ
+    transactions.sort(key=lambda x: x['date'])
+    
+    # بناء الإدخالات مع الرصيد التراكمي
+    for t in transactions:
+        running_balance = running_balance + t['debit'] - t['credit']
+        entries.append(schemas.AccountStatementEntry(
+            date=t['date'],
+            description=t['description'],
+            reference_type=t['reference_type'],
+            reference_id=t['reference_id'],
+            debit=t['debit'],
+            credit=t['credit'],
+            balance=running_balance
+        ))
+    
+    # الملخص المالي
+    summary = get_contact_summary(db, contact_id)
+    
+    return schemas.AccountStatement(
+        contact=schemas.Contact.model_validate(contact),
+        summary=summary,
+        opening_balance=opening_balance,
+        entries=entries,
+        closing_balance=running_balance,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
+def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) -> float:
+    """
+    حساب الرصيد الافتتاحي قبل تاريخ معين
+    """
+    contact = db.query(models.Contact).filter(models.Contact.contact_id == contact_id).first()
+    if not contact:
+        return 0.0
+    
+    balance = 0.0
+    
+    # المبيعات قبل التاريخ (للعملاء)
+    if contact.is_customer:
+        sales_total = db.query(func.sum(models.Sale.total_sale_amount)).filter(
+            and_(
+                models.Sale.customer_id == contact_id,
+                models.Sale.sale_date < before_date
+            )
+        ).scalar() or 0.0
+        balance += sales_total
+        
+        # التحصيلات قبل التاريخ
+        received = db.query(func.sum(models.Payment.amount)).filter(
+            and_(
+                models.Payment.contact_id == contact_id,
+                models.Payment.transaction_type == 'SALE',
+                models.Payment.payment_date < before_date
+            )
+        ).scalar() or 0.0
+        balance -= received
+    
+    # المشتريات قبل التاريخ (للموردين)
+    if contact.is_supplier:
+        purchases_total = db.query(func.sum(models.Purchase.total_cost)).filter(
+            and_(
+                models.Purchase.supplier_id == contact_id,
+                models.Purchase.purchase_date < before_date
+            )
+        ).scalar() or 0.0
+        balance -= purchases_total  # سالب = علينا له
+        
+        # المدفوعات قبل التاريخ
+        paid = db.query(func.sum(models.Payment.amount)).filter(
+            and_(
+                models.Payment.contact_id == contact_id,
+                models.Payment.transaction_type == 'PURCHASE',
+                models.Payment.payment_date < before_date
+            )
+        ).scalar() or 0.0
+        balance += paid
+    
+    return balance
+
+
+def get_all_customers_balances(db: Session) -> List[dict]:
+    """
+    الحصول على أرصدة جميع العملاء
+    """
+    customers = db.query(models.Contact).filter(models.Contact.is_customer == True).all()
+    
+    balances = []
+    for customer in customers:
+        summary = get_contact_summary(db, customer.contact_id)
+        balances.append({
+            'contact_id': customer.contact_id,
+            'name': customer.name,
+            'total_sales': summary.total_sales,
+            'total_received': summary.total_received,
+            'balance': summary.total_sales - summary.total_received
+        })
+    
+    return balances
+
+
+def get_all_suppliers_balances(db: Session) -> List[dict]:
+    """
+    الحصول على أرصدة جميع الموردين
+    """
+    suppliers = db.query(models.Contact).filter(models.Contact.is_supplier == True).all()
+    
+    balances = []
+    for supplier in suppliers:
+        summary = get_contact_summary(db, supplier.contact_id)
+        balances.append({
+            'contact_id': supplier.contact_id,
+            'name': supplier.name,
+            'total_purchases': summary.total_purchases,
+            'total_paid': summary.total_paid,
+            'balance': summary.total_purchases - summary.total_paid
+        })
+    
+    return balances
