@@ -207,8 +207,8 @@ function Dashboard() {
             case 'secondary_kpis':
                 return (
                     <div className="row" key={id}>
-                        <KpiCard title="ديون العملاء" value={kpis.total_receivables} icon="bi-person-check" color="#FFC107" onClick={() => navigate('/contacts')} />
-                        <KpiCard title="ديون الموردين" value={kpis.total_payables} icon="bi-truck" color="#DC3545" onClick={() => navigate('/contacts')} />
+                        <KpiCard title="مستحقات من العملاء" value={kpis.total_receivables} icon="bi-person-check" color="#FFC107" onClick={() => navigate('/debtors?type=receivables')} subtitle="عملاء مدينين" />
+                        <KpiCard title="مستحقات للموردين" value={kpis.total_payables} icon="bi-truck" color="#DC3545" onClick={() => navigate('/debtors?type=payables')} subtitle="موردين دائنين" />
                         <KpiCard title="عدد المبيعات" value={kpis.sales_count} icon="bi-receipt" color="#6F42C1" formatAsCurrency={false} subtitle="عملية" />
                         <KpiCard title="عدد المشتريات" value={kpis.purchases_count} icon="bi-bag" color="#20C997" formatAsCurrency={false} subtitle="عملية" />
                     </div>

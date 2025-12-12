@@ -276,7 +276,6 @@ class TreasuryTransaction(BaseModel):
     type: str  # 'IN' or 'OUT'
     source: Optional[str] = None
 
-# --- Account Statement Schemas ---
 class AccountStatementEntry(BaseModel):
     """سطر واحد في كشف الحساب"""
     date: date
@@ -286,6 +285,11 @@ class AccountStatementEntry(BaseModel):
     debit: float = 0.0
     credit: float = 0.0
     balance: float = 0.0
+    # الحقول الجديدة لتفاصيل المعاملة
+    crop_name: Optional[str] = None
+    quantity: Optional[float] = None
+    unit_price: Optional[float] = None
+    unit: Optional[str] = None
 
 class ContactSummary(BaseModel):
     """ملخص مالي لجهة التعامل"""

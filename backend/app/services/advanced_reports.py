@@ -83,49 +83,108 @@ def get_season_comparison(db: Session):
 
 def get_debt_report(db: Session):
     """
-    تقرير المديونية (Aging Report)
-    الديون المستحقة لنا (العملاء) والديون المستحقة علينا (الموردين)
+    تقرير المديونية (Statement of Detbs)
+    يحسب الرصيد الفعلي: (المبيعات - المرتجعات - كل المدفوعات بما فيها العامة)
     """
+    from app.models import SaleReturn, PurchaseReturn, Payment
+
     # 1. Customers (Receivables)
+    # Total Sales per Customer
+    customers_sales = db.query(
+        Sale.customer_id.label('contact_id'),
+        func.sum(Sale.total_sale_amount).label('total_sales')
+    ).group_by(Sale.customer_id).subquery()
+    
+    # Total Returns per Customer
+    customers_returns = db.query(
+        Sale.customer_id.label('contact_id'),
+        func.sum(SaleReturn.refund_amount).label('total_returns')
+    ).join(Sale, SaleReturn.sale_id == Sale.sale_id)\
+     .group_by(Sale.customer_id).subquery()
+    
+    # Total Payments per Customer (Linked + General)
+    customers_payments = db.query(
+        Payment.contact_id,
+        func.sum(Payment.amount).label('total_paid')
+    ).join(Contact, Payment.contact_id == Contact.contact_id)\
+     .filter(Contact.is_customer == True)\
+     .group_by(Payment.contact_id).subquery()
+     
+    # Combine results
     customers = db.query(
+        Contact.contact_id,
         Contact.name,
         Contact.phone,
-        func.sum(Sale.total_sale_amount).label('total_sales'),
-        func.sum(Sale.amount_received).label('total_received')
-    ).join(Sale, Sale.customer_id == Contact.contact_id)\
-     .filter(Contact.is_customer == True)\
-     .group_by(Contact.contact_id).all()
-     
+        func.coalesce(customers_sales.c.total_sales, 0).label('total_sales'),
+        func.coalesce(customers_returns.c.total_returns, 0).label('total_returns'),
+        func.coalesce(customers_payments.c.total_paid, 0).label('total_paid')
+    ).outerjoin(customers_sales, Contact.contact_id == customers_sales.c.contact_id)\
+     .outerjoin(customers_returns, Contact.contact_id == customers_returns.c.contact_id)\
+     .outerjoin(customers_payments, Contact.contact_id == customers_payments.c.contact_id)\
+     .filter(Contact.is_customer == True).all()
+
     receivables = []
     for c in customers:
-        balance = (c.total_sales or 0) - (c.total_received or 0)
-        if balance > 1: # Only show debts > 1
+        # Balance = Sales - Returns - Payments
+        net_sales = c.total_sales - c.total_returns
+        balance = net_sales - c.total_paid
+        
+        # Only show if there is significant balance (> 1 or < -1)
+        if abs(balance) > 1:
              receivables.append({
+                 "contact_id": c.contact_id,
                  "name": c.name,
                  "phone": c.phone,
-                 "total_amount": c.total_sales,
-                 "paid_amount": c.total_received,
+                 "total_amount": net_sales,
+                 "paid_amount": c.total_paid,
                  "balance_due": balance
              })
 
     # 2. Suppliers (Payables)
+    # Total Purchases
+    suppliers_purchases = db.query(
+        Purchase.supplier_id.label('contact_id'),
+        func.sum(Purchase.total_cost).label('total_purchases')
+    ).group_by(Purchase.supplier_id).subquery()
+
+    # Total Purchase Returns
+    suppliers_returns = db.query(
+        Purchase.supplier_id.label('contact_id'),
+        func.sum(PurchaseReturn.returned_cost).label('total_returns')
+    ).join(Purchase, PurchaseReturn.purchase_id == Purchase.purchase_id)\
+     .group_by(Purchase.supplier_id).subquery()
+
+    # Total Payments (Paid to Supplier)
+    suppliers_payments = db.query(
+        Payment.contact_id,
+        func.sum(Payment.amount).label('total_paid')
+    ).join(Contact, Payment.contact_id == Contact.contact_id)\
+     .filter(Contact.is_supplier == True)\
+     .group_by(Payment.contact_id).subquery()
+
     suppliers = db.query(
+        Contact.contact_id,
         Contact.name,
         Contact.phone,
-        func.sum(Purchase.total_cost).label('total_purchases'),
-        func.sum(Purchase.amount_paid).label('total_paid')
-    ).join(Purchase, Purchase.supplier_id == Contact.contact_id)\
-     .filter(Contact.is_supplier == True)\
-     .group_by(Contact.contact_id).all()
+        func.coalesce(suppliers_purchases.c.total_purchases, 0).label('total_purchases'),
+        func.coalesce(suppliers_returns.c.total_returns, 0).label('total_returns'),
+        func.coalesce(suppliers_payments.c.total_paid, 0).label('total_paid')
+    ).outerjoin(suppliers_purchases, Contact.contact_id == suppliers_purchases.c.contact_id)\
+     .outerjoin(suppliers_returns, Contact.contact_id == suppliers_returns.c.contact_id)\
+     .outerjoin(suppliers_payments, Contact.contact_id == suppliers_payments.c.contact_id)\
+     .filter(Contact.is_supplier == True).all()
 
     payables = []
     for s in suppliers:
-        balance = (s.total_purchases or 0) - (s.total_paid or 0)
-        if balance > 1:
+        net_purchases = s.total_purchases - s.total_returns
+        balance = net_purchases - s.total_paid
+        
+        if abs(balance) > 1:
             payables.append({
+                "contact_id": s.contact_id,
                 "name": s.name,
                 "phone": s.phone,
-                "total_amount": s.total_purchases,
+                "total_amount": net_purchases,
                 "paid_amount": s.total_paid,
                 "balance_due": balance
             })

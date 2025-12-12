@@ -119,13 +119,23 @@ def get_account_statement(
         
         for sale in sales:
             crop_name = sale.crop.crop_name if sale.crop else "محصول"
+            # حساب الكمية بالوحدة الأصلية
+            original_unit = sale.selling_pricing_unit or 'kg'
+            factor = sale.specific_selling_factor or 1.0
+            original_qty = (sale.quantity_sold_kg or 0) / factor
+            original_price = (sale.selling_unit_price or 0) * factor
+            
             transactions.append({
                 'date': sale.sale_date,
-                'description': f"فاتورة مبيعات - {crop_name} ({sale.quantity_sold_kg} كجم)",
+                'description': f"صادر له بضاعة - {crop_name}",
                 'reference_type': 'SALE',
                 'reference_id': sale.sale_id,
                 'debit': sale.total_sale_amount,  # مدين = العميل مدين لنا
-                'credit': 0.0
+                'credit': 0.0,
+                'crop_name': crop_name,
+                'quantity': original_qty,
+                'unit_price': original_price,
+                'unit': original_unit
             })
     
     # المشتريات (للموردين)
@@ -140,13 +150,23 @@ def get_account_statement(
         
         for purchase in purchases:
             crop_name = purchase.crop.crop_name if purchase.crop else "محصول"
+            # حساب الكمية بالوحدة الأصلية
+            original_unit = purchase.purchasing_pricing_unit or 'kg'
+            factor = purchase.conversion_factor or 1.0
+            original_qty = (purchase.quantity_kg or 0) / factor
+            original_price = (purchase.unit_price or 0) * factor
+            
             transactions.append({
                 'date': purchase.purchase_date,
-                'description': f"فاتورة مشتريات - {crop_name} ({purchase.quantity_kg} كجم)",
+                'description': f"وارد منه بضاعة - {crop_name}",
                 'reference_type': 'PURCHASE',
                 'reference_id': purchase.purchase_id,
                 'debit': 0.0,
-                'credit': purchase.total_cost  # دائن = نحن مدينون للمورد
+                'credit': purchase.total_cost,  # دائن = نحن مدينون للمورد
+                'crop_name': crop_name,
+                'quantity': original_qty,
+                'unit_price': original_price,
+                'unit': original_unit
             })
     
     # المدفوعات
@@ -160,25 +180,64 @@ def get_account_statement(
     
     for payment in payments:
         if payment.transaction_type == 'SALE':
-            # تحصيل من عميل
+            # تحصيل من عميل (مربوط بفاتورة)
             transactions.append({
                 'date': payment.payment_date,
-                'description': f"تحصيل نقدي - {payment.payment_method}",
+                'description': f"واصل منه نقدية - {payment.payment_method}",
                 'reference_type': 'PAYMENT',
                 'reference_id': payment.payment_id,
                 'debit': 0.0,
-                'credit': payment.amount  # دائن = قلل دين العميل
+                'credit': payment.amount,  # دائن = قلل دين العميل
+                'crop_name': None,
+                'quantity': None,
+                'unit_price': None,
+                'unit': None
             })
         elif payment.transaction_type == 'PURCHASE':
-            # دفع لمورد
+            # دفع لمورد (مربوط بفاتورة)
             transactions.append({
                 'date': payment.payment_date,
-                'description': f"سداد نقدي - {payment.payment_method}",
+                'description': f"صادر له نقدية - {payment.payment_method}",
                 'reference_type': 'PAYMENT',
                 'reference_id': payment.payment_id,
                 'debit': payment.amount,  # مدين = قلل دينا للمورد
-                'credit': 0.0
+                'credit': 0.0,
+                'crop_name': None,
+                'quantity': None,
+                'unit_price': None,
+                'unit': None
             })
+        elif payment.transaction_type == 'GENERAL':
+            # قبض/صرف عام على الحساب (من الخزينة)
+            # تحديد اتجاه الحركة بناءً على نوع جهة الاتصال
+            if contact.is_customer:
+                # قبض من عميل - دائن
+                transactions.append({
+                    'date': payment.payment_date,
+                    'description': f"واصل منه نقدية (عام) - {payment.payment_method}",
+                    'reference_type': 'PAYMENT',
+                    'reference_id': payment.payment_id,
+                    'debit': 0.0,
+                    'credit': payment.amount,
+                    'crop_name': None,
+                    'quantity': None,
+                    'unit_price': None,
+                    'unit': None
+                })
+            elif contact.is_supplier:
+                # صرف لمورد - مدين
+                transactions.append({
+                    'date': payment.payment_date,
+                    'description': f"صادر له نقدية (عام) - {payment.payment_method}",
+                    'reference_type': 'PAYMENT',
+                    'reference_id': payment.payment_id,
+                    'debit': payment.amount,
+                    'credit': 0.0,
+                    'crop_name': None,
+                    'quantity': None,
+                    'unit_price': None,
+                    'unit': None
+                })
     
     # ترتيب المعاملات حسب التاريخ
     transactions.sort(key=lambda x: x['date'])
@@ -193,7 +252,11 @@ def get_account_statement(
             reference_id=t['reference_id'],
             debit=t['debit'],
             credit=t['credit'],
-            balance=running_balance
+            balance=running_balance,
+            crop_name=t.get('crop_name'),
+            quantity=t.get('quantity'),
+            unit_price=t.get('unit_price'),
+            unit=t.get('unit')
         ))
     
     # الملخص المالي

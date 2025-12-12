@@ -274,65 +274,64 @@ function ContactDetails() {
                 <div className="card-body p-0">
                     <div className="table-responsive">
                         <table className="table table-hover mb-0">
-                            <thead>
+                            <thead className="table-light">
                                 <tr>
-                                    <th>التاريخ</th>
-                                    <th>البيان</th>
-                                    <th>النوع</th>
-                                    <th className="text-end">مدين</th>
-                                    <th className="text-end">دائن</th>
-                                    <th className="text-end">الرصيد</th>
+                                    <th className="text-center" style={{ width: '100px' }}>المبلغ</th>
+                                    <th>السبب</th>
+                                    <th className="text-center">النوع</th>
+                                    <th className="text-center">الوزن</th>
+                                    <th className="text-center">السعر</th>
+                                    <th>ملاحظات</th>
+                                    <th className="text-center">التاريخ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Opening Balance Row */}
-                                <tr className="table-secondary">
-                                    <td>{formatDate(statement.start_date)}</td>
-                                    <td><strong>رصيد أول المدة</strong></td>
-                                    <td><span className="badge bg-secondary">افتتاحي</span></td>
-                                    <td className="text-end">-</td>
-                                    <td className="text-end">-</td>
-                                    <td className="text-end fw-bold">{formatCurrency(opening_balance)}</td>
-                                </tr>
 
                                 {entries.length === 0 ? (
                                     <tr>
-                                        <td colSpan="6" className="text-center py-4 text-muted">
+                                        <td colSpan="7" className="text-center py-4 text-muted">
                                             لا توجد حركات في هذه الفترة
                                         </td>
                                     </tr>
                                 ) : (
-                                    entries.map((entry, index) => (
-                                        <tr key={index}>
-                                            <td>{formatDate(entry.date)}</td>
-                                            <td>{entry.description}</td>
-                                            <td>
-                                                <span className={`badge bg-${entry.reference_type === 'PAYMENT' ? 'info' : 'primary'}-subtle text-${entry.reference_type === 'PAYMENT' ? 'info' : 'primary'}`}>
-                                                    {getReferenceTypeLabel(entry.reference_type)}
-                                                </span>
-                                            </td>
-                                            <td className="text-end text-success">
-                                                {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
-                                            </td>
-                                            <td className="text-end text-danger">
-                                                {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
-                                            </td>
-                                            <td className={`text-end fw-bold ${entry.balance >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                {formatCurrency(entry.balance)}
-                                            </td>
-                                        </tr>
-                                    ))
+                                    entries.map((entry, index) => {
+                                        const amount = entry.debit > 0 ? entry.debit : entry.credit;
+                                        const isDebit = entry.debit > 0;
+
+                                        return (
+                                            <React.Fragment key={index}>
+                                                {/* صف المعاملة */}
+                                                <tr>
+                                                    <td className="text-center">
+                                                        <span className={`fw-bold ${isDebit ? 'text-danger' : 'text-success'}`} style={{ fontSize: '1.1rem' }}>
+                                                            {amount?.toLocaleString('ar-EG') || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td>{entry.description}</td>
+                                                    <td className="text-center">{entry.crop_name || '-'}</td>
+                                                    <td className="text-center">{entry.quantity ? entry.quantity.toFixed(0) : '-'}</td>
+                                                    <td className="text-center">{entry.unit_price ? entry.unit_price.toLocaleString('ar-EG') : '-'}</td>
+                                                    <td className="text-muted">-</td>
+                                                    <td className="text-center">{formatDate(entry.date)}</td>
+                                                </tr>
+                                                {/* صف الباقي */}
+                                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                    <td className="text-center">
+                                                        <span className={`fw-bold ${entry.balance >= 0 ? 'text-danger' : 'text-success'}`} style={{ fontSize: '1.1rem' }}>
+                                                            {Math.abs(entry.balance)?.toLocaleString('ar-EG') || 0}
+                                                        </span>
+                                                    </td>
+                                                    <td colSpan="6" className="text-end pe-4">
+                                                        <strong className={entry.balance >= 0 ? 'text-danger' : 'text-success'}>
+                                                            {entry.balance >= 0 ? 'الباقي عليه' : 'الباقي له'}
+                                                        </strong>
+                                                    </td>
+                                                </tr>
+                                            </React.Fragment>
+                                        );
+                                    })
                                 )}
 
-                                {/* Closing Balance Row */}
-                                <tr className="table-primary">
-                                    <td>{formatDate(statement.end_date)}</td>
-                                    <td><strong>رصيد آخر المدة</strong></td>
-                                    <td><span className="badge bg-primary">ختامي</span></td>
-                                    <td className="text-end">-</td>
-                                    <td className="text-end">-</td>
-                                    <td className="text-end fw-bold fs-5">{formatCurrency(closing_balance)}</td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>

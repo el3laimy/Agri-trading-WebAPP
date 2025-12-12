@@ -1,5 +1,5 @@
 import pytest
-from app.services.advanced_reports import calculate_profitability
+from app.services.advanced_reports import get_crop_profitability
 # We might need to mock DB session for these service tests or use integration tests
 # For simplicity, let's write a pure function test if possible, or setup a test DB.
 
@@ -37,7 +37,7 @@ def test_invoice_generation_structure():
 
 # Integration test style for API (requires running app or TestClient)
 from fastapi.testclient import TestClient
-from main import app
+from app.main import app
 
 client = TestClient(app)
 

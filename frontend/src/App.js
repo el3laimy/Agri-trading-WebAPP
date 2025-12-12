@@ -36,6 +36,7 @@ import CapitalDistribution from './pages/CapitalDistribution';
 import CashFlowReport from './pages/CashFlowReport';
 import ContractsManagement from './pages/ContractsManagement';
 import BackupManagement from './pages/BackupManagement';
+import DebtorsView from './pages/DebtorsView';
 
 
 
@@ -91,6 +92,7 @@ function App() {
                       <Route path="/seasons" element={<SeasonManagement />} />
                       <Route path="/daily-prices" element={<DailyPrices />} />
                       <Route path="/backups" element={<BackupManagement />} />
+                      <Route path="/debtors" element={<DebtorsView />} />
 
                       {/* Default Redirect */}
                       <Route path="*" element={<Navigate to="/dashboard" />} />

@@ -10,6 +10,7 @@ function SaleManagement() {
     const [error, setError] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCropFilter, setSelectedCropFilter] = useState(null); // null = all, or crop_id
 
     // State for the payment modal
     const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -193,12 +194,38 @@ function SaleManagement() {
         }
     };
 
-    // Filter sales based on search term
-    const filteredSales = sales.filter(sale =>
-        sale.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sale.sale_id?.toString().includes(searchTerm)
-    );
+    // Get unique crops from sales for filter tabs
+    const uniqueCrops = React.useMemo(() => {
+        const cropMap = new Map();
+        sales.forEach(sale => {
+            if (sale.crop) {
+                const existing = cropMap.get(sale.crop.crop_id) || { count: 0, crop: sale.crop };
+                existing.count++;
+                cropMap.set(sale.crop.crop_id, existing);
+            }
+        });
+        return Array.from(cropMap.values()).sort((a, b) => b.count - a.count);
+    }, [sales]);
+
+    // Set default filter to most used crop on first load
+    React.useEffect(() => {
+        if (uniqueCrops.length > 0 && selectedCropFilter === null && sales.length > 0) {
+            setSelectedCropFilter(uniqueCrops[0].crop.crop_id);
+        }
+    }, [uniqueCrops, sales.length]);
+
+    // Filter sales based on search term AND selected crop
+    const filteredSales = sales.filter(sale => {
+        const matchesSearch = (
+            sale.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sale.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sale.sale_id?.toString().includes(searchTerm)
+        );
+        const matchesCrop = selectedCropFilter === 'all' || selectedCropFilter === null
+            ? true
+            : sale.crop?.crop_id === selectedCropFilter;
+        return matchesSearch && matchesCrop;
+    });
 
     // Calculate totals for summary/preview
     const calculatedTotal = (parseFloat(formState.quantity_input || 0) * parseFloat(formState.price_input || 0));
@@ -258,6 +285,33 @@ function SaleManagement() {
                     </button>
                 </div>
             </div>
+
+            {/* Crop Filter Tabs */}
+            {!showAddForm && uniqueCrops.length > 0 && (
+                <div className="row mb-3">
+                    <div className="col-12">
+                        <div className="d-flex flex-wrap gap-2 align-items-center">
+                            <span className="text-muted me-2"><i className="bi bi-funnel me-1"></i>فلترة:</span>
+                            <button
+                                className={`btn btn-sm ${selectedCropFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => setSelectedCropFilter('all')}
+                            >
+                                الكل ({sales.length})
+                            </button>
+                            {uniqueCrops.map(({ crop, count }) => (
+                                <button
+                                    key={crop.crop_id}
+                                    className={`btn btn-sm ${selectedCropFilter === crop.crop_id ? 'btn-success' : 'btn-outline-success'}`}
+                                    onClick={() => setSelectedCropFilter(crop.crop_id)}
+                                >
+                                    <i className="bi bi-flower1 me-1"></i>
+                                    {crop.crop_name} ({count})
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Sale Form */}
             {showAddForm && (
@@ -432,19 +486,16 @@ function SaleManagement() {
                     ) : (
                         <div className="table-responsive">
                             <table className="table table-hover table-striped mb-0">
-                                <thead>
+                                <thead className="table-light">
                                     <tr>
-                                        <th>#</th>
-                                        <th>التاريخ</th>
-                                        <th>العميل</th>
                                         <th>المحصول</th>
-                                        <th>الكمية (الأصلية)</th>
-                                        <th>الكمية (المباعة)</th>
-                                        <th>السعر/الوحدة</th>
-                                        <th>المبلغ الإجمالي</th>
-                                        <th>المستلم</th>
-                                        <th>الحالة</th>
-                                        <th>إجراءات</th>
+                                        <th>العميل</th>
+                                        <th className="text-center">الكمية</th>
+                                        <th className="text-center">السعر</th>
+                                        <th className="text-center">الإجمالي</th>
+                                        <th>التاريخ</th>
+                                        <th className="text-center">الحالة</th>
+                                        <th style={{ width: '180px' }}>إجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -457,22 +508,31 @@ function SaleManagement() {
 
                                         return (
                                             <tr key={s.sale_id}>
-                                                <td className="fw-bold">{s.sale_id}</td>
-                                                <td>{new Date(s.sale_date).toLocaleDateString('ar-EG')}</td>
-                                                <td>{s.customer?.name || 'N/A'}</td>
-                                                <td>{s.crop?.crop_name || 'N/A'}</td>
                                                 <td>
-                                                    <span className="badge bg-light text-dark border">
-                                                        {originalQty.toFixed(2)} {originalUnit}
+                                                    <span className="badge bg-success-subtle text-success">
+                                                        <i className="bi bi-flower1 me-1"></i>
+                                                        {s.crop?.crop_name || 'N/A'}
                                                     </span>
                                                 </td>
-                                                <td><small className='text-muted'>{(s.quantity_sold_kg || 0).toFixed(2)} كجم</small></td>
-                                                <td>{originalPrice.toLocaleString('ar-EG')} / {originalUnit}</td>
-                                                <td className="fw-bold text-success">
-                                                    {(s.total_sale_amount || 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م
+                                                <td>
+                                                    <i className="bi bi-person me-1 text-primary"></i>
+                                                    {s.customer?.name || 'N/A'}
                                                 </td>
-                                                <td>{(s.amount_received || 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م</td>
-                                                <td>{getStatusBadge(s.payment_status)}</td>
+                                                <td className="text-center">
+                                                    <strong>{originalQty.toFixed(0)}</strong>
+                                                    <small className="text-muted ms-1">{originalUnit}</small>
+                                                </td>
+                                                <td className="text-center">
+                                                    {originalPrice.toLocaleString('ar-EG')}
+                                                    <small className="text-muted">/{originalUnit}</small>
+                                                </td>
+                                                <td className="text-center fw-bold text-success">
+                                                    {(s.total_sale_amount || 0).toLocaleString('ar-EG')} ج.م
+                                                </td>
+                                                <td>
+                                                    <small>{new Date(s.sale_date).toLocaleDateString('ar-EG')}</small>
+                                                </td>
+                                                <td className="text-center">{getStatusBadge(s.payment_status)}</td>
                                                 <td>
                                                     <button
                                                         className="btn btn-sm btn-outline-success ms-1"

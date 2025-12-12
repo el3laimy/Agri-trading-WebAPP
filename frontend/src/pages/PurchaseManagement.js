@@ -9,6 +9,7 @@ function PurchaseManagement() {
     const [error, setError] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCropFilter, setSelectedCropFilter] = useState(null); // null = all, or crop_id
 
     // State for the payment modal
     const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -161,12 +162,38 @@ function PurchaseManagement() {
         }
     };
 
-    // Filter purchases based on search term
-    const filteredPurchases = purchases.filter(purchase =>
-        purchase.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        purchase.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        purchase.purchase_id?.toString().includes(searchTerm)
-    );
+    // Get unique crops from purchases for filter tabs
+    const uniqueCrops = React.useMemo(() => {
+        const cropMap = new Map();
+        purchases.forEach(purchase => {
+            if (purchase.crop) {
+                const existing = cropMap.get(purchase.crop.crop_id) || { count: 0, crop: purchase.crop };
+                existing.count++;
+                cropMap.set(purchase.crop.crop_id, existing);
+            }
+        });
+        return Array.from(cropMap.values()).sort((a, b) => b.count - a.count);
+    }, [purchases]);
+
+    // Set default filter to most used crop on first load
+    React.useEffect(() => {
+        if (uniqueCrops.length > 0 && selectedCropFilter === null && purchases.length > 0) {
+            setSelectedCropFilter(uniqueCrops[0].crop.crop_id);
+        }
+    }, [uniqueCrops, purchases.length]);
+
+    // Filter purchases based on search term AND selected crop
+    const filteredPurchases = purchases.filter(purchase => {
+        const matchesSearch = (
+            purchase.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            purchase.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            purchase.purchase_id?.toString().includes(searchTerm)
+        );
+        const matchesCrop = selectedCropFilter === 'all' || selectedCropFilter === null
+            ? true
+            : purchase.crop?.crop_id === selectedCropFilter;
+        return matchesSearch && matchesCrop;
+    });
 
     // Calculate totals for summary/preview
     const calculatedTotal = (parseFloat(formState.quantity_input || 0) * parseFloat(formState.price_input || 0));
@@ -225,6 +252,33 @@ function PurchaseManagement() {
                     </button>
                 </div>
             </div>
+
+            {/* Crop Filter Tabs */}
+            {!showAddForm && uniqueCrops.length > 0 && (
+                <div className="row mb-3">
+                    <div className="col-12">
+                        <div className="d-flex flex-wrap gap-2 align-items-center">
+                            <span className="text-muted me-2"><i className="bi bi-funnel me-1"></i>فلترة:</span>
+                            <button
+                                className={`btn btn-sm ${selectedCropFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                onClick={() => setSelectedCropFilter('all')}
+                            >
+                                الكل ({purchases.length})
+                            </button>
+                            {uniqueCrops.map(({ crop, count }) => (
+                                <button
+                                    key={crop.crop_id}
+                                    className={`btn btn-sm ${selectedCropFilter === crop.crop_id ? 'btn-success' : 'btn-outline-success'}`}
+                                    onClick={() => setSelectedCropFilter(crop.crop_id)}
+                                >
+                                    <i className="bi bi-flower1 me-1"></i>
+                                    {crop.crop_name} ({count})
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Purchase Form */}
             {showAddForm && (
@@ -402,25 +456,20 @@ function PurchaseManagement() {
                     ) : (
                         <div className="table-responsive">
                             <table className="table table-hover table-striped mb-0">
-                                <thead>
+                                <thead className="table-light">
                                     <tr>
-                                        <th>#</th>
-                                        <th>التاريخ</th>
-                                        <th>المورد</th>
                                         <th>المحصول</th>
-                                        <th>الكمية (الأصلية)</th>
-                                        <th>الكمية (المخزن)</th>
-                                        <th>التكلفة/الوحدة</th>
-                                        <th>الإجمالي</th>
-                                        <th>المدفوع</th>
-                                        <th>الحالة</th>
-                                        <th>إجراءات</th>
+                                        <th>المورد</th>
+                                        <th className="text-center">الكمية</th>
+                                        <th className="text-center">السعر</th>
+                                        <th className="text-center">الإجمالي</th>
+                                        <th>التاريخ</th>
+                                        <th className="text-center">الحالة</th>
+                                        <th style={{ width: '130px' }}>إجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredPurchases.map(p => {
-                                        // Display logic for original units if available
-                                        // Note: unit_price in DB is PER KG. 
                                         const originalUnit = p.purchasing_pricing_unit || 'kg';
                                         const factor = p.conversion_factor || 1.0;
                                         const originalQty = (p.quantity_kg || 0) / factor;
@@ -428,22 +477,31 @@ function PurchaseManagement() {
 
                                         return (
                                             <tr key={p.purchase_id}>
-                                                <td className="fw-bold">{p.purchase_id}</td>
-                                                <td>{new Date(p.purchase_date).toLocaleDateString('ar-EG')}</td>
-                                                <td>{p.supplier?.name || 'N/A'}</td>
-                                                <td>{p.crop?.crop_name || 'N/A'}</td>
                                                 <td>
-                                                    <span className="badge bg-light text-dark border">
-                                                        {originalQty.toFixed(2)} {originalUnit}
+                                                    <span className="badge bg-info-subtle text-info">
+                                                        <i className="bi bi-flower1 me-1"></i>
+                                                        {p.crop?.crop_name || 'N/A'}
                                                     </span>
                                                 </td>
-                                                <td><small className='text-muted'>{(p.quantity_kg || 0).toFixed(2)} كجم</small></td>
-                                                <td>{originalPrice.toLocaleString('ar-EG')} / {originalUnit}</td>
-                                                <td className="fw-bold text-danger">
-                                                    {(p.total_cost ?? 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م
+                                                <td>
+                                                    <i className="bi bi-truck me-1 text-primary"></i>
+                                                    {p.supplier?.name || 'N/A'}
                                                 </td>
-                                                <td>{(p.amount_paid ?? 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م</td>
-                                                <td>{getStatusBadge(p.payment_status)}</td>
+                                                <td className="text-center">
+                                                    <strong>{originalQty.toFixed(0)}</strong>
+                                                    <small className="text-muted ms-1">{originalUnit}</small>
+                                                </td>
+                                                <td className="text-center">
+                                                    {originalPrice.toLocaleString('ar-EG')}
+                                                    <small className="text-muted">/{originalUnit}</small>
+                                                </td>
+                                                <td className="text-center fw-bold text-danger">
+                                                    {(p.total_cost ?? 0).toLocaleString('ar-EG')} ج.م
+                                                </td>
+                                                <td>
+                                                    <small>{new Date(p.purchase_date).toLocaleDateString('ar-EG')}</small>
+                                                </td>
+                                                <td className="text-center">{getStatusBadge(p.payment_status)}</td>
                                                 <td>
                                                     <button
                                                         className="btn btn-sm btn-outline-success"

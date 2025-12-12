@@ -1,6 +1,14 @@
 from sqlalchemy.orm import Session, joinedload
 import json
 from . import models, schemas
+from .core.bootstrap import (
+    INVENTORY_ACCOUNT_ID, 
+    ACCOUNTS_RECEIVABLE_ID, 
+    ACCOUNTS_PAYABLE_ID,
+    SALES_REVENUE_ACCOUNT_ID,
+    INVENTORY_LOSS_ACCOUNT_ID,
+    INVENTORY_GAIN_ACCOUNT_ID
+)
 
 # --- Crop CRUD Functions ---
 
@@ -124,6 +132,62 @@ def create_inventory_adjustment(db: Session, adjustment: schemas.InventoryAdjust
     inventory.current_stock_kg += adjustment.quantity_kg
     db.add(inventory)
     
+    # 5. Create General Ledger Entries (تأثير مالي)
+    adj_description = f"تعديل مخزون - {adjustment.adjustment_type} - {adjustment.notes or ''}"
+    abs_value = abs(total_value)
+    
+    if adjustment.quantity_kg < 0:
+        # Loss/Spoilage: Debit Expense (Loss), Credit Inventory
+        # Debit Loss
+        db.add(models.GeneralLedger(
+            entry_date=adjustment.adjustment_date,
+            account_id=INVENTORY_LOSS_ACCOUNT_ID,
+            debit=abs_value,
+            credit=0.0,
+            description=adj_description,
+            source_type='ADJUSTMENT',
+            source_id=db_adjustment.adjustment_id
+        ))
+        # Credit Inventory
+        db.add(models.GeneralLedger(
+            entry_date=adjustment.adjustment_date,
+            account_id=INVENTORY_ACCOUNT_ID,
+            debit=0.0,
+            credit=abs_value,
+            description=adj_description,
+            source_type='ADJUSTMENT',
+            source_id=db_adjustment.adjustment_id
+        ))
+        # Update Balances
+        update_account_balance(db, INVENTORY_LOSS_ACCOUNT_ID, abs_value)
+        update_account_balance(db, INVENTORY_ACCOUNT_ID, -abs_value)
+        
+    elif adjustment.quantity_kg > 0:
+        # Gain: Debit Inventory, Credit Revenue (Gain)
+        # Debit Inventory
+        db.add(models.GeneralLedger(
+            entry_date=adjustment.adjustment_date,
+            account_id=INVENTORY_ACCOUNT_ID,
+            debit=abs_value,
+            credit=0.0,
+            description=adj_description,
+            source_type='ADJUSTMENT',
+            source_id=db_adjustment.adjustment_id
+        ))
+        # Credit Revenue
+        db.add(models.GeneralLedger(
+            entry_date=adjustment.adjustment_date,
+            account_id=INVENTORY_GAIN_ACCOUNT_ID,
+            debit=0.0,
+            credit=abs_value,
+            description=adj_description,
+            source_type='ADJUSTMENT',
+            source_id=db_adjustment.adjustment_id
+        ))
+        # Update Balances
+        update_account_balance(db, INVENTORY_ACCOUNT_ID, abs_value)
+        update_account_balance(db, INVENTORY_GAIN_ACCOUNT_ID, -abs_value)
+
     db.commit()
     db.refresh(db_adjustment)
     return db_adjustment
@@ -221,6 +285,10 @@ def create_expense(db: Session, expense: schemas.ExpenseCreate) -> models.Expens
 # --- Sale Return CRUD Functions ---
 
 def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> models.SaleReturn:
+    """
+    إنشاء مرتجع مبيعات مع القيود المحاسبية
+    القيد: من حـ/ إيرادات المبيعات إلى حـ/ الذمم المدينة
+    """
     # 1. Get the original sale
     sale = db.query(models.Sale).filter(models.Sale.sale_id == sale_return.sale_id).first()
     if not sale:
@@ -242,6 +310,41 @@ def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> mo
     inventory.current_stock_kg += sale_return.quantity_kg
     db.add(inventory)
     
+    # 5. إضافة القيود المحاسبية - عكس قيد البيع
+    return_description = f"مرتجع مبيعات - فاتورة #{sale.sale_id}"
+    
+    # مدين: إيرادات المبيعات (تخفيض الإيراد)
+    debit_entry = models.GeneralLedger(
+        entry_date=sale_return.return_date,
+        account_id=SALES_REVENUE_ACCOUNT_ID,
+        debit=refund_amount,
+        credit=0.0,
+        description=return_description,
+        source_type='SALE_RETURN',
+        source_id=db_sale_return.return_id
+    )
+    db.add(debit_entry)
+    
+    # دائن: الذمم المدينة (تخفيض دين العميل)
+    credit_entry = models.GeneralLedger(
+        entry_date=sale_return.return_date,
+        account_id=ACCOUNTS_RECEIVABLE_ID,
+        debit=0.0,
+        credit=refund_amount,
+        description=return_description,
+        source_type='SALE_RETURN',
+        source_id=db_sale_return.return_id
+    )
+    db.add(credit_entry)
+    
+    # 6. تحديث أرصدة الحسابات
+    update_account_balance(db, SALES_REVENUE_ACCOUNT_ID, refund_amount)  # increase (debit)
+    update_account_balance(db, ACCOUNTS_RECEIVABLE_ID, -refund_amount)  # decrease (credit)
+    
+    # 7. تحديث إجمالي المبيعة الأصلية (اختياري)
+    sale.total_sale_amount -= refund_amount
+    sale.quantity_sold_kg -= sale_return.quantity_kg
+    
     db.commit()
     db.refresh(db_sale_return)
     return db_sale_return
@@ -259,6 +362,10 @@ def get_sale_returns(db: Session, skip: int = 0, limit: int = 100):
 # --- Purchase Return CRUD Functions ---
 
 def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnCreate) -> models.PurchaseReturn:
+    """
+    إنشاء مرتجع مشتريات مع القيود المحاسبية
+    القيد: من حـ/ الذمم الدائنة إلى حـ/ المخزون
+    """
     # 1. Get the original purchase
     purchase = db.query(models.Purchase).filter(models.Purchase.purchase_id == purchase_return.purchase_id).first()
     if not purchase:
@@ -279,6 +386,41 @@ def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnC
     inventory = get_or_create_inventory(db, purchase.crop_id)
     inventory.current_stock_kg -= purchase_return.quantity_kg
     db.add(inventory)
+    
+    # 5. إضافة القيود المحاسبية - عكس قيد الشراء
+    return_description = f"مرتجع مشتريات - فاتورة #{purchase.purchase_id}"
+    
+    # مدين: الذمم الدائنة (تخفيض دينا للمورد)
+    debit_entry = models.GeneralLedger(
+        entry_date=purchase_return.return_date,
+        account_id=ACCOUNTS_PAYABLE_ID,
+        debit=returned_cost,
+        credit=0.0,
+        description=return_description,
+        source_type='PURCHASE_RETURN',
+        source_id=db_purchase_return.return_id
+    )
+    db.add(debit_entry)
+    
+    # دائن: المخزون (تخفيض قيمة المخزون)
+    credit_entry = models.GeneralLedger(
+        entry_date=purchase_return.return_date,
+        account_id=INVENTORY_ACCOUNT_ID,
+        debit=0.0,
+        credit=returned_cost,
+        description=return_description,
+        source_type='PURCHASE_RETURN',
+        source_id=db_purchase_return.return_id
+    )
+    db.add(credit_entry)
+    
+    # 6. تحديث أرصدة الحسابات
+    update_account_balance(db, ACCOUNTS_PAYABLE_ID, -returned_cost)  # decrease payable (debit)
+    update_account_balance(db, INVENTORY_ACCOUNT_ID, -returned_cost)  # decrease inventory (credit)
+    
+    # 7. تحديث إجمالي المشتراة الأصلية
+    purchase.total_cost -= returned_cost
+    purchase.quantity_kg -= purchase_return.quantity_kg
     
     db.commit()
     db.refresh(db_purchase_return)
