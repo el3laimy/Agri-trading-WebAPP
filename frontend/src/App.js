@@ -8,6 +8,8 @@ import { AuthProvider } from './context/AuthContext';
 // Components
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import GlobalSearch from './components/GlobalSearch';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
 
 // Pages
 import Login from './pages/Login';
@@ -32,62 +34,75 @@ import SeasonManagement from './pages/SeasonManagement';
 import DailyPrices from './pages/DailyPrices';
 import CapitalDistribution from './pages/CapitalDistribution';
 import CashFlowReport from './pages/CashFlowReport';
+import ContractsManagement from './pages/ContractsManagement';
 import BackupManagement from './pages/BackupManagement';
+
+
+
+import AdvancedReports from './pages/AdvancedReports';
+
+import { ThemeProvider } from './context/ThemeContext';
 
 function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <Router>
-          <Routes>
-            {/* صفحة تسجيل الدخول - بدون Layout */}
-            <Route path="/login" element={<Login />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <DataProvider>
+          <Router>
+            <GlobalSearch />
+            <KeyboardShortcuts />
+            <Routes>
+              {/* صفحة تسجيل الدخول - بدون Layout */}
+              <Route path="/login" element={<Login />} />
 
-            {/* الصفحات المحمية - مع Layout */}
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Routes>
-                    {/* Main Pages */}
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/inventory" element={<InventoryView />} />
-                    <Route path="/inventory-adjustments" element={<InventoryAdjustment />} />
-                    <Route path="/sales" element={<SaleManagement />} />
-                    <Route path="/purchases" element={<PurchaseManagement />} />
-                    <Route path="/expenses" element={<ExpenseManagement />} />
-                    <Route path="/treasury" element={<TreasuryManagement />} />
-                    <Route path="/journal" element={<JournalView />} />
+              {/* الصفحات المحمية - مع Layout */}
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Routes>
+                      {/* Main Pages */}
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/inventory" element={<InventoryView />} />
+                      <Route path="/inventory-adjustments" element={<InventoryAdjustment />} />
+                      <Route path="/sales" element={<SaleManagement />} />
+                      <Route path="/purchases" element={<PurchaseManagement />} />
+                      <Route path="/expenses" element={<ExpenseManagement />} />
+                      <Route path="/treasury" element={<TreasuryManagement />} />
+                      <Route path="/journal" element={<JournalView />} />
+                      <Route path="/reports/advanced" element={<AdvancedReports />} />
 
-                    {/* Reports */}
-                    <Route path="/reports/general-ledger" element={<GeneralLedger />} />
-                    <Route path="/reports/trial-balance" element={<TrialBalance />} />
-                    <Route path="/reports/income-statement" element={<IncomeStatement />} />
-                    <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
-                    <Route path="/reports/equity-statement" element={<EquityStatement />} />
-                    <Route path="/reports/capital-distribution" element={<CapitalDistribution />} />
-                    <Route path="/reports/cash-flow" element={<CashFlowReport />} />
+                      {/* Reports */}
+                      <Route path="/reports/general-ledger" element={<GeneralLedger />} />
+                      <Route path="/reports/trial-balance" element={<TrialBalance />} />
+                      <Route path="/reports/income-statement" element={<IncomeStatement />} />
+                      <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
+                      <Route path="/reports/equity-statement" element={<EquityStatement />} />
+                      <Route path="/reports/capital-distribution" element={<CapitalDistribution />} />
+                      <Route path="/reports/cash-flow" element={<CashFlowReport />} />
 
-                    {/* Setup Pages */}
-                    <Route path="/crops" element={<CropManagement />} />
-                    <Route path="/contacts" element={<ContactManagement />} />
-                    <Route path="/contacts/:contactId" element={<ContactDetails />} />
-                    <Route path="/financial-accounts" element={<FinancialAccountManagement />} />
+                      {/* Setup Pages */}
+                      <Route path="/crops" element={<CropManagement />} />
+                      <Route path="/contacts" element={<ContactManagement />} />
+                      <Route path="/contacts/:contactId" element={<ContactDetails />} />
+                      <Route path="/contracts" element={<ContractsManagement />} />
+                      <Route path="/financial-accounts" element={<FinancialAccountManagement />} />
 
-                    {/* New Features */}
-                    <Route path="/seasons" element={<SeasonManagement />} />
-                    <Route path="/daily-prices" element={<DailyPrices />} />
-                    <Route path="/backups" element={<BackupManagement />} />
+                      {/* New Features */}
+                      <Route path="/seasons" element={<SeasonManagement />} />
+                      <Route path="/daily-prices" element={<DailyPrices />} />
+                      <Route path="/backups" element={<BackupManagement />} />
 
-                    {/* Default Redirect */}
-                    <Route path="*" element={<Navigate to="/dashboard" />} />
-                  </Routes>
-                </Layout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
-      </DataProvider>
-    </AuthProvider>
+                      {/* Default Redirect */}
+                      <Route path="*" element={<Navigate to="/dashboard" />} />
+                    </Routes>
+                  </Layout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Router>
+        </DataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

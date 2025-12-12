@@ -17,6 +17,7 @@ function Sidebar() {
         { path: '/treasury', label: 'الخزينة اليومية', icon: 'bi-wallet2' },
         { path: '/sales', label: 'المبيعات', icon: 'bi-cart-check' },
         { path: '/purchases', label: 'المشتريات', icon: 'bi-bag-check' },
+        { path: '/contracts', label: 'عقود التوريد', icon: 'bi-file-earmark-text' },
         { path: '/expenses', label: 'المصروفات', icon: 'bi-cash-coin' },
     ];
 
@@ -28,6 +29,7 @@ function Sidebar() {
 
     // التقارير المالية
     const reports = [
+        { path: '/reports/advanced', label: 'التقارير المتقدمة', icon: 'bi-bar-chart-line-fill' },
         { path: '/reports/capital-distribution', label: 'توزيع رأس المال', icon: 'bi-pie-chart' },
         { path: '/reports/cash-flow', label: 'التدفقات النقدية', icon: 'bi-arrow-left-right' },
         { path: '/reports/income-statement', label: 'قائمة الدخل', icon: 'bi-graph-up' },

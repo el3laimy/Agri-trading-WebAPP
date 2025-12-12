@@ -84,6 +84,8 @@ class PurchaseBase(BaseModel):
     purchase_date: date
     quantity_kg: float
     unit_price: float
+    purchasing_pricing_unit: str = 'kg'
+    conversion_factor: float = 1.0
     notes: Optional[str] = None
 
 class PurchaseCreate(PurchaseBase):
@@ -363,3 +365,41 @@ class TreasuryVoucher(BaseModel):
     created_at: Optional[date] = None
 
 
+
+# --- Supplier Contract Schemas ---
+class SupplyContractBase(BaseModel):
+    supplier_id: int
+    crop_id: int
+    contract_date: date
+    delivery_date: date
+    quantity_kg: float
+    price_per_kg: float
+    status: Optional[str] = 'ACTIVE'
+    notes: Optional[str] = None
+
+class SupplyContractCreate(SupplyContractBase):
+    pass
+
+class SupplyContractRead(SupplyContractBase):
+    contract_id: int
+    total_amount: float
+    supplier: Contact
+    crop: Crop
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Supplier Rating Schemas ---
+class SupplierRatingBase(BaseModel):
+    supplier_id: int
+    rating_date: date
+    quality_score: int
+    delivery_score: int
+    price_score: int
+    notes: Optional[str] = None
+
+class SupplierRatingCreate(SupplierRatingBase):
+    pass
+
+class SupplierRatingRead(SupplierRatingBase):
+    rating_id: int
+    supplier: Contact
+    model_config = ConfigDict(from_attributes=True)

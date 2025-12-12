@@ -145,3 +145,33 @@ def get_cash_flow_details(
 ):
     """تفاصيل حركات النقدية"""
     return cash_flow.get_cash_flow_details(db, start_date, end_date, category)
+
+# --- التقارير المتقدمة (Advanced Reports) ---
+from app.services import advanced_reports
+
+@router.get("/crop-profitability")
+def get_crop_profitability(
+    season_id: Optional[int] = Query(None, description="معرف الموسم (اختياري)"),
+    db: Session = Depends(get_db)
+):
+    """
+    تقرير ربحية المحاصيل
+    يظهر: الإيرادات، التكاليف التقريبية، والربح لكل محصول
+    """
+    return advanced_reports.get_crop_profitability(db, season_id)
+
+@router.get("/top-customers")
+def get_top_customers(
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """تحليل أفضل العملاء حسب حجم التعامل"""
+    return advanced_reports.get_top_customers(db, limit)
+
+@router.get("/debt-analysis")
+def get_debt_analysis(db: Session = Depends(get_db)):
+    """
+    تقرير المديونية
+    يظهر: ديون العملاء (لنا) وديون الموردين (علينا)
+    """
+    return advanced_reports.get_debt_report(db)

@@ -48,3 +48,90 @@ def read_sales(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
         response_sales.append(sale_response)
         
     return response_sales
+
+from fastapi.responses import StreamingResponse
+from app.services import invoices
+from app.models import Sale
+
+@router.get("/{sale_id}/invoice")
+def download_invoice(sale_id: int, db: Session = Depends(get_db)):
+    """تحميل فاتورة البيع بصيغة PDF"""
+    sale = db.query(Sale).filter(Sale.sale_id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="بيع غير موجود")
+    
+    # Prepare data
+    sale_data = {
+        "sale_id": sale.sale_id,
+        "date": sale.sale_date,
+        "customer_name": sale.customer.name if sale.customer else "عميل نقدي",
+        "customer_phone": sale.customer.phone if sale.customer else "",
+        "crop_name": sale.crop.crop_name,
+        "quantity": sale.quantity_sold_kg,
+        "unit": sale.selling_pricing_unit, # Or convert if needed
+        "price": sale.selling_unit_price,
+        "total_amount": sale.total_sale_amount,
+        "amount_received": sale.amount_received
+    }
+    
+    pdf_buffer = invoices.generate_invoice_pdf(sale_data)
+    
+    return StreamingResponse(
+        pdf_buffer, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=invoice_{sale_id}.pdf"}
+    )
+
+from pydantic import BaseModel, EmailStr
+from app.services import notifications_external
+
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+@router.post("/{sale_id}/share/email")
+async def share_invoice_email(sale_id: int, request: EmailRequest, db: Session = Depends(get_db)):
+    """إرسال الفاتورة عبر البريد الإلكتروني"""
+    sale = db.query(Sale).filter(Sale.sale_id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="بيع غير موجود")
+
+    # Prepare data (Reuse logic)
+    sale_data = {
+        "sale_id": sale.sale_id,
+        "date": sale.sale_date,
+        "customer_name": sale.customer.name if sale.customer else "عميل نقدي",
+        "customer_phone": sale.customer.phone if sale.customer else "",
+        "crop_name": sale.crop.crop_name,
+        "quantity": sale.quantity_sold_kg,
+        "unit": sale.selling_pricing_unit,
+        "price": sale.selling_unit_price,
+        "total_amount": sale.total_sale_amount,
+        "amount_received": sale.amount_received
+    }
+
+    # Generate PDF
+    pdf_buffer = invoices.generate_invoice_pdf(sale_data)
+    pdf_bytes = pdf_buffer.getvalue()
+    filename = f"invoice_{sale_id}.pdf"
+
+    # Send Email
+    subject = f"فاتورة مبيعات #{sale_id} - AgriTrade"
+    body = f"""
+    <h3>مرحباً {sale_data['customer_name']}</h3>
+    <p>تجد مرفقاً فاتورة المبيعات الخاصة بك.</p>
+    <p>شكراً لتعاملك معنا.</p>
+    """
+
+    success = await notifications_external.send_invoice_email(
+        email_to=request.email,
+        subject=subject,
+        body=body,
+        pdf_buffer=pdf_bytes,
+        pdf_filename=filename
+    )
+
+    if not success:
+        raise HTTPException(status_code=500, detail="فشل في إرسال البريد الإلكتروني")
+    
+    return {"message": "تم إرسال الفاتورة بنجاح"}
+

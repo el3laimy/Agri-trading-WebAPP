@@ -14,12 +14,17 @@ function PurchaseManagement() {
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [payingPurchase, setPayingPurchase] = useState(null);
 
+    // State for flexible units
+    const [currentCrop, setCurrentCrop] = useState(null);
+
     const [formState, setFormState] = useState({
         crop_id: '',
         supplier_id: '',
         purchase_date: new Date().toISOString().slice(0, 10),
-        quantity_kg: '',
-        unit_price: '',
+        quantity_input: '', // Quantity in selected unit
+        price_input: '',    // Price per selected unit
+        purchasing_pricing_unit: 'kg',
+        conversion_factor: 1.0,
         amount_paid: ''
     });
 
@@ -39,27 +44,78 @@ function PurchaseManagement() {
 
     const handleInputChange = (event) => {
         const { name, value } = event.target;
-        setFormState(prevState => ({
-            ...prevState,
-            [name]: value
-        }));
+
+        if (name === 'crop_id') {
+            const selectedCrop = crops.find(c => c.crop_id.toString() === value);
+            setCurrentCrop(selectedCrop);
+
+            // Allow selecting units if crop has them, otherwise default to kg
+            let defaultUnit = 'kg';
+            let defaultFactor = 1.0;
+
+            if (selectedCrop && selectedCrop.allowed_pricing_units && selectedCrop.allowed_pricing_units.length > 0) {
+                defaultUnit = selectedCrop.allowed_pricing_units[0];
+                defaultFactor = selectedCrop.conversion_factors[defaultUnit] || 1.0;
+            }
+
+            setFormState(prevState => ({
+                ...prevState,
+                [name]: value,
+                purchasing_pricing_unit: defaultUnit,
+                conversion_factor: defaultFactor
+            }));
+        } else if (name === 'purchasing_pricing_unit') {
+            // Find conversion factor for selected unit
+            const factor = currentCrop?.conversion_factors?.[value] || 1.0;
+            setFormState(prevState => ({
+                ...prevState,
+                [name]: value,
+                conversion_factor: factor
+            }));
+        } else {
+            setFormState(prevState => ({
+                ...prevState,
+                [name]: value
+            }));
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            // Calculate standardized values for backend
+            const quantity_kg = parseFloat(formState.quantity_input) * parseFloat(formState.conversion_factor);
+            // Unit price in DB is per KG. 
+            // Input Price (per Unit) / Factor (kg per Unit) = Price per KG
+            const unit_price_per_kg = parseFloat(formState.price_input) / parseFloat(formState.conversion_factor);
+
             const submissionData = {
-                ...formState,
                 crop_id: parseInt(formState.crop_id),
                 supplier_id: parseInt(formState.supplier_id),
-                quantity_kg: parseFloat(formState.quantity_kg),
-                quantity_kg: parseFloat(formState.quantity_kg),
-                unit_price: parseFloat(formState.unit_price),
-                amount_paid: parseFloat(formState.amount_paid) || 0
+                purchase_date: formState.purchase_date,
+                quantity_kg: quantity_kg,
+                unit_price: unit_price_per_kg,
+                purchasing_pricing_unit: formState.purchasing_pricing_unit,
+                conversion_factor: formState.conversion_factor,
+                amount_paid: parseFloat(formState.amount_paid) || 0,
+                notes: `Original: ${formState.quantity_input} ${formState.purchasing_pricing_unit} @ ${formState.price_input}/${formState.purchasing_pricing_unit}`
             };
+
             await createPurchase(submissionData);
             fetchPurchases();
-            setFormState({ crop_id: '', supplier_id: '', purchase_date: new Date().toISOString().slice(0, 10), quantity_kg: '', unit_price: '', amount_paid: '' });
+
+            // Reset form
+            setFormState({
+                crop_id: '',
+                supplier_id: '',
+                purchase_date: new Date().toISOString().slice(0, 10),
+                quantity_input: '',
+                price_input: '',
+                purchasing_pricing_unit: 'kg',
+                conversion_factor: 1.0,
+                amount_paid: ''
+            });
+            setCurrentCrop(null);
             setShowAddForm(false);
             setError(null);
         } catch (error) {
@@ -111,6 +167,10 @@ function PurchaseManagement() {
         purchase.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         purchase.purchase_id?.toString().includes(searchTerm)
     );
+
+    // Calculate totals for summary/preview
+    const calculatedTotal = (parseFloat(formState.quantity_input || 0) * parseFloat(formState.price_input || 0));
+    const calculatedQtyKg = (parseFloat(formState.quantity_input || 0) * parseFloat(formState.conversion_factor || 1));
 
     return (
         <div className="container-fluid">
@@ -224,26 +284,52 @@ function PurchaseManagement() {
                                     />
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label fw-bold">الكمية (كجم)</label>
+                                    <label className="form-label fw-bold">وحدة التسعير</label>
+                                    <select
+                                        className="form-select"
+                                        name="purchasing_pricing_unit"
+                                        value={formState.purchasing_pricing_unit}
+                                        onChange={handleInputChange}
+                                        disabled={!currentCrop}
+                                    >
+                                        <option value="kg">كيلوجرام (kg)</option>
+                                        {currentCrop?.allowed_pricing_units?.map((unit, idx) => (
+                                            <option key={idx} value={unit}>{unit}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-md-4">
+                                    {/* Spacer or Factor Display */}
+                                    <label className="form-label text-muted">عامل التحويل</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        value={`${formState.conversion_factor} كجم / ${formState.purchasing_pricing_unit}`}
+                                        disabled
+                                    />
+                                </div>
+
+                                <div className="col-md-4">
+                                    <label className="form-label fw-bold">الكمية ({formState.purchasing_pricing_unit})</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         className="form-control"
-                                        name="quantity_kg"
-                                        value={formState.quantity_kg}
+                                        name="quantity_input"
+                                        value={formState.quantity_input}
                                         onChange={handleInputChange}
                                         placeholder="0.00"
                                         required
                                     />
                                 </div>
                                 <div className="col-md-4">
-                                    <label className="form-label fw-bold">سعر الوحدة (ج.م)</label>
+                                    <label className="form-label fw-bold">السعر ({formState.purchasing_pricing_unit})</label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         className="form-control"
-                                        name="unit_price"
-                                        value={formState.unit_price}
+                                        name="price_input"
+                                        value={formState.price_input}
                                         onChange={handleInputChange}
                                         placeholder="0.00"
                                         required
@@ -264,10 +350,11 @@ function PurchaseManagement() {
                                 </div>
                                 <div className="col-12">
                                     <div className="alert alert-info d-flex align-items-center">
-                                        <i className="bi bi-info-circle-fill me-2 fs-5"></i>
+                                        <i className="bi bi-calculator me-2 fs-5"></i>
                                         <div>
-                                            <strong>التكلفة الإجمالية المتوقعة:</strong> {' '}
-                                            {(parseFloat(formState.quantity_kg || 0) * parseFloat(formState.unit_price || 0)).toFixed(2)} ج.م
+                                            <strong>تفاصيل العملية:</strong><br />
+                                            الكمية بالمخزن: {calculatedQtyKg.toFixed(2)} كجم<br />
+                                            التكلفة الإجمالية: {calculatedTotal.toLocaleString('ar-EG', { style: 'currency', currency: 'EGP' })}
                                         </div>
                                     </div>
                                 </div>
@@ -321,38 +408,55 @@ function PurchaseManagement() {
                                         <th>التاريخ</th>
                                         <th>المورد</th>
                                         <th>المحصول</th>
-                                        <th>الكمية</th>
-                                        <th>التكلفة الإجمالية</th>
+                                        <th>الكمية (الأصلية)</th>
+                                        <th>الكمية (المخزن)</th>
+                                        <th>التكلفة/الوحدة</th>
+                                        <th>الإجمالي</th>
                                         <th>المدفوع</th>
                                         <th>الحالة</th>
                                         <th>إجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredPurchases.map(p => (
-                                        <tr key={p.purchase_id}>
-                                            <td className="fw-bold">{p.purchase_id}</td>
-                                            <td>{new Date(p.purchase_date).toLocaleDateString('ar-EG')}</td>
-                                            <td>{p.supplier?.name || 'N/A'}</td>
-                                            <td>{p.crop?.crop_name || 'N/A'}</td>
-                                            <td>{(p.quantity_kg || 0).toFixed(2)} كجم</td>
-                                            <td className="fw-bold text-danger">
-                                                {(p.total_cost ?? 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م
-                                            </td>
-                                            <td>{(p.amount_paid ?? 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م</td>
-                                            <td>{getStatusBadge(p.payment_status)}</td>
-                                            <td>
-                                                <button
-                                                    className="btn btn-sm btn-outline-success"
-                                                    onClick={() => handleRecordPayment(p)}
-                                                    disabled={p.payment_status === 'PAID'}
-                                                >
-                                                    <i className="bi bi-cash me-1"></i>
-                                                    تسجيل دفعة
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {filteredPurchases.map(p => {
+                                        // Display logic for original units if available
+                                        // Note: unit_price in DB is PER KG. 
+                                        const originalUnit = p.purchasing_pricing_unit || 'kg';
+                                        const factor = p.conversion_factor || 1.0;
+                                        const originalQty = (p.quantity_kg || 0) / factor;
+                                        const originalPrice = (p.unit_price || 0) * factor;
+
+                                        return (
+                                            <tr key={p.purchase_id}>
+                                                <td className="fw-bold">{p.purchase_id}</td>
+                                                <td>{new Date(p.purchase_date).toLocaleDateString('ar-EG')}</td>
+                                                <td>{p.supplier?.name || 'N/A'}</td>
+                                                <td>{p.crop?.crop_name || 'N/A'}</td>
+                                                <td>
+                                                    <span className="badge bg-light text-dark border">
+                                                        {originalQty.toFixed(2)} {originalUnit}
+                                                    </span>
+                                                </td>
+                                                <td><small className='text-muted'>{(p.quantity_kg || 0).toFixed(2)} كجم</small></td>
+                                                <td>{originalPrice.toLocaleString('ar-EG')} / {originalUnit}</td>
+                                                <td className="fw-bold text-danger">
+                                                    {(p.total_cost ?? 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م
+                                                </td>
+                                                <td>{(p.amount_paid ?? 0).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م</td>
+                                                <td>{getStatusBadge(p.payment_status)}</td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-success"
+                                                        onClick={() => handleRecordPayment(p)}
+                                                        disabled={p.payment_status === 'PAID'}
+                                                    >
+                                                        <i className="bi bi-cash me-1"></i>
+                                                        تسجيل دفعة
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>

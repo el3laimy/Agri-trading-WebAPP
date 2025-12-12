@@ -75,3 +75,21 @@ export const getCashFlowDetails = async (startDate, endDate, category = null) =>
     return response.data;
 };
 
+// Advanced Reports
+export const getCropProfitability = async (seasonId = null) => {
+    const params = {};
+    if (seasonId) params.season_id = seasonId;
+    const response = await axios.get(`${API_URL}/crop-profitability`, { params });
+    return response.data;
+};
+
+export const getTopCustomers = async (limit = 10) => {
+    const response = await axios.get(`${API_URL}/top-customers`, { params: { limit } });
+    return response.data;
+};
+
+export const getDebtAnalysis = async () => {
+    const response = await axios.get(`${API_URL}/debt-analysis`);
+    return response.data;
+};
+

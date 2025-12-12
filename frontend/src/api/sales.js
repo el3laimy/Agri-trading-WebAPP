@@ -21,3 +21,15 @@ export const createSale = async (saleData) => {
         throw error;
     }
 };
+
+export const downloadInvoice = async (saleId) => {
+    try {
+        const response = await axios.get(`${API_URL}${saleId}/invoice`, {
+            responseType: 'blob', // Important for handling binary data (PDF)
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error downloading invoice:", error);
+        throw error;
+    }
+};

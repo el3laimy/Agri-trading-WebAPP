@@ -84,6 +84,22 @@ export const AuthProvider = ({ children }) => {
         return true;
     };
 
+    const updateConfig = async (newConfig) => {
+        if (!user || !token) return;
+
+        // Update local state immediately for UI responsiveness
+        const updatedUser = { ...user, dashboard_config: JSON.stringify(newConfig) };
+        setUser(updatedUser);
+
+        // Update backend
+        try {
+            await import('../api/auth').then(mod => mod.updateDashboardConfig(token, newConfig));
+        } catch (err) {
+            console.error("Failed to save dashboard config:", err);
+            // Optionally revert local state here if strict consistency needed
+        }
+    };
+
     const value = {
         user,
         token,
@@ -92,7 +108,8 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         login,
         logout,
-        hasPermission
+        hasPermission,
+        updateConfig
     };
 
     return (

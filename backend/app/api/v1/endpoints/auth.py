@@ -51,6 +51,7 @@ class UserResponse(BaseModel):
     is_superuser: bool
     created_at: datetime
     last_login: Optional[datetime]
+    dashboard_config: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -62,6 +63,7 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     role_id: Optional[int] = None
     is_active: Optional[bool] = None
+    dashboard_config: Optional[str] = None
 
 
 class PasswordChange(BaseModel):
@@ -178,9 +180,23 @@ async def get_current_user_info(
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,
         created_at=current_user.created_at,
-        last_login=current_user.last_login
+        last_login=current_user.last_login,
+        dashboard_config=current_user.dashboard_config
     )
 
+class DashboardConfigUpdate(BaseModel):
+    dashboard_config: str
+
+@router.put("/me/config")
+async def update_my_dashboard_config(
+    config_data: DashboardConfigUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """تحديث إعدادات لوحة التحكم للمستخدم الحالي"""
+    current_user.dashboard_config = config_data.dashboard_config
+    db.commit()
+    return {"message": "تم تحديث الإعدادات بنجاح"}
 
 @router.post("/change-password")
 async def change_password(
@@ -326,6 +342,8 @@ async def update_user(
         user.role_id = user_data.role_id
     if user_data.is_active is not None:
         user.is_active = user_data.is_active
+    if user_data.dashboard_config is not None:
+        user.dashboard_config = user_data.dashboard_config
     
     db.commit()
     db.refresh(user)
@@ -345,8 +363,10 @@ async def update_user(
         is_active=user.is_active,
         is_superuser=user.is_superuser,
         created_at=user.created_at,
-        last_login=user.last_login
+        last_login=user.last_login,
+        dashboard_config=user.dashboard_config
     )
+
 
 
 # ============================================

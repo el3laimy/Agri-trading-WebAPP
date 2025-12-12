@@ -47,6 +47,9 @@ class Purchase(Base):
     payment_status = Column(String, default='PENDING')
     notes = Column(Text, nullable=True)  # ملاحظات إضافية
 
+    purchasing_pricing_unit = Column(String, nullable=False, default='kg')
+    conversion_factor = Column(Float, nullable=False, default=1.0)
+
     crop = relationship("Crop")
     supplier = relationship("Contact")
     season = relationship("Season")
@@ -327,6 +330,41 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+    dashboard_config = Column(Text, nullable=True) # JSON: {"widgets": [...], "layout": ...}
 
     role = relationship("Role", back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user")
+
+
+class SupplyContract(Base):
+    __tablename__ = "supply_contracts"
+
+    contract_id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=False)
+    crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
+    contract_date = Column(Date, nullable=False)
+    delivery_date = Column(Date, nullable=False)
+    quantity_kg = Column(Float, nullable=False)
+    price_per_kg = Column(Float, nullable=False)
+    total_amount = Column(Float, nullable=False)
+    status = Column(String, default='ACTIVE')  # ACTIVE, COMPLETED, CANCELLED
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    supplier = relationship("Contact")
+    crop = relationship("Crop")
+
+
+class SupplierRating(Base):
+    __tablename__ = "supplier_ratings"
+
+    rating_id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=False)
+    rating_date = Column(Date, default=datetime.utcnow)
+    quality_score = Column(Integer, nullable=False)  # 1-5
+    delivery_score = Column(Integer, nullable=False) # 1-5
+    price_score = Column(Integer, nullable=False)    # 1-5
+    notes = Column(Text, nullable=True)
+
+    supplier = relationship("Contact")
+

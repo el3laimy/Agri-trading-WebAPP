@@ -63,6 +63,33 @@
   --sidebar-width: 280px;
 }
 
+[data-theme="dark"] {
+  /* Dark Mode Overrides */
+  --bg-body: #121212;
+  --bg-sidebar: linear-gradient(180deg, #0A1F12 0%, #000000 100%);
+  --bg-card: #1E1E1E;
+  --bg-card-hover: #2D2D2D;
+
+  --text-primary: #E0E0E0;
+  --text-secondary: #B0B0B0;
+  --text-muted: #6C757D;
+  --text-dark: #FFFFFF;
+
+  --border-color: #333333;
+  --border-light: #2D2D2D;
+  --border-dark: #444444;
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  --primary-50: rgba(30, 86, 49, 0.2);
+  --primary-100: rgba(30, 86, 49, 0.3);
+  
+  --input-bg: #2D2D2D;
+}
+
+
 /* ===== Base Styles ===== */
 * {
   margin: 0;

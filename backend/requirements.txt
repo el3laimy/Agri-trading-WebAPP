@@ -3,3 +3,10 @@ uvicorn
 sqlalchemy
 pydantic-settings
 python-dotenv
+reportlab
+qrcode
+Pillow
+pytest
+httpx
+slowapi
+fastapi-mail

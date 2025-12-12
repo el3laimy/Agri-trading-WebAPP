@@ -93,3 +93,17 @@ export const getRoles = async (token) => {
     });
     return response.data;
 };
+
+/**
+ * تحديث إعدادات لوحة التحكم
+ */
+export const updateDashboardConfig = async (token, config) => {
+    const response = await axios.put(`${API_URL}/me/config`, {
+        dashboard_config: typeof config === 'string' ? config : JSON.stringify(config)
+    }, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    return response.data;
+};
