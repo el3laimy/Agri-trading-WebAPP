@@ -26,24 +26,24 @@ const EquityStatement = () => {
         }
     };
 
-    const renderMoney = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    const renderMoney = (amount) => new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount);
 
     return (
         <div className="container mt-4">
-            <h1>Statement of Owner's Equity</h1>
+            <h1>بيان حقوق الملكية</h1>
             <div className="card card-body mb-4">
                 <div className="row g-3 align-items-end">
                     <div className="col-md-4">
-                        <label htmlFor="start_date" className="form-label">Start Date</label>
+                        <label htmlFor="start_date" className="form-label">تاريخ البدء</label>
                         <input type="date" className="form-control" id="start_date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                     </div>
                     <div className="col-md-4">
-                        <label htmlFor="end_date" className="form-label">End Date</label>
+                        <label htmlFor="end_date" className="form-label">تاريخ الانتهاء</label>
                         <input type="date" className="form-control" id="end_date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                     </div>
                     <div className="col-md-4">
                         <button className="btn btn-primary w-100" onClick={handleGenerateReport} disabled={loading}>
-                            {loading ? 'Generating...' : 'Generate Report'}
+                            {loading ? 'جاري إنشاء التقرير...' : 'عرض التقرير'}
                         </button>
                     </div>
                 </div>
@@ -54,30 +54,30 @@ const EquityStatement = () => {
             {reportData && (
                 <div className="card">
                     <div className="card-header text-center">
-                        <h2>Statement of Owner's Equity</h2>
-                        <p className="mb-0">For the period from {reportData.start_date} to {reportData.end_date}</p>
+                        <h2>بيان حقوق الملكية</h2>
+                        <p className="mb-0">للفترة من {reportData.start_date} إلى {reportData.end_date}</p>
                     </div>
                     <div className="card-body">
                         <table className="table table-bordered">
                             <tbody>
                                 <tr>
-                                    <td>Beginning Equity</td>
+                                    <td>رصيد بداية المدة</td>
                                     <td className="text-end">{renderMoney(reportData.beginning_equity)}</td>
                                 </tr>
                                 <tr>
-                                    <td>Net Income</td>
+                                    <td>صافي الربح / (الخسارة)</td>
                                     <td className="text-end">{renderMoney(reportData.net_income)}</td>
                                 </tr>
                                 <tr>
-                                    <td>Owner Contributions</td>
+                                    <td>مساهمات الملاك</td>
                                     <td className="text-end">{renderMoney(reportData.owner_contributions)}</td>
                                 </tr>
                                 <tr>
-                                    <td>Owner Draws</td>
+                                    <td>المسحوبات الشخصية</td>
                                     <td className="text-end text-danger">({renderMoney(reportData.owner_draws)})</td>
                                 </tr>
                                 <tr className="fw-bold table-light">
-                                    <td>Ending Equity</td>
+                                    <td>رصيد نهاية المدة</td>
                                     <td className="text-end">{renderMoney(reportData.ending_equity)}</td>
                                 </tr>
                             </tbody>

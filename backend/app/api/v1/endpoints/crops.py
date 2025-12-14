@@ -20,7 +20,7 @@ def get_db():
 def create_crop(crop: schemas.CropCreate, db: Session = Depends(get_db)):
     db_crop = crud.get_crop_by_name(db, name=crop.crop_name)
     if db_crop:
-        raise HTTPException(status_code=400, detail="Crop with this name already registered")
+        raise HTTPException(status_code=400, detail="يوجد محصول بهذا الاسم بالفعل")
     
     new_crop = crud.create_crop(db=db, crop=crop)
     
@@ -51,7 +51,7 @@ def read_crops(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 def read_crop(crop_id: int, db: Session = Depends(get_db)):
     db_crop = crud.get_crop(db, crop_id=crop_id)
     if db_crop is None:
-        raise HTTPException(status_code=404, detail="Crop not found")
+        raise HTTPException(status_code=404, detail="المحصول غير موجود")
     
     return schemas.Crop(
         crop_id=db_crop.crop_id,
@@ -65,7 +65,7 @@ def read_crop(crop_id: int, db: Session = Depends(get_db)):
 def update_crop(crop_id: int, crop: schemas.CropCreate, db: Session = Depends(get_db)):
     db_crop = crud.get_crop(db, crop_id=crop_id)
     if db_crop is None:
-        raise HTTPException(status_code=404, detail="Crop not found")
+        raise HTTPException(status_code=404, detail="المحصول غير موجود")
     
     # Update crop fields
     db_crop.crop_name = crop.crop_name
@@ -87,17 +87,17 @@ def update_crop(crop_id: int, crop: schemas.CropCreate, db: Session = Depends(ge
 def delete_crop(crop_id: int, db: Session = Depends(get_db)):
     db_crop = crud.get_crop(db, crop_id=crop_id)
     if db_crop is None:
-        raise HTTPException(status_code=404, detail="Crop not found")
+        raise HTTPException(status_code=404, detail="المحصول غير موجود")
     
     # Check if crop is used in any sales or purchases
     if db_crop.sales or db_crop.purchases:
         raise HTTPException(
             status_code=400, 
-            detail="Cannot delete crop that has associated sales or purchases"
+            detail="لا يمكن حذف المحصول لأنه مرتبط بعمليات بيع أو شراء"
         )
     
     db.delete(db_crop)
     db.commit()
     
-    return {"message": "Crop deleted successfully"}
+    return {"message": "تم حذف المحصول بنجاح"}
 

@@ -37,7 +37,7 @@ def read_financial_account(account_id: int, db: Session = Depends(get_db)):
     """
     db_account = crud.get_financial_account(db, account_id=account_id)
     if db_account is None:
-        raise HTTPException(status_code=404, detail="Financial account not found")
+        raise HTTPException(status_code=404, detail="الحساب المالي غير موجود")
     return db_account
 
 @router.put("/{account_id}", response_model=schemas.FinancialAccount)
@@ -47,7 +47,7 @@ def update_financial_account(account_id: int, account: schemas.FinancialAccountU
     """
     db_account = crud.update_financial_account(db, account_id=account_id, account_update=account)
     if db_account is None:
-        raise HTTPException(status_code=404, detail="Financial account not found")
+        raise HTTPException(status_code=404, detail="الحساب المالي غير موجود")
     return db_account
 
 @router.delete("/{account_id}", response_model=schemas.FinancialAccount)
@@ -57,5 +57,5 @@ def delete_financial_account(account_id: int, db: Session = Depends(get_db)):
     """
     db_account = crud.delete_financial_account(db, account_id=account_id)
     if db_account is None:
-        raise HTTPException(status_code=404, detail="Financial account not found")
+        raise HTTPException(status_code=404, detail="الحساب المالي غير موجود")
     return db_account

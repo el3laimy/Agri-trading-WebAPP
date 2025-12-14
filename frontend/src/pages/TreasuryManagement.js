@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTreasurySummary, getTreasuryTransactions, createCashReceipt, createCashPayment, createQuickExpense } from '../api/treasury';
+import capitalAPI from '../api/capital';
 import { getContacts } from '../api/contacts';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -41,6 +42,17 @@ function TreasuryManagement() {
         amount: '',
         description: '',
         category: ''
+    });
+
+    // Capital Modal State
+    const [showCapitalModal, setShowCapitalModal] = useState(false);
+    const [capitalForm, setCapitalForm] = useState({
+        transaction_date: new Date().toISOString().slice(0, 10),
+        amount: '',
+        type: 'CONTRIBUTION', // or WITHDRAWAL
+        owner_name: '',
+        description: '',
+        reference_number: ''
     });
 
     useEffect(() => {
@@ -189,6 +201,43 @@ function TreasuryManagement() {
         }
     };
 
+    // Handle Capital Transaction
+    const handleCapitalSubmit = async (e) => {
+        e.preventDefault();
+        if (!capitalForm.amount || capitalForm.amount <= 0) {
+            showError('يرجى إدخال مبلغ صحيح');
+            return;
+        }
+        if (!capitalForm.owner_name) {
+            showError('يرجى إدخال اسم المالك/الشريك');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const data = {
+                ...capitalForm,
+                amount: parseFloat(capitalForm.amount)
+            };
+            await capitalAPI.createTransaction(data);
+            showSuccess('تم تسجيل حركة رأس المال بنجاح');
+            setShowCapitalModal(false);
+            setCapitalForm({
+                transaction_date: new Date().toISOString().slice(0, 10),
+                amount: '',
+                type: 'CONTRIBUTION',
+                owner_name: '',
+                description: '',
+                reference_number: ''
+            });
+            fetchData(selectedDate);
+        } catch (error) {
+            showError('فشل تسجيل الحركة: ' + (error.response?.data?.detail || error.message));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     if (loading && !summary) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
@@ -261,6 +310,13 @@ function TreasuryManagement() {
                     >
                         <i className="bi bi-lightning-charge me-2"></i>
                         تسجيل مصروف
+                    </button>
+                    <button
+                        className="btn btn-primary px-4 py-2 shadow-sm"
+                        onClick={() => setShowCapitalModal(true)}
+                    >
+                        <i className="bi bi-bank me-2"></i>
+                        إدارة رأس المال
                     </button>
                 </div>
             </div>
@@ -617,6 +673,126 @@ function TreasuryManagement() {
                                     <button type="submit" className="btn btn-warning" disabled={submitting}>
                                         {submitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
                                         تسجيل المصروف
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Capital Transaction Modal */}
+            {showCapitalModal && (
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header bg-primary text-white">
+                                <h5 className="modal-title">
+                                    <i className="bi bi-bank me-2"></i>
+                                    إدارة رأس المال
+                                </h5>
+                                <button type="button" className="btn-close btn-close-white" onClick={() => setShowCapitalModal(false)}></button>
+                            </div>
+                            <form onSubmit={handleCapitalSubmit}>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">نوع الحركة *</label>
+                                        <div className="d-flex gap-3">
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="radio"
+                                                    name="capitalType"
+                                                    id="typeContribution"
+                                                    checked={capitalForm.type === 'CONTRIBUTION'}
+                                                    onChange={() => setCapitalForm({ ...capitalForm, type: 'CONTRIBUTION' })}
+                                                />
+                                                <label className="form-check-label text-success fw-bold" htmlFor="typeContribution">
+                                                    <i className="bi bi-arrow-down-circle me-1"></i>
+                                                    زيادة رأس مال (إيداع)
+                                                </label>
+                                            </div>
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="radio"
+                                                    name="capitalType"
+                                                    id="typeWithdrawal"
+                                                    checked={capitalForm.type === 'WITHDRAWAL'}
+                                                    onChange={() => setCapitalForm({ ...capitalForm, type: 'WITHDRAWAL' })}
+                                                />
+                                                <label className="form-check-label text-danger fw-bold" htmlFor="typeWithdrawal">
+                                                    <i className="bi bi-arrow-up-circle me-1"></i>
+                                                    تخفيض رأس مال (مسحوبات)
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">التاريخ *</label>
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={capitalForm.transaction_date}
+                                            onChange={(e) => setCapitalForm({ ...capitalForm, transaction_date: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">المبلغ *</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            value={capitalForm.amount}
+                                            onChange={(e) => setCapitalForm({ ...capitalForm, amount: e.target.value })}
+                                            min="0.01"
+                                            step="0.01"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">اسم المالك/الشريك *</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={capitalForm.owner_name}
+                                            onChange={(e) => setCapitalForm({ ...capitalForm, owner_name: e.target.value })}
+                                            placeholder="اسم الشخص صاحب المعاملة"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">البيان *</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={capitalForm.description}
+                                            onChange={(e) => setCapitalForm({ ...capitalForm, description: e.target.value })}
+                                            placeholder="وصف العملية"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">رقم المرجع (اختياري)</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            value={capitalForm.reference_number}
+                                            onChange={(e) => setCapitalForm({ ...capitalForm, reference_number: e.target.value })}
+                                            placeholder="رقم الإيصال البنكي أو الشيك"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={() => setShowCapitalModal(false)}>
+                                        إلغاء
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className={`btn btn-${capitalForm.type === 'CONTRIBUTION' ? 'success' : 'danger'}`}
+                                        disabled={submitting}
+                                    >
+                                        {submitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
+                                        {capitalForm.type === 'CONTRIBUTION' ? 'تسجيل زيادة رأس المال' : 'تسجيل المسحوبات'}
                                     </button>
                                 </div>
                             </form>

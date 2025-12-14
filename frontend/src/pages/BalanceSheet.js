@@ -25,20 +25,20 @@ const BalanceSheet = () => {
         }
     };
 
-    const renderMoney = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    const renderMoney = (amount) => new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount);
 
     return (
         <div className="container mt-4">
-            <h1>Balance Sheet</h1>
+            <h1>الميزانية العمومية</h1>
             <div className="card card-body mb-4">
                 <div className="row g-3 align-items-end">
                     <div className="col-md-4">
-                        <label htmlFor="end_date" className="form-label">As of Date</label>
+                        <label htmlFor="end_date" className="form-label">في تاريخ</label>
                         <input type="date" className="form-control" id="end_date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                     </div>
                     <div className="col-md-4">
                         <button className="btn btn-primary w-100" onClick={handleGenerateReport} disabled={loading}>
-                            {loading ? 'Generating...' : 'Generate Report'}
+                            {loading ? 'جاري إنشاء التقرير...' : 'عرض التقرير'}
                         </button>
                     </div>
                 </div>
@@ -49,14 +49,14 @@ const BalanceSheet = () => {
             {reportData && (
                 <div className="card">
                     <div className="card-header text-center">
-                        <h2>Balance Sheet</h2>
-                        <p className="mb-0">As of {reportData.end_date}</p>
+                        <h2>الميزانية العمومية</h2>
+                        <p className="mb-0">في {reportData.end_date}</p>
                     </div>
                     <div className="card-body">
                         <div className="row">
                             {/* Assets */}
                             <div className="col-md-6">
-                                <h4 className="text-center">Assets</h4>
+                                <h4 className="text-center">الأصول</h4>
                                 <hr />
                                 <table className="table">
                                     <tbody>
@@ -69,7 +69,7 @@ const BalanceSheet = () => {
                                     </tbody>
                                     <tfoot>
                                         <tr className="table-light fw-bold">
-                                            <td>Total Assets</td>
+                                            <td>إجمالي الأصول</td>
                                             <td className="text-end">{renderMoney(reportData.total_assets)}</td>
                                         </tr>
                                     </tfoot>
@@ -78,9 +78,9 @@ const BalanceSheet = () => {
 
                             {/* Liabilities and Equity */}
                             <div className="col-md-6">
-                                <h4 className="text-center">Liabilities & Equity</h4>
+                                <h4 className="text-center">الخصوم وحقوق الملكية</h4>
                                 <hr />
-                                <h5>Liabilities</h5>
+                                <h5>الخصوم</h5>
                                 <table className="table">
                                     <tbody>
                                         {reportData.liabilities.map((item, index) => (
@@ -92,13 +92,13 @@ const BalanceSheet = () => {
                                     </tbody>
                                     <tfoot>
                                         <tr className="table-light fw-bold">
-                                            <td>Total Liabilities</td>
+                                            <td>إجمالي الخصوم</td>
                                             <td className="text-end">{renderMoney(reportData.total_liabilities)}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
 
-                                <h5 className="mt-3">Equity</h5>
+                                <h5 className="mt-3">حقوق الملكية</h5>
                                 <table className="table">
                                     <tbody>
                                         {reportData.equity.map((item, index) => (
@@ -110,13 +110,13 @@ const BalanceSheet = () => {
                                     </tbody>
                                     <tfoot>
                                         <tr className="table-light fw-bold">
-                                            <td>Total Equity</td>
+                                            <td>إجمالي حقوق الملكية</td>
                                             <td className="text-end">{renderMoney(reportData.total_equity)}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
                                 <div className="d-flex justify-content-between p-3 mt-2 fw-bold table-light">
-                                    <h6>Total Liabilities & Equity</h6>
+                                    <h6>إجمالي الخصوم وحقوق الملكية</h6>
                                     <h6>{renderMoney(reportData.total_liabilities_and_equity)}</h6>
                                 </div>
                             </div>

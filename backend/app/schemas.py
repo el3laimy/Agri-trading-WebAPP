@@ -407,3 +407,21 @@ class SupplierRatingRead(SupplierRatingBase):
     rating_id: int
     supplier: Contact
     model_config = ConfigDict(from_attributes=True)
+
+# --- Capital Management Schemas ---
+class CapitalTransactionCreate(BaseModel):
+    """بيانات حركة رأس المال"""
+    transaction_date: date
+    type: str # 'CONTRIBUTION' or 'WITHDRAWAL'
+    amount: float
+    description: str
+    owner_name: str
+    reference_number: Optional[str] = None
+    season_id: Optional[int] = None
+
+    @field_validator('type')
+    def validate_type(cls, v):
+        if v not in ('CONTRIBUTION', 'WITHDRAWAL'):
+            raise ValueError('يجب أن يكون النوع مساهمة (CONTRIBUTION) أو سحب (WITHDRAWAL)')
+        return v
+
