@@ -41,9 +41,6 @@ def generate_capital_distribution(
     if not report_date:
         report_date = date.today()
     
-    if not start_date:
-        start_date = date(report_date.year, 1, 1)
-    
     # ============ الجانب الأيمن (الأصول / استخدامات التمويل) ============
     
     # 1. النقدية (رصيد حساب الخزينة)
@@ -57,11 +54,19 @@ def generate_capital_distribution(
         func.sum(models.Inventory.current_stock_kg * models.Inventory.average_cost_per_kg)
     ).scalar() or 0.0
     
-    # 3. الديون لنا / المستحقات (مجموع أرصدة العملاء غير المسددة)
-    # المبيعات غير المسددة بالكامل
+    # 3. الديون لنا (من العملاء) - نفس منطق تقرير الديون
+    # المبيعات - المرتجعات - المدفوعات
     total_sales = db.query(func.sum(models.Sale.total_sale_amount)).scalar() or 0.0
-    total_received = db.query(func.sum(models.Sale.amount_received)).scalar() or 0.0
-    accounts_receivable = total_sales - total_received
+    
+    # مرتجعات المبيعات
+    sale_returns = db.query(func.sum(models.SaleReturn.refund_amount)).scalar() or 0.0
+    
+    # المدفوعات المستلمة من العملاء (من جدول Payments للعملاء)
+    customer_payments = db.query(func.sum(models.Payment.amount)).join(
+        models.Contact, models.Payment.contact_id == models.Contact.contact_id
+    ).filter(models.Contact.is_customer == True).scalar() or 0.0
+    
+    accounts_receivable = total_sales - sale_returns - customer_payments
     
     # إجمالي الأصول
     total_assets = cash_in_hand + inventory_value + accounts_receivable
@@ -74,17 +79,27 @@ def generate_capital_distribution(
     ).first()
     owner_capital = abs(equity_account.current_balance) if equity_account else 0.0
     
-    # 2. صافي الربح (من قائمة الدخل)
+    # 2. صافي الربح (من قائمة الدخل - من البداية للتوازن)
     try:
-        income_statement = generate_income_statement(db, start_date, report_date)
+        all_time_start = date(2000, 1, 1)
+        income_statement = generate_income_statement(db, all_time_start, report_date)
         net_profit = income_statement.get('net_income', 0.0)
     except Exception:
         net_profit = 0.0
     
-    # 3. الديون علينا / الالتزامات (مجموع أرصدة الموردين غير المسددة)
+    # 3. الديون علينا (للموردين) - نفس منطق تقرير الديون
+    # المشتريات - المرتجعات - المدفوعات
     total_purchases = db.query(func.sum(models.Purchase.total_cost)).scalar() or 0.0
-    total_paid = db.query(func.sum(models.Purchase.amount_paid)).scalar() or 0.0
-    accounts_payable = total_purchases - total_paid
+    
+    # مرتجعات المشتريات
+    purchase_returns = db.query(func.sum(models.PurchaseReturn.returned_cost)).scalar() or 0.0
+    
+    # المدفوعات للموردين (من جدول Payments للموردين)
+    supplier_payments = db.query(func.sum(models.Payment.amount)).join(
+        models.Contact, models.Payment.contact_id == models.Contact.contact_id
+    ).filter(models.Contact.is_supplier == True).scalar() or 0.0
+    
+    accounts_payable = total_purchases - purchase_returns - supplier_payments
     
     # إجمالي مصادر التمويل
     total_liabilities_and_equity = owner_capital + net_profit + accounts_payable

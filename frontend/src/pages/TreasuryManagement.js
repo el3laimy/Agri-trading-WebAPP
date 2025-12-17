@@ -1,11 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getTreasurySummary, getTreasuryTransactions, createCashReceipt, createCashPayment, createQuickExpense } from '../api/treasury';
 import capitalAPI from '../api/capital';
 import { getContacts } from '../api/contacts';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 
+// Import treasury components
+import {
+    CashReceiptModal,
+    CashPaymentModal,
+    QuickExpenseModal,
+    CapitalTransactionModal,
+} from '../components/treasury';
+
+// Import shared utilities and components
+import { usePageState } from '../hooks';
+import { formatCurrency, formatDate } from '../utils';
+import { PageLoading } from '../components/common';
+
+// Initial form states
+const getInitialReceiptForm = () => ({
+    receipt_date: new Date().toISOString().slice(0, 10),
+    amount: '',
+    contact_id: '',
+    description: '',
+    reference_number: ''
+});
+
+const getInitialPaymentForm = () => ({
+    payment_date: new Date().toISOString().slice(0, 10),
+    amount: '',
+    contact_id: '',
+    description: '',
+    reference_number: ''
+});
+
+const getInitialExpenseForm = () => ({
+    expense_date: new Date().toISOString().slice(0, 10),
+    amount: '',
+    description: '',
+    category: ''
+});
+
+const getInitialCapitalForm = () => ({
+    transaction_date: new Date().toISOString().slice(0, 10),
+    amount: '',
+    type: 'CONTRIBUTION',
+    owner_name: '',
+    description: '',
+    reference_number: ''
+});
+
 function TreasuryManagement() {
+    // Data states
     const [summary, setSummary] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [contacts, setContacts] = useState([]);
@@ -16,57 +63,26 @@ function TreasuryManagement() {
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [showCapitalModal, setShowCapitalModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
+
+    // Use shared page state hook for error/success handling
+    const { error: errorMessage, successMessage, showSuccess, showError } = usePageState();
 
     // Form states
-    const [receiptForm, setReceiptForm] = useState({
-        receipt_date: new Date().toISOString().slice(0, 10),
-        amount: '',
-        contact_id: '',
-        description: '',
-        reference_number: ''
-    });
+    const [receiptForm, setReceiptForm] = useState(getInitialReceiptForm());
+    const [paymentForm, setPaymentForm] = useState(getInitialPaymentForm());
+    const [expenseForm, setExpenseForm] = useState(getInitialExpenseForm());
+    const [capitalForm, setCapitalForm] = useState(getInitialCapitalForm());
 
-    const [paymentForm, setPaymentForm] = useState({
-        payment_date: new Date().toISOString().slice(0, 10),
-        amount: '',
-        contact_id: '',
-        description: '',
-        reference_number: ''
-    });
-
-    const [expenseForm, setExpenseForm] = useState({
-        expense_date: new Date().toISOString().slice(0, 10),
-        amount: '',
-        description: '',
-        category: ''
-    });
-
-    // Capital Modal State
-    const [showCapitalModal, setShowCapitalModal] = useState(false);
-    const [capitalForm, setCapitalForm] = useState({
-        transaction_date: new Date().toISOString().slice(0, 10),
-        amount: '',
-        type: 'CONTRIBUTION', // or WITHDRAWAL
-        owner_name: '',
-        description: '',
-        reference_number: ''
-    });
-
-    useEffect(() => {
-        fetchData(selectedDate);
-        fetchContacts();
-    }, [selectedDate]);
-
-    const fetchData = async (date) => {
+    // Fetch data
+    const fetchData = useCallback(async (date) => {
         setLoading(true);
         try {
             const dateStr = date.toISOString().slice(0, 10);
             const [summaryData, transactionsData] = await Promise.all([
                 getTreasurySummary(dateStr),
-                getTreasuryTransactions(dateStr, 50)
+                getTreasuryTransactions(dateStr, 100) // Increase limit to show more
             ]);
             setSummary(summaryData);
             setTransactions(transactionsData);
@@ -75,36 +91,23 @@ function TreasuryManagement() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchContacts = async () => {
+    const fetchContacts = useCallback(async () => {
         try {
             const data = await getContacts();
             setContacts(data);
         } catch (error) {
             console.error("Failed to fetch contacts:", error);
         }
-    };
+    }, []);
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount || 0);
-    };
+    useEffect(() => {
+        fetchData(selectedDate);
+        fetchContacts();
+    }, [selectedDate, fetchData, fetchContacts]);
 
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('ar-EG');
-    };
-
-    const showSuccess = (message) => {
-        setSuccessMessage(message);
-        setTimeout(() => setSuccessMessage(''), 3000);
-    };
-
-    const showError = (message) => {
-        setErrorMessage(message);
-        setTimeout(() => setErrorMessage(''), 5000);
-    };
-
-    // Handle Cash Receipt
+    // Submit handlers (Keeping logic same, just UI change)
     const handleReceiptSubmit = async (e) => {
         e.preventDefault();
         if (!receiptForm.amount || receiptForm.amount <= 0) {
@@ -122,13 +125,7 @@ function TreasuryManagement() {
             await createCashReceipt(data);
             showSuccess('تم تسجيل القبض بنجاح');
             setShowReceiptModal(false);
-            setReceiptForm({
-                receipt_date: new Date().toISOString().slice(0, 10),
-                amount: '',
-                contact_id: '',
-                description: '',
-                reference_number: ''
-            });
+            setReceiptForm(getInitialReceiptForm());
             fetchData(selectedDate);
         } catch (error) {
             showError('فشل تسجيل القبض: ' + (error.response?.data?.detail || error.message));
@@ -137,7 +134,6 @@ function TreasuryManagement() {
         }
     };
 
-    // Handle Cash Payment
     const handlePaymentSubmit = async (e) => {
         e.preventDefault();
         if (!paymentForm.amount || paymentForm.amount <= 0) {
@@ -155,13 +151,7 @@ function TreasuryManagement() {
             await createCashPayment(data);
             showSuccess('تم تسجيل الصرف بنجاح');
             setShowPaymentModal(false);
-            setPaymentForm({
-                payment_date: new Date().toISOString().slice(0, 10),
-                amount: '',
-                contact_id: '',
-                description: '',
-                reference_number: ''
-            });
+            setPaymentForm(getInitialPaymentForm());
             fetchData(selectedDate);
         } catch (error) {
             showError('فشل تسجيل الصرف: ' + (error.response?.data?.detail || error.message));
@@ -170,7 +160,6 @@ function TreasuryManagement() {
         }
     };
 
-    // Handle Quick Expense
     const handleExpenseSubmit = async (e) => {
         e.preventDefault();
         if (!expenseForm.amount || expenseForm.amount <= 0) {
@@ -187,12 +176,7 @@ function TreasuryManagement() {
             await createQuickExpense(data);
             showSuccess('تم تسجيل المصروف بنجاح');
             setShowExpenseModal(false);
-            setExpenseForm({
-                expense_date: new Date().toISOString().slice(0, 10),
-                amount: '',
-                description: '',
-                category: ''
-            });
+            setExpenseForm(getInitialExpenseForm());
             fetchData(selectedDate);
         } catch (error) {
             showError('فشل تسجيل المصروف: ' + (error.response?.data?.detail || error.message));
@@ -201,7 +185,6 @@ function TreasuryManagement() {
         }
     };
 
-    // Handle Capital Transaction
     const handleCapitalSubmit = async (e) => {
         e.preventDefault();
         if (!capitalForm.amount || capitalForm.amount <= 0) {
@@ -222,14 +205,7 @@ function TreasuryManagement() {
             await capitalAPI.createTransaction(data);
             showSuccess('تم تسجيل حركة رأس المال بنجاح');
             setShowCapitalModal(false);
-            setCapitalForm({
-                transaction_date: new Date().toISOString().slice(0, 10),
-                amount: '',
-                type: 'CONTRIBUTION',
-                owner_name: '',
-                description: '',
-                reference_number: ''
-            });
+            setCapitalForm(getInitialCapitalForm());
             fetchData(selectedDate);
         } catch (error) {
             showError('فشل تسجيل الحركة: ' + (error.response?.data?.detail || error.message));
@@ -238,18 +214,72 @@ function TreasuryManagement() {
         }
     };
 
-    if (loading && !summary) {
+    // --- Modern Components Internal Definition for Split View ---
+
+    const StatCard = ({ title, value, icon, gradient, textColor = 'text-white' }) => (
+        <div className="col-md-3 col-sm-6">
+            <div className="card border-0 shadow-sm h-100 overflow-hidden position-relative" style={{ background: gradient }}>
+                <div className={`card-body p-3 position-relative z-1 ${textColor}`}>
+                    <div className="d-flex align-items-center mb-2">
+                        <div className="bg-white bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center me-2">
+                            <i className={`bi ${icon} fs-5`}></i>
+                        </div>
+                        <span className="opacity-75 small fw-bold">{title}</span>
+                    </div>
+                    <h4 className="fw-bold mb-0">{formatCurrency(value)}</h4>
+                </div>
+                <div className="position-absolute bottom-0 opacity-10" style={{ left: '0', marginBottom: '-10px', marginLeft: '-15px' }}>
+                    <i className={`bi ${icon} display-1 text-white`}></i>
+                </div>
+            </div>
+        </div>
+    );
+
+    const TransactionCard = ({ transaction, type }) => {
+        const isReceipt = type === 'receipt';
+        const colorClass = isReceipt ? 'success' : 'danger';
+        const bgLight = isReceipt ? 'bg-success-subtle' : 'bg-danger-subtle';
+
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
+            <div className="card mb-2 border-0 shadow-sm hover-shadow transition-all">
+                <div className="card-body p-3">
+                    <div className="d-flex justify-content-between align-items-start">
+                        <div className="d-flex gap-3 align-items-center">
+                            <div className={`rounded-circle p-2 d-flex align-items-center justify-content-center ${bgLight}`}
+                                style={{ width: '45px', height: '45px', minWidth: '45px' }}>
+                                <i className={`bi ${isReceipt ? 'bi-arrow-down-left' : 'bi-arrow-up-right'} text-${colorClass} fs-5`}></i>
+                            </div>
+                            <div>
+                                <h6 className="fw-bold mb-1 text-dark">
+                                    {transaction.source || 'بدون اسم'}
+                                </h6>
+                                <p className="text-muted small mb-0">{transaction.description}</p>
+                            </div>
+                        </div>
+                        <div className="text-end">
+                            <h6 className={`fw-bold mb-1 text-${colorClass}`}>
+                                {isReceipt ? '+' : '-'}{formatCurrency(transaction.amount)}
+                            </h6>
+                            <span className="badge bg-light text-muted border fw-normal small">
+                                {formatDate(transaction.date)}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
+    };
+
+    // Filter transactions
+    const receipts = transactions.filter(t => t.type === 'IN');
+    const payments = transactions.filter(t => t.type === 'OUT');
+
+    if (loading && !summary) {
+        return <PageLoading text="جاري تحميل بيانات الخزينة..." />;
     }
 
     return (
-        <div className="container-fluid">
+        <div className="container-fluid py-4" style={{ fontFamily: 'Cairo, sans-serif' }}>
             {/* Success/Error Messages */}
             {successMessage && (
                 <div className="alert alert-success alert-dismissible fade show" role="alert">
@@ -264,542 +294,155 @@ function TreasuryManagement() {
                 </div>
             )}
 
-            {/* Header & Controls */}
-            <div className="row mb-4 align-items-center justify-content-between">
-                <div className="col-md-6">
-                    <h2 className="fw-bold mb-0" style={{ color: 'var(--primary-dark)' }}>
-                        <i className="bi bi-wallet2 me-2"></i>
-                        دفتر الخزينة اليومي
-                    </h2>
-                    <p className="text-muted mb-0">مطابقة النقدية والتدفقات لليوم المحدد</p>
+            {/* Header */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 className="fw-bold mb-1" style={{ color: '#1a4133' }}>دفتر الخزينة اليومي</h2>
+                    <p className="text-muted mb-0 small">متابعة حركة النقدية الصادرة والواردة</p>
                 </div>
-                <div className="col-md-6 d-flex justify-content-end align-items-center gap-3">
-                    <div className="bg-white p-1 rounded shadow-sm d-flex align-items-center">
-                        <span className="text-muted small ms-2 ps-2 border-end">التاريخ:</span>
-                        <DatePicker
-                            selected={selectedDate}
-                            onChange={(date) => setSelectedDate(date)}
-                            className="form-control border-0 bg-transparent text-end fw-bold"
-                            dateFormat="yyyy-MM-dd"
-                        />
-                        <i className="bi bi-calendar-event text-primary mx-2"></i>
-                    </div>
+                <div className="bg-white p-2 rounded-3 shadow-sm d-flex align-items-center border">
+                    <span className="text-muted small px-2 border-end fw-bold">التاريخ:</span>
+                    <DatePicker
+                        selected={selectedDate}
+                        onChange={(date) => setSelectedDate(date)}
+                        className="form-control border-0 bg-transparent text-center fw-bold text-primary p-0 mx-2"
+                        dateFormat="dd/MM/yyyy"
+                    />
+                    <i className="bi bi-calendar-event text-primary"></i>
                 </div>
             </div>
 
-            {/* Quick Actions Toolbar */}
+            {/* Stats Cards */}
+            <div className="row g-3 mb-4">
+                <StatCard
+                    title="رصيد افتتاحي"
+                    value={summary?.opening_balance || 0}
+                    icon="bi-safe"
+                    gradient="linear-gradient(135deg, #64748b 0%, #475569 100%)"
+                />
+                <StatCard
+                    title="إجمالي المقبوضات"
+                    value={summary?.total_in_today || 0}
+                    icon="bi-arrow-down-circle"
+                    gradient="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                />
+                <StatCard
+                    title="إجمالي المصروفات"
+                    value={summary?.total_out_today || 0}
+                    icon="bi-arrow-up-circle"
+                    gradient="linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                />
+                <StatCard
+                    title="رصيد الإغلاق المتوقع"
+                    value={summary?.closing_balance || 0}
+                    icon="bi-wallet2"
+                    gradient="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                />
+            </div>
+
+            {/* Action Buttons */}
             <div className="row mb-4">
-                <div className="col-12 d-flex flex-wrap gap-2">
-                    <button
-                        className="btn btn-success px-4 py-2 shadow-sm"
-                        onClick={() => setShowReceiptModal(true)}
-                    >
-                        <i className="bi bi-arrow-down-circle me-2"></i>
-                        قبض نقدية
+                <div className="col-12 d-flex gap-2 justify-content-center flex-wrap">
+                    <button className="btn btn-success btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowReceiptModal(true)}>
+                        <i className="bi bi-plus-circle me-2"></i> استلام نقدية (قبض)
                     </button>
-                    <button
-                        className="btn btn-danger px-4 py-2 shadow-sm"
-                        onClick={() => setShowPaymentModal(true)}
-                    >
-                        <i className="bi bi-arrow-up-circle me-2"></i>
-                        صرف نقدية
+                    <button className="btn btn-danger btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowPaymentModal(true)}>
+                        <i className="bi bi-dash-circle me-2"></i> صرف نقدية
                     </button>
-                    <button
-                        className="btn btn-warning text-dark px-4 py-2 shadow-sm"
-                        onClick={() => setShowExpenseModal(true)}
-                    >
-                        <i className="bi bi-lightning-charge me-2"></i>
-                        تسجيل مصروف
+                    <button className="btn btn-warning text-dark btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowExpenseModal(true)}>
+                        <i className="bi bi-lightning me-2"></i> تسجيل مصروف
                     </button>
-                    <button
-                        className="btn btn-primary px-4 py-2 shadow-sm"
-                        onClick={() => setShowCapitalModal(true)}
-                    >
-                        <i className="bi bi-bank me-2"></i>
-                        إدارة رأس المال
+                    <button className="btn btn-outline-primary btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowCapitalModal(true)}>
+                        <i className="bi bi-bank me-2"></i> رأس المال
                     </button>
                 </div>
             </div>
 
-            {/* KPI Cards (Daily Book Formula) */}
-            {summary && (
-                <div className="row mb-4">
-                    {/* Opening Balance */}
-                    <div className="col-md-3 mb-3">
-                        <div className="card border-0 shadow-sm h-100 kpi-card bg-light">
-                            <div className="card-body">
-                                <small className="text-muted d-block mb-2">رصيد البداية</small>
-                                <h4 className="fw-bold text-secondary mb-0">{formatCurrency(summary.opening_balance)}</h4>
+            {/* Split Operations View */}
+            <div className="row g-4">
+                {/* Receipts Column */}
+                <div className="col-lg-6">
+                    <div className="card h-100 border-0 shadow-sm rounded-4 bg-light">
+                        <div className="card-header bg-success text-white py-3 rounded-top-4 border-0">
+                            <div className="d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0 fw-bold"><i className="bi bi-download me-2"></i> حركة الوارد (المقبوضات)</h5>
+                                <span className="badge bg-white text-success fw-bold">{receipts.length} حركة</span>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Inflow (+ sign) */}
-                    <div className="col-md-3 mb-3">
-                        <div className="card border-0 shadow-sm h-100 kpi-card" style={{ borderRight: '4px solid #198754' }}>
-                            <div className="card-body">
-                                <small className="text-muted d-block mb-2">
-                                    <i className="bi bi-plus-lg text-success me-1"></i>
-                                    مقبوضات اليوم
-                                </small>
-                                <h4 className="fw-bold text-success mb-0">{formatCurrency(summary.total_in_today)}</h4>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Outflow (- sign) */}
-                    <div className="col-md-3 mb-3">
-                        <div className="card border-0 shadow-sm h-100 kpi-card" style={{ borderRight: '4px solid #dc3545' }}>
-                            <div className="card-body">
-                                <small className="text-muted d-block mb-2">
-                                    <i className="bi bi-dash-lg text-danger me-1"></i>
-                                    مدفوعات اليوم
-                                </small>
-                                <h4 className="fw-bold text-danger mb-0">{formatCurrency(summary.total_out_today)}</h4>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Closing Balance (= sign) */}
-                    <div className="col-md-3 mb-3">
-                        <div className="card border-0 shadow-sm h-100 kpi-card text-white" style={{ background: 'linear-gradient(135deg, #1E5631 0%, #0D3320 100%)' }}>
-                            <div className="card-body">
-                                <small className="text-white-50 d-block mb-2">
-                                    <i className="bi bi-equals me-1"></i>
-                                    رصيد الإغلاق
-                                </small>
-                                <h4 className="fw-bold mb-0">{formatCurrency(summary.closing_balance)}</h4>
-                            </div>
+                        <div className="card-body p-3 bg-white rounded-bottom-4">
+                            {receipts.length > 0 ? (
+                                receipts.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="receipt" />)
+                            ) : (
+                                <div className="text-center py-5 text-muted">
+                                    <i className="bi bi-inbox fs-1 opacity-25 d-block mb-3"></i>
+                                    لا توجد مقبوضات اليوم
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
-            )}
 
-            {/* Transactions Table */}
-            <div className="card border-0 shadow-sm">
-                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0 fw-bold">سجل الحركات الأخيرة</h5>
-                    <button className="btn btn-sm btn-outline-primary" onClick={() => fetchData(selectedDate)}>
-                        <i className="bi bi-arrow-clockwise me-1"></i>
-                        تحديث
-                    </button>
-                </div>
-                <div className="card-body p-0">
-                    <div className="table-responsive">
-                        <table className="table table-hover align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>التاريخ</th>
-                                    <th>الوصف</th>
-                                    <th>النوع</th>
-                                    <th>المصدر</th>
-                                    <th className="text-end">المبلغ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {transactions.length > 0 ? (
-                                    transactions.map((t) => (
-                                        <tr key={t.transaction_id}>
-                                            <td>{formatDate(t.date)}</td>
-                                            <td>{t.description}</td>
-                                            <td>
-                                                <span className={`badge bg-${t.type === 'IN' ? 'success' : 'danger'}-subtle text-${t.type === 'IN' ? 'success' : 'danger'}`}>
-                                                    {t.type === 'IN' ? 'وارد' : 'صادر'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className="badge bg-secondary-subtle text-secondary">
-                                                    {t.source}
-                                                </span>
-                                            </td>
-                                            <td className={`text-end fw-bold text-${t.type === 'IN' ? 'success' : 'danger'}`}>
-                                                {t.type === 'IN' ? '+' : '-'}{formatCurrency(t.amount)}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="5" className="text-center py-4 text-muted">
-                                            <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                            لا يوجد حركات مسجلة
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                {/* Payments Column */}
+                <div className="col-lg-6">
+                    <div className="card h-100 border-0 shadow-sm rounded-4 bg-light">
+                        <div className="card-header bg-danger text-white py-3 rounded-top-4 border-0">
+                            <div className="d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0 fw-bold"><i className="bi bi-upload me-2"></i> حركة الصادر (المدفوعات)</h5>
+                                <span className="badge bg-white text-danger fw-bold">{payments.length} حركة</span>
+                            </div>
+                        </div>
+                        <div className="card-body p-3 bg-white rounded-bottom-4">
+                            {payments.length > 0 ? (
+                                payments.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="payment" />)
+                            ) : (
+                                <div className="text-center py-5 text-muted">
+                                    <i className="bi bi-inbox fs-1 opacity-25 d-block mb-3"></i>
+                                    لا توجد مدفوعات اليوم
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Cash Receipt Modal */}
-            {showReceiptModal && (
-                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content">
-                            <div className="modal-header bg-success text-white">
-                                <h5 className="modal-title">
-                                    <i className="bi bi-arrow-down-circle me-2"></i>
-                                    قبض نقدية
-                                </h5>
-                                <button type="button" className="btn-close btn-close-white" onClick={() => setShowReceiptModal(false)}></button>
-                            </div>
-                            <form onSubmit={handleReceiptSubmit}>
-                                <div className="modal-body">
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">التاريخ *</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={receiptForm.receipt_date}
-                                            onChange={(e) => setReceiptForm({ ...receiptForm, receipt_date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">المبلغ *</label>
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            value={receiptForm.amount}
-                                            onChange={(e) => setReceiptForm({ ...receiptForm, amount: e.target.value })}
-                                            min="0.01"
-                                            step="0.01"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">العميل (اختياري)</label>
-                                        <select
-                                            className="form-select"
-                                            value={receiptForm.contact_id}
-                                            onChange={(e) => setReceiptForm({ ...receiptForm, contact_id: e.target.value })}
-                                        >
-                                            <option value="">-- بدون تحديد عميل --</option>
-                                            {contacts.filter(c => c.is_customer).map(c => (
-                                                <option key={c.contact_id} value={c.contact_id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">البيان *</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={receiptForm.description}
-                                            onChange={(e) => setReceiptForm({ ...receiptForm, description: e.target.value })}
-                                            placeholder="وصف عملية القبض"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">رقم المرجع (اختياري)</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={receiptForm.reference_number}
-                                            onChange={(e) => setReceiptForm({ ...receiptForm, reference_number: e.target.value })}
-                                            placeholder="رقم الإيصال أو الشيك"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowReceiptModal(false)}>
-                                        إلغاء
-                                    </button>
-                                    <button type="submit" className="btn btn-success" disabled={submitting}>
-                                        {submitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
-                                        تأكيد القبض
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Modals - Keeping original modal components */}
+            <CashReceiptModal
+                show={showReceiptModal}
+                onClose={() => setShowReceiptModal(false)}
+                formData={receiptForm}
+                setFormData={setReceiptForm}
+                onSubmit={handleReceiptSubmit}
+                contacts={contacts}
+                submitting={submitting}
+            />
 
-            {/* Cash Payment Modal */}
-            {showPaymentModal && (
-                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content">
-                            <div className="modal-header bg-danger text-white">
-                                <h5 className="modal-title">
-                                    <i className="bi bi-arrow-up-circle me-2"></i>
-                                    صرف نقدية
-                                </h5>
-                                <button type="button" className="btn-close btn-close-white" onClick={() => setShowPaymentModal(false)}></button>
-                            </div>
-                            <form onSubmit={handlePaymentSubmit}>
-                                <div className="modal-body">
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">التاريخ *</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={paymentForm.payment_date}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">المبلغ *</label>
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            value={paymentForm.amount}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                            min="0.01"
-                                            step="0.01"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">المورد (اختياري)</label>
-                                        <select
-                                            className="form-select"
-                                            value={paymentForm.contact_id}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, contact_id: e.target.value })}
-                                        >
-                                            <option value="">-- بدون تحديد مورد --</option>
-                                            {contacts.filter(c => c.is_supplier).map(c => (
-                                                <option key={c.contact_id} value={c.contact_id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">البيان *</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={paymentForm.description}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
-                                            placeholder="وصف عملية الصرف"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">رقم المرجع (اختياري)</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={paymentForm.reference_number}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, reference_number: e.target.value })}
-                                            placeholder="رقم الإيصال أو الشيك"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowPaymentModal(false)}>
-                                        إلغاء
-                                    </button>
-                                    <button type="submit" className="btn btn-danger" disabled={submitting}>
-                                        {submitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
-                                        تأكيد الصرف
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <CashPaymentModal
+                show={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                formData={paymentForm}
+                setFormData={setPaymentForm}
+                onSubmit={handlePaymentSubmit}
+                contacts={contacts}
+                submitting={submitting}
+            />
 
-            {/* Quick Expense Modal */}
-            {showExpenseModal && (
-                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content">
-                            <div className="modal-header bg-warning">
-                                <h5 className="modal-title">
-                                    <i className="bi bi-lightning-charge me-2"></i>
-                                    تسجيل مصروف سريع
-                                </h5>
-                                <button type="button" className="btn-close" onClick={() => setShowExpenseModal(false)}></button>
-                            </div>
-                            <form onSubmit={handleExpenseSubmit}>
-                                <div className="modal-body">
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">التاريخ *</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={expenseForm.expense_date}
-                                            onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">المبلغ *</label>
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            value={expenseForm.amount}
-                                            onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
-                                            min="0.01"
-                                            step="0.01"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">البيان *</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={expenseForm.description}
-                                            onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                                            placeholder="وصف المصروف"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">الفئة (اختياري)</label>
-                                        <select
-                                            className="form-select"
-                                            value={expenseForm.category}
-                                            onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                                        >
-                                            <option value="">-- اختر الفئة --</option>
-                                            <option value="transport">مواصلات</option>
-                                            <option value="utilities">مرافق</option>
-                                            <option value="supplies">مستلزمات</option>
-                                            <option value="maintenance">صيانة</option>
-                                            <option value="other">أخرى</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowExpenseModal(false)}>
-                                        إلغاء
-                                    </button>
-                                    <button type="submit" className="btn btn-warning" disabled={submitting}>
-                                        {submitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
-                                        تسجيل المصروف
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Capital Transaction Modal */}
-            {showCapitalModal && (
-                <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content">
-                            <div className="modal-header bg-primary text-white">
-                                <h5 className="modal-title">
-                                    <i className="bi bi-bank me-2"></i>
-                                    إدارة رأس المال
-                                </h5>
-                                <button type="button" className="btn-close btn-close-white" onClick={() => setShowCapitalModal(false)}></button>
-                            </div>
-                            <form onSubmit={handleCapitalSubmit}>
-                                <div className="modal-body">
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">نوع الحركة *</label>
-                                        <div className="d-flex gap-3">
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="radio"
-                                                    name="capitalType"
-                                                    id="typeContribution"
-                                                    checked={capitalForm.type === 'CONTRIBUTION'}
-                                                    onChange={() => setCapitalForm({ ...capitalForm, type: 'CONTRIBUTION' })}
-                                                />
-                                                <label className="form-check-label text-success fw-bold" htmlFor="typeContribution">
-                                                    <i className="bi bi-arrow-down-circle me-1"></i>
-                                                    زيادة رأس مال (إيداع)
-                                                </label>
-                                            </div>
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="radio"
-                                                    name="capitalType"
-                                                    id="typeWithdrawal"
-                                                    checked={capitalForm.type === 'WITHDRAWAL'}
-                                                    onChange={() => setCapitalForm({ ...capitalForm, type: 'WITHDRAWAL' })}
-                                                />
-                                                <label className="form-check-label text-danger fw-bold" htmlFor="typeWithdrawal">
-                                                    <i className="bi bi-arrow-up-circle me-1"></i>
-                                                    تخفيض رأس مال (مسحوبات)
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">التاريخ *</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
-                                            value={capitalForm.transaction_date}
-                                            onChange={(e) => setCapitalForm({ ...capitalForm, transaction_date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">المبلغ *</label>
-                                        <input
-                                            type="number"
-                                            className="form-control"
-                                            value={capitalForm.amount}
-                                            onChange={(e) => setCapitalForm({ ...capitalForm, amount: e.target.value })}
-                                            min="0.01"
-                                            step="0.01"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">اسم المالك/الشريك *</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={capitalForm.owner_name}
-                                            onChange={(e) => setCapitalForm({ ...capitalForm, owner_name: e.target.value })}
-                                            placeholder="اسم الشخص صاحب المعاملة"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">البيان *</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={capitalForm.description}
-                                            onChange={(e) => setCapitalForm({ ...capitalForm, description: e.target.value })}
-                                            placeholder="وصف العملية"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">رقم المرجع (اختياري)</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            value={capitalForm.reference_number}
-                                            onChange={(e) => setCapitalForm({ ...capitalForm, reference_number: e.target.value })}
-                                            placeholder="رقم الإيصال البنكي أو الشيك"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowCapitalModal(false)}>
-                                        إلغاء
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className={`btn btn-${capitalForm.type === 'CONTRIBUTION' ? 'success' : 'danger'}`}
-                                        disabled={submitting}
-                                    >
-                                        {submitting ? <span className="spinner-border spinner-border-sm me-2"></span> : <i className="bi bi-check-lg me-2"></i>}
-                                        {capitalForm.type === 'CONTRIBUTION' ? 'تسجيل زيادة رأس المال' : 'تسجيل المسحوبات'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <QuickExpenseModal
+                show={showExpenseModal}
+                onClose={() => setShowExpenseModal(false)}
+                formData={expenseForm}
+                setFormData={setExpenseForm}
+                onSubmit={handleExpenseSubmit}
+                submitting={submitting}
+            />
+
+            <CapitalTransactionModal
+                show={showCapitalModal}
+                onClose={() => setShowCapitalModal(false)}
+                formData={capitalForm}
+                setFormData={setCapitalForm}
+                onSubmit={handleCapitalSubmit}
+                submitting={submitting}
+            />
         </div>
     );
 }

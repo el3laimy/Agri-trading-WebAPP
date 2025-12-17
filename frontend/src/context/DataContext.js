@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { getCrops } from '../api/crops';
 import { getContacts } from '../api/contacts';
+import { getSeasons } from '../api/seasons';
 
 // 1. Create the context
 const DataContext = createContext();
@@ -12,6 +13,7 @@ export const useData = () => useContext(DataContext);
 export const DataProvider = ({ children }) => {
     const [crops, setCrops] = useState([]);
     const [contacts, setContacts] = useState([]);
+    const [seasons, setSeasons] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -20,13 +22,15 @@ export const DataProvider = ({ children }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [cropsData, contactsData] = await Promise.all([
+            const [cropsData, contactsData, seasonsData] = await Promise.all([
                 getCrops(),
                 getContacts(),
+                getSeasons(),
             ]);
-            
+
             setCrops(cropsData);
             setContacts(contactsData);
+            setSeasons(seasonsData);
             setSuppliers(contactsData.filter(c => c.is_supplier));
             setCustomers(contactsData.filter(c => c.is_customer));
 
@@ -46,6 +50,7 @@ export const DataProvider = ({ children }) => {
     const value = {
         crops,
         contacts,
+        seasons,
         suppliers,
         customers,
         loading,

@@ -5,6 +5,8 @@ from app import models
 from app.core.bootstrap import CASH_ACCOUNT_ID, ACCOUNTS_RECEIVABLE_ID, ACCOUNTS_PAYABLE_ID
 
 
+from app.services.account_statement import get_all_customers_balances, get_all_suppliers_balances
+
 def get_dashboard_kpis(db: Session):
     """الحصول على مؤشرات الأداء الرئيسية للوحة التحكم"""
     
@@ -34,14 +36,17 @@ def get_dashboard_kpis(db: Session):
     cash_balance = cash_account.current_balance if cash_account else 0
     
     # إجمالي الذمم المدينة (ديون العملاء)
-    total_receivables = db.query(
-        func.sum(models.Sale.total_sale_amount - models.Sale.amount_received)
-    ).scalar() or 0
+    # استخدام المنطق الموحد في account_statement لضمان تطابق الأرقام مع التقارير
+    customers_balances = get_all_customers_balances(db)
+    total_receivables = sum(c['balance'] for c in customers_balances if c['balance'] > 0)
     
     # إجمالي الذمم الدائنة (ديون الموردين)
-    total_payables = db.query(
-        func.sum(models.Purchase.total_cost - models.Purchase.amount_paid)
-    ).scalar() or 0
+    suppliers_balances = get_all_suppliers_balances(db)
+    # الملاحظة: في get_all_suppliers_balances، الرصيد السالب يعني علينا له (دائن)
+    # لكن الدالة تعيد balance_due كما هو.
+    # في get_contact_summary للموردين: balance_due = -supplier_balance (سالب يعني علينا)
+    # لذا نجمع القيم السالبة ونحولها لموجب للعرض كـ "مطلوبات"
+    total_payables = sum(abs(s['balance']) for s in suppliers_balances if s['balance'] < 0)
     
     # إجمالي المصروفات
     total_expenses = db.query(func.sum(models.Expense.amount)).scalar() or 0

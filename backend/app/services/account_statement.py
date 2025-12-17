@@ -8,11 +8,14 @@ from datetime import date
 from typing import Optional, List
 
 from app import models, schemas
+from app.core.bootstrap import CASH_ACCOUNT_ID
 
 
 def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
     """
     الحصول على ملخص مالي لجهة التعامل
+    يعتمد الآن على منطق موحد: (المدين - الدائن)
+    الرصيد المستحق (لنا) = (المبيعات + المدفوعات له) - (المشتريات + المقبوضات منه)
     """
     contact = db.query(models.Contact).filter(models.Contact.contact_id == contact_id).first()
     if not contact:
@@ -26,44 +29,59 @@ def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
     else:
         contact_type = "SUPPLIER"
     
-    # حساب إجمالي المبيعات
+    # ---------------------------------------------------------
+    # 1. الجانب المدين (لنا) - Increases Receivable
+    # ---------------------------------------------------------
+    
+    # أ) المبيعات الآجلة
     total_sales = db.query(func.sum(models.Sale.total_sale_amount)).filter(
         models.Sale.customer_id == contact_id
     ).scalar() or 0.0
     
-    # حساب إجمالي المبالغ المستلمة من العميل
-    total_received = db.query(func.sum(models.Payment.amount)).filter(
+    # ب) الأموال التي دفعناها للطرف الآخر (Cash Out)
+    # تشمل: دفعات لمورد (Purchase Payment) أو صرف نقدية لعميل (General Payment)
+    # الشرط: credit_account_id == CASH (خرجت من عندنا)
+    cash_paid_out = db.query(func.sum(models.Payment.amount)).filter(
         and_(
             models.Payment.contact_id == contact_id,
-            models.Payment.transaction_type == 'SALE'
+            models.Payment.credit_account_id == CASH_ACCOUNT_ID
         )
     ).scalar() or 0.0
-    
-    # حساب إجمالي المشتريات
+
+    total_debit = total_sales + cash_paid_out
+
+    # ---------------------------------------------------------
+    # 2. الجانب الدائن (علينا) - Increases Payable / Decreases Receivable
+    # ---------------------------------------------------------
+
+    # أ) المشتريات الآجلة
     total_purchases = db.query(func.sum(models.Purchase.total_cost)).filter(
         models.Purchase.supplier_id == contact_id
     ).scalar() or 0.0
-    
-    # حساب إجمالي المبالغ المدفوعة للمورد
-    total_paid = db.query(func.sum(models.Payment.amount)).filter(
+
+    # ب) الأموال التي استلمناها من الطرف الآخر (Cash In)
+    # تشمل: تحصيل من عميل (Sale Payment) أو استلام نقدية من مورد (General Receipt)
+    # الشرط: debit_account_id == CASH (دخلت عندنا)
+    cash_received_in = db.query(func.sum(models.Payment.amount)).filter(
         and_(
             models.Payment.contact_id == contact_id,
-            models.Payment.transaction_type == 'PURCHASE'
+            models.Payment.debit_account_id == CASH_ACCOUNT_ID
         )
     ).scalar() or 0.0
+
+    total_credit = total_purchases + cash_received_in
+
+    # ---------------------------------------------------------
+    # 3. حساب الرصيد
+    # ---------------------------------------------------------
     
-    # حساب الرصيد المستحق
-    # للعميل: المبيعات - المستلم (موجب = لنا عليه)
-    # للمورد: المشتريات - المدفوع (موجب = علينا له)
-    customer_balance = total_sales - total_received  # ديون لنا
-    supplier_balance = total_purchases - total_paid  # ديون علينا
+    # موجب (+) = لنا (مدين)
+    # سالب (-) = علينا (دائن)
+    balance_due = total_debit - total_credit
     
-    if contact_type == "CUSTOMER":
-        balance_due = customer_balance
-    elif contact_type == "SUPPLIER":
-        balance_due = -supplier_balance  # سالب يعني علينا له
-    else:
-        balance_due = customer_balance - supplier_balance  # صافي
+    # توحيد المسميات للعرض في الواجهة الأمامية
+    # total_paid: ما دفعناه للطرف الآخر (سواء سداد مشتريات أو إقراض)
+    # total_received: ما قبضناه من الطرف الآخر (سواء تحصيل مبيعات أو اقتراض)
     
     return schemas.ContactSummary(
         contact_id=contact_id,
@@ -71,8 +89,8 @@ def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
         contact_type=contact_type,
         total_sales=total_sales,
         total_purchases=total_purchases,
-        total_received=total_received,
-        total_paid=total_paid,
+        total_received=cash_received_in, # المدفوعات الواردة (Receipts)
+        total_paid=cash_paid_out,        # المدفوعات الصادرة (Payments)
         balance_due=balance_due
     )
 
@@ -340,7 +358,7 @@ def get_all_customers_balances(db: Session) -> List[dict]:
             'name': customer.name,
             'total_sales': summary.total_sales,
             'total_received': summary.total_received,
-            'balance': summary.total_sales - summary.total_received
+            'balance': summary.balance_due
         })
     
     return balances
@@ -360,7 +378,7 @@ def get_all_suppliers_balances(db: Session) -> List[dict]:
             'name': supplier.name,
             'total_purchases': summary.total_purchases,
             'total_paid': summary.total_paid,
-            'balance': summary.total_purchases - summary.total_paid
+            'balance': summary.balance_due
         })
     
     return balances

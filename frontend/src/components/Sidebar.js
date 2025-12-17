@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 function Sidebar() {
-    const [openMenus, setOpenMenus] = useState({ reports: false, settings: false, system: false });
+    const [openMenus, setOpenMenus] = useState({ reports: true, settings: false, system: false });
 
     const toggleMenu = (menuName) => {
         setOpenMenus(prev => ({
@@ -17,7 +17,7 @@ function Sidebar() {
         { path: '/treasury', label: 'الخزينة اليومية', icon: 'bi-wallet2' },
         { path: '/sales', label: 'المبيعات', icon: 'bi-cart-check' },
         { path: '/purchases', label: 'المشتريات', icon: 'bi-bag-check' },
-        { path: '/contracts', label: 'عقود التوريد', icon: 'bi-file-earmark-text' },
+
         { path: '/expenses', label: 'المصروفات', icon: 'bi-cash-coin' },
     ];
 
@@ -27,16 +27,15 @@ function Sidebar() {
         { path: '/inventory-adjustments', label: 'تسوية المخزون', icon: 'bi-sliders' },
     ];
 
-    // التقارير المالية
+    // التقارير المالية - تم التبسيط
     const reports = [
-        { path: '/reports/advanced', label: 'التقارير المتقدمة', icon: 'bi-bar-chart-line-fill' },
-        { path: '/reports/capital-distribution', label: 'توزيع رأس المال', icon: 'bi-pie-chart' },
-        { path: '/reports/cash-flow', label: 'التدفقات النقدية', icon: 'bi-arrow-left-right' },
+        { path: '/reports', label: 'مركز التقارير', icon: 'bi-grid-1x2-fill' }, // الرابط الرئيسي الجديد
+        { path: '/crop-performance', label: 'أداء المحاصيل', icon: 'bi-flower1' }, // التقرير الجديد
+        { path: '/capital-distribution', label: 'توزيع رأس المال', icon: 'bi-pie-chart-fill' },
         { path: '/reports/income-statement', label: 'قائمة الدخل', icon: 'bi-graph-up' },
-        { path: '/reports/balance-sheet', label: 'الميزانية العمومية', icon: 'bi-clipboard-data' },
-        { path: '/reports/trial-balance', label: 'ميزان المراجعة', icon: 'bi-calculator' },
-        { path: '/reports/general-ledger', label: 'دفتر الأستاذ', icon: 'bi-journal-bookmark' },
-        { path: '/reports/equity-statement', label: 'حقوق الملكية', icon: 'bi-bank' },
+        { path: '/reports/balance-sheet', label: 'الميزانية العمومية', icon: 'bi-bank' },
+        { path: '/reports/cash-flow', label: 'التدفقات النقدية', icon: 'bi-arrow-left-right' },
+        { path: '/debtors', label: 'الديون والالتزامات', icon: 'bi-people' },
     ];
 
     // الإعدادات
@@ -52,7 +51,6 @@ function Sidebar() {
     // إدارة النظام
     const system = [
         { path: '/backups', label: 'النسخ الاحتياطي', icon: 'bi-database-fill-gear' },
-        // { path: '/users', label: 'المستخدمين', icon: 'bi-people-fill' }, // Soon
     ];
 
     const NavItem = ({ item, isSubItem = false }) => (

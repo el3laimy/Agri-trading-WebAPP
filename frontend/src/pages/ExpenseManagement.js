@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { getExpenses, createExpense, updateExpense, deleteExpense } from '../api/expenses';
 import ExpenseForm from '../components/ExpenseForm';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+import 'chart.js/auto'; // Automatically register components
+
+// Register ChartJS
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const ExpenseManagement = () => {
+    // State
     const [expenses, setExpenses] = useState([]);
+    const [stats, setStats] = useState({
+        total_today: 0,
+        total_week: 0,
+        total_month: 0,
+        total_all_time: 0,
+        distribution: []
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showForm, setShowForm] = useState(false);
@@ -13,17 +27,24 @@ const ExpenseManagement = () => {
     const [expenseToDelete, setExpenseToDelete] = useState(null);
 
     useEffect(() => {
-        fetchExpenses();
+        fetchData();
     }, []);
 
-    const fetchExpenses = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const data = await getExpenses();
-            setExpenses(data);
+            const [expensesData, statsRes] = await Promise.all([
+                getExpenses(),
+                fetch('http://localhost:8000/api/v1/reports/expenses-stats')
+            ]);
+
+            const statsData = await statsRes.json();
+
+            setExpenses(expensesData);
+            setStats(statsData);
             setError(null);
         } catch (err) {
-            setError('فشل في تحميل المصروفات');
+            setError('فشل في تحميل البيانات');
             console.error(err);
         } finally {
             setLoading(false);
@@ -48,10 +69,10 @@ const ExpenseManagement = () => {
                 await createExpense(formData);
             }
             setShowForm(false);
-            fetchExpenses();
+            fetchData(); // Refresh both list and stats
         } catch (err) {
             console.error(err);
-            throw err; // Let the form handle the error display
+            throw err;
         }
     };
 
@@ -62,17 +83,14 @@ const ExpenseManagement = () => {
 
     const confirmDelete = async () => {
         if (!expenseToDelete) return;
-
         try {
             await deleteExpense(expenseToDelete.expense_id);
-            fetchExpenses();
+            fetchData();
             setShowDeleteModal(false);
             setExpenseToDelete(null);
         } catch (err) {
             alert('فشل في حذف المصروف');
             console.error(err);
-            setShowDeleteModal(false);
-            setExpenseToDelete(null);
         }
     };
 
@@ -86,6 +104,35 @@ const ExpenseManagement = () => {
         expense.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Chart Data
+    const chartData = {
+        labels: stats.distribution.map(d => d.category),
+        datasets: [
+            {
+                data: stats.distribution.map(d => d.amount),
+                backgroundColor: [
+                    '#4ade80', '#60a5fa', '#f472b6', '#a78bfa', '#fbbf24', '#f87171'
+                ],
+                borderWidth: 0,
+            },
+        ],
+    };
+
+    const chartOptions = {
+        plugins: {
+            legend: {
+                position: 'right',
+                rtl: true,
+                labels: {
+                    font: { family: 'Cairo' } // Assumes custom font available
+                }
+            }
+        },
+        cutout: '70%',
+        responsive: true,
+        maintainAspectRatio: false
+    };
+
     if (loading) return (
         <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
             <div className="spinner-border text-primary" role="status">
@@ -94,47 +141,43 @@ const ExpenseManagement = () => {
         </div>
     );
 
+    const StatCard = ({ title, value, icon, colorClass, gradient }) => (
+        <div className="col-md-3 col-sm-6">
+            <div className="card border-0 shadow-sm h-100 text-white overflow-hidden position-relative" style={{ background: gradient }}>
+                <div className="card-body p-4 position-relative z-1">
+                    <div className="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <p className="mb-0 opacity-75 small">{title}</p>
+                            <h3 className="fw-bold mb-0 mt-1">{new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(value)}</h3>
+                        </div>
+                        <div className={`icon-circle bg-white bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center`}>
+                            <i className={`bi ${icon} fs-4 text-white`}></i>
+                        </div>
+                    </div>
+                </div>
+                {/* Decorative Elements */}
+                <div className="position-absolute top-0 opacity-10" style={{ left: '0', marginLeft: '-15px', marginTop: '-10px' }}>
+                    <i className={`bi ${icon} display-1`}></i>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
-        <div className="container-fluid">
-            {/* Delete Confirmation Modal */}
+        <div className="container-fluid py-4" style={{ fontFamily: 'Cairo, sans-serif' }}>
+            {/* Warning Modal */}
             {showDeleteModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}>
                     <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content">
-                            <div className="modal-header bg-danger text-white">
-                                <h5 className="modal-title">
-                                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                                    تأكيد الحذف
-                                </h5>
-                            </div>
-                            <div className="modal-body">
-                                <p className="mb-3">
-                                    هل أنت متأكد من حذف المصروف <strong>"{expenseToDelete?.description}"</strong>؟
-                                </p>
-                                <div className="alert alert-warning d-flex align-items-start">
-                                    <i className="bi bi-exclamation-circle-fill me-2 fs-5"></i>
-                                    <div>
-                                        <strong>تحذير:</strong> لا يمكن التراجع عن هذا الإجراء.
-                                    </div>
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-body p-4 text-center">
+                                <i className="bi bi-exclamation-circle text-danger display-1 mb-3"></i>
+                                <h4 className="fw-bold mb-2">تأكيد الحذف</h4>
+                                <p className="text-muted mb-4">هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.</p>
+                                <div className="d-flex justify-content-center gap-2">
+                                    <button className="btn btn-secondary px-4" onClick={cancelDelete}>إلغاء</button>
+                                    <button className="btn btn-danger px-4" onClick={confirmDelete}>حذف نهائي</button>
                                 </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={cancelDelete}
-                                >
-                                    <i className="bi bi-x-lg me-2"></i>
-                                    إلغاء
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-danger"
-                                    onClick={confirmDelete}
-                                >
-                                    <i className="bi bi-trash me-2"></i>
-                                    حذف نهائياً
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -142,137 +185,162 @@ const ExpenseManagement = () => {
             )}
 
             {/* Header */}
-            <div className="row mb-4">
-                <div className="col-12">
-                    <h2 className="fw-bold" style={{ color: 'var(--primary-dark)' }}>
-                        <i className="bi bi-cash-stack me-2"></i>
-                        إدارة المصروفات
-                    </h2>
-                    <p className="text-muted">تسجيل وتتبع المصروفات اليومية</p>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 className="fw-bold mb-1" style={{ color: '#1a4133' }}>إدارة المصروفات</h2>
+                    <p className="text-muted mb-0 small">نظرة عامة على مصروفات المزرعة</p>
                 </div>
+                <button
+                    className="btn btn-primary btn-lg shadow fw-bold px-4"
+                    onClick={handleAdd}
+                    style={{ borderRadius: '12px' }}
+                >
+                    <i className="bi bi-plus-lg me-2"></i>
+                    مصروف جديد
+                </button>
             </div>
 
-            {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">
-                <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                {error}
-                <button type="button" className="btn-close" onClick={() => setError(null)}></button>
-            </div>}
-
-            {showForm && (
-                <div className="card border-0 shadow-sm mb-4 fade-in">
-                    <div className="card-header bg-primary text-white">
-                        <h5 className="mb-0">
-                            <i className={`bi ${editingExpense ? 'bi-pencil-square' : 'bi-plus-circle'} me-2`}></i>
-                            {editingExpense ? 'تعديل مصروف' : 'تسجيل مصروف جديد'}
-                        </h5>
-                    </div>
-                    <div className="card-body">
-                        <ExpenseForm
-                            expense={editingExpense}
-                            onSave={handleSave}
-                            onCancel={() => setShowForm(false)}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* Action Bar */}
-            <div className="row mb-4">
-                <div className="col-md-6">
-                    <div className="input-group">
-                        <span className="input-group-text bg-white border-end-0">
-                            <i className="bi bi-search"></i>
-                        </span>
-                        <input
-                            type="text"
-                            className="form-control border-start-0 search-box"
-                            placeholder="بحث في الوصف أو المورد..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-                <div className="col-md-6 text-start">
-                    <button
-                        className="btn btn-primary btn-lg"
-                        onClick={handleAdd}
-                    >
-                        <i className="bi bi-plus-lg me-2"></i>
-                        تسجيل مصروف جديد
-                    </button>
-                </div>
+            {/* Stats Cards */}
+            <div className="row g-3 mb-4">
+                <StatCard
+                    title="اليوم"
+                    value={stats.total_today}
+                    icon="bi-calendar-check"
+                    gradient="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                />
+                <StatCard
+                    title="هذا الأسبوع"
+                    value={stats.total_week}
+                    icon="bi-calendar-week"
+                    gradient="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                />
+                <StatCard
+                    title="هذا الشهر"
+                    value={stats.total_month}
+                    icon="bi-calendar-month"
+                    gradient="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+                />
+                <StatCard
+                    title="إجمالي المصروفات"
+                    value={stats.total_all_time}
+                    icon="bi-wallet2"
+                    gradient="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+                />
             </div>
 
-            {/* Expenses Table */}
-            <div className="card border-0 shadow-sm">
-                <div className="card-header bg-white border-bottom">
-                    <h5 className="mb-0">
-                        <i className="bi bi-list-ul me-2"></i>
-                        سجل المصروفات ({filteredExpenses.length})
-                    </h5>
+            <div className="row g-4 mb-4">
+                {/* Chart Section */}
+                <div className="col-lg-4">
+                    <div className="card border-0 shadow-sm h-100 rounded-4">
+                        <div className="card-header bg-white border-0 pt-4 px-4 pb-0">
+                            <h6 className="fw-bold mb-0 text-uppercase small ls-1 text-muted">توزيع المصروفات</h6>
+                        </div>
+                        <div className="card-body p-4 position-relative">
+                            <div style={{ height: '250px' }}>
+                                <Doughnut data={chartData} options={chartOptions} />
+                            </div>
+                            {stats.distribution.length === 0 && (
+                                <div className="position-absolute top-50 start-50 translate-middle text-center text-muted">
+                                    <small>لا توجد بيانات كافية</small>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <div className="card-body p-0">
-                    {filteredExpenses.length === 0 ? (
-                        <div className="text-center py-5">
-                            <i className="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
-                            <p className="text-muted">لا توجد مصروفات مسجلة</p>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleAdd}
-                            >
-                                <i className="bi bi-plus-lg me-2"></i>
-                                تسجيل أول مصروف
-                            </button>
+
+                {/* Form or List Section */}
+                <div className="col-lg-8">
+                    {showForm ? (
+                        <div className="card border-0 shadow-sm rounded-4 h-100 fade-in">
+                            <div className="card-header bg-white border-bottom pt-4 px-4 pb-3 d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0 fw-bold">
+                                    {editingExpense ? 'تعديل المصروف' : 'تسجيل مصروف جديد'}
+                                </h5>
+                                <button className="btn btn-close bg-light" onClick={() => setShowForm(false)}></button>
+                            </div>
+                            <ExpenseForm
+                                expense={editingExpense}
+                                onSave={handleSave}
+                                onCancel={() => setShowForm(false)}
+                            />
                         </div>
                     ) : (
-                        <div className="table-responsive">
-                            <table className="table table-hover table-striped mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>التاريخ</th>
-                                        <th>الوصف</th>
-                                        <th>المبلغ</th>
-                                        <th>حساب مدين (من)</th>
-                                        <th>حساب دائن (إلى)</th>
-                                        <th>المورد</th>
-                                        <th style={{ width: '150px' }}>إجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredExpenses.map(expense => (
-                                        <tr key={expense.expense_id}>
-                                            <td className="fw-bold">{expense.expense_id}</td>
-                                            <td>{new Date(expense.expense_date).toLocaleDateString('ar-EG')}</td>
-                                            <td>{expense.description}</td>
-                                            <td className="fw-bold text-danger">
-                                                {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(expense.amount)}
-                                            </td>
-                                            <td>{expense.debit_account.account_name}</td>
-                                            <td>{expense.credit_account.account_name}</td>
-                                            <td>{expense.supplier ? expense.supplier.name : '-'}</td>
-                                            <td>
-                                                <div className="btn-group" role="group">
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => handleEdit(expense)}
-                                                        title="تعديل"
-                                                    >
-                                                        <i className="bi bi-pencil"></i>
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => handleDeleteClick(expense)}
-                                                        title="حذف"
-                                                    >
-                                                        <i className="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
+                        <div className="card border-0 shadow-sm rounded-4 h-100">
+                            <div className="card-header bg-white border-bottom pt-4 px-4 pb-3">
+                                <div className="row g-3 align-items-center">
+                                    <div className="col">
+                                        <h5 className="mb-0 fw-bold">سجل العمليات</h5>
+                                    </div>
+                                    <div className="col-auto">
+                                        <div className="input-group">
+                                            <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-search"></i></span>
+                                            <input
+                                                type="text"
+                                                className="form-control bg-light border-start-0"
+                                                placeholder="بحث..."
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="table-responsive">
+                                <table className="table table-hover align-middle mb-0">
+                                    <thead className="bg-light text-muted small text-uppercase">
+                                        <tr>
+                                            <th className="px-4 py-3 border-0 rounded-start">المبلغ</th>
+                                            <th className="py-3 border-0">الوصف</th>
+                                            <th className="py-3 border-0">التصنيف</th>
+                                            <th className="py-3 border-0">التاريخ</th>
+                                            <th className="py-3 border-0 rounded-end text-end px-4">إجراءات</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {filteredExpenses.slice(0, 10).map(expense => (
+                                            <tr key={expense.expense_id} style={{ cursor: 'pointer' }}>
+                                                <td className="px-4 fw-bold text-dark">
+                                                    {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(expense.amount)}
+                                                </td>
+                                                <td>
+                                                    <span className="fw-bold d-block text-dark">{expense.description}</span>
+                                                    {expense.supplier && <span className="small text-muted"><i className="bi bi-person me-1"></i>{expense.supplier.name}</span>}
+                                                </td>
+                                                <td>
+                                                    <span className="badge bg-light text-dark border fw-normal">
+                                                        {expense.debit_account.account_name}
+                                                    </span>
+                                                </td>
+                                                <td className="text-muted small">
+                                                    {new Date(expense.expense_date).toLocaleDateString('ar-EG')}
+                                                </td>
+                                                <td className="text-end px-4">
+                                                    <button
+                                                        className="btn btn-sm btn-icon btn-light rounded-circle text-primary me-2 shadow-sm"
+                                                        onClick={(e) => { e.stopPropagation(); handleEdit(expense); }}
+                                                    >
+                                                        <i className="bi bi-pencil-fill small"></i>
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm btn-icon btn-light rounded-circle text-danger shadow-sm"
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(expense); }}
+                                                    >
+                                                        <i className="bi bi-trash-fill small"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredExpenses.length === 0 && (
+                                            <tr>
+                                                <td colSpan="5" className="text-center py-5 text-muted">
+                                                    <i className="bi bi-inbox display-6 d-block mb-3 opacity-25"></i>
+                                                    لا توجد نتائج
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>

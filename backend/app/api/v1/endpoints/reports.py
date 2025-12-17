@@ -175,3 +175,10 @@ def get_debt_analysis(db: Session = Depends(get_db)):
     يظهر: ديون العملاء (لنا) وديون الموردين (علينا)
     """
     return advanced_reports.get_debt_report(db)
+
+@router.get("/expenses-stats")
+def get_expenses_stats(db: Session = Depends(get_db)):
+    """
+    إحصائيات المصروفات
+    """
+    return advanced_reports.get_expenses_stats(db)

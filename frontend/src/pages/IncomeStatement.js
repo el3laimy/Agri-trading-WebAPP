@@ -1,105 +1,162 @@
 import React, { useState } from 'react';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
+import { usePageState } from '../hooks';
+import { PageHeader, PageLoading, Card } from '../components/common';
+import { formatCurrency } from '../utils';
 
 const IncomeStatement = () => {
     const [reportData, setReportData] = useState(null);
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1));
+    const [endDate, setEndDate] = useState(new Date());
+
+    const {
+        isLoading,
+        startLoading,
+        stopLoading,
+        error,
+        showError
+    } = usePageState();
 
     const handleGenerateReport = async () => {
-        setLoading(true);
-        setError(null);
+        startLoading();
         setReportData(null);
 
         try {
-            const response = await fetch(`http://localhost:8000/api/v1/reports/income-statement?start_date=${startDate}&end_date=${endDate}`);
+            const start = startDate.toISOString().split('T')[0];
+            const end = endDate.toISOString().split('T')[0];
+
+            const response = await fetch(`http://localhost:8000/api/v1/reports/income-statement?start_date=${start}&end_date=${end}`);
             if (!response.ok) {
-                throw new Error('Failed to generate report');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to generate report');
             }
             const data = await response.json();
             setReportData(data);
         } catch (err) {
-            setError(err.message);
+            console.error(err);
+            showError(err.message);
         } finally {
-            setLoading(false);
+            stopLoading();
         }
     };
 
-    const renderMoney = (amount) => new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount);
+    const handlePrint = () => {
+        window.print();
+    };
 
     return (
-        <div className="container mt-4">
-            <h1>قائمة الدخل</h1>
-            <div className="card card-body mb-4">
+        <div className="container-fluid">
+            <PageHeader
+                title="قائمة الدخل"
+                subtitle="تقرير الأرباح والخسائر والنتائج التشغيلية"
+                icon="bi-graph-up-arrow"
+            />
+
+            {/* Filter Card */}
+            <Card className="mb-4">
                 <div className="row g-3 align-items-end">
                     <div className="col-md-4">
-                        <label htmlFor="start_date" className="form-label">تاريخ البدء</label>
-                        <input type="date" className="form-control" id="start_date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                        <label className="form-label fw-bold">من تاريخ</label>
+                        <DatePicker
+                            selected={startDate}
+                            onChange={setStartDate}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                        />
                     </div>
                     <div className="col-md-4">
-                        <label htmlFor="end_date" className="form-label">تاريخ الانتهاء</label>
-                        <input type="date" className="form-control" id="end_date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                        <label className="form-label fw-bold">إلى تاريخ</label>
+                        <DatePicker
+                            selected={endDate}
+                            onChange={setEndDate}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                        />
                     </div>
-                    <div className="col-md-4">
-                        <button className="btn btn-primary w-100" onClick={handleGenerateReport} disabled={loading}>
-                            {loading ? 'جاري إنشاء التقرير...' : 'عرض التقرير'}
+                    <div className="col-md-4 d-flex gap-2">
+                        <button
+                            className="btn btn-primary flex-grow-1"
+                            onClick={handleGenerateReport}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'جاري التحضير...' : 'عرض التقرير'}
                         </button>
+                        {reportData && (
+                            <button className="btn btn-outline-secondary" onClick={handlePrint}>
+                                <i className="bi bi-printer"></i>
+                            </button>
+                        )}
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            {error && <div className="alert alert-danger">{error}</div>}
+            {error && <div className="alert alert-danger mb-4">{error}</div>}
 
-            {reportData && (
-                <div className="card">
-                    <div className="card-header text-center">
-                        <h2>قائمة الدخل</h2>
-                        <p className="mb-0">للفترة من {reportData.start_date} إلى {reportData.end_date}</p>
+            {isLoading && <PageLoading text="جاري إعداد قائمة الدخل..." />}
+
+            {reportData && !isLoading && (
+                <div className="card border-0 shadow-lg print-section">
+                    <div className="card-header bg-white text-center py-4 border-bottom">
+                        <h3 className="fw-bold text-primary mb-2">قائمة الدخل</h3>
+                        <p className="text-muted mb-0">للفترة من {reportData.start_date} إلى {reportData.end_date}</p>
                     </div>
-                    <div className="card-body">
+                    <div className="card-body p-4">
                         {/* Revenues */}
-                        <h4 className="mt-3">الإيرادات</h4>
-                        <table className="table">
-                            <tbody>
-                                {reportData.revenues.map((item, index) => (
-                                    <tr key={`rev-${index}`}>
-                                        <td>{item.account_name}</td>
-                                        <td className="text-end">{renderMoney(item.amount)}</td>
+                        <div className="mb-4">
+                            <h5 className="fw-bold text-success border-bottom pb-2 mb-3">
+                                <i className="bi bi-arrow-down-circle me-2"></i>الإيرادات
+                            </h5>
+                            <table className="table table-hover">
+                                <tbody>
+                                    {reportData.revenues.map((item, index) => (
+                                        <tr key={`rev-${index}`}>
+                                            <td>{item.account_name}</td>
+                                            <td className="text-end fw-medium">{formatCurrency(item.amount)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="table-success fw-bold">
+                                        <td>إجمالي الإيرادات</td>
+                                        <td className="text-end">{formatCurrency(reportData.total_revenue)}</td>
                                     </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="table-light fw-bold">
-                                    <td>إجمالي الإيرادات</td>
-                                    <td className="text-end">{renderMoney(reportData.total_revenue)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </tfoot>
+                            </table>
+                        </div>
 
                         {/* Expenses */}
-                        <h4 className="mt-4">المصروفات</h4>
-                        <table className="table">
-                            <tbody>
-                                {reportData.expenses.map((item, index) => (
-                                    <tr key={`exp-${index}`}>
-                                        <td>{item.account_name}</td>
-                                        <td className="text-end">{renderMoney(item.amount)}</td>
+                        <div className="mb-4">
+                            <h5 className="fw-bold text-danger border-bottom pb-2 mb-3">
+                                <i className="bi bi-arrow-up-circle me-2"></i>المصروفات
+                            </h5>
+                            <table className="table table-hover">
+                                <tbody>
+                                    {reportData.expenses.map((item, index) => (
+                                        <tr key={`exp-${index}`}>
+                                            <td>{item.account_name}</td>
+                                            <td className="text-end fw-medium">{formatCurrency(item.amount)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="table-danger fw-bold">
+                                        <td>إجمالي المصروفات</td>
+                                        <td className="text-end">{formatCurrency(reportData.total_expense)}</td>
                                     </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="table-light fw-bold">
-                                    <td>إجمالي المصروفات</td>
-                                    <td className="text-end">{renderMoney(reportData.total_expense)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </tfoot>
+                            </table>
+                        </div>
 
-                        {/* Net Income */}
-                        <div className={`d-flex justify-content-between p-3 mt-4 fw-bold ${reportData.net_income >= 0 ? 'bg-success-subtle' : 'bg-danger-subtle'}`}>
-                            <h5>صافي الربح</h5>
-                            <h5>{renderMoney(reportData.net_income)}</h5>
+                        {/* Net Income Summary */}
+                        <div className={`alert ${reportData.net_income >= 0 ? 'alert-success' : 'alert-danger'} d-flex justify-content-between align-items-center mt-4 p-4 shadow-sm`}>
+                            <div>
+                                <h4 className="fw-bold mb-0">صافي الربح / (الخسارة)</h4>
+                                <small>الناتج النهائي للعمليات خلال الفترة</small>
+                            </div>
+                            <h2 className="fw-bold mb-0 display-6">
+                                {formatCurrency(reportData.net_income)}
+                            </h2>
                         </div>
                     </div>
                 </div>

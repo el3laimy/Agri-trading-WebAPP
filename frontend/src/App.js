@@ -34,13 +34,13 @@ import SeasonManagement from './pages/SeasonManagement';
 import DailyPrices from './pages/DailyPrices';
 import CapitalDistribution from './pages/CapitalDistribution';
 import CashFlowReport from './pages/CashFlowReport';
-import ContractsManagement from './pages/ContractsManagement';
+
 import BackupManagement from './pages/BackupManagement';
 import DebtorsView from './pages/DebtorsView';
 
-
-
-import AdvancedReports from './pages/AdvancedReports';
+// New Pages
+import ReportsHub from './pages/ReportsHub';
+import CropPerformance from './pages/CropPerformance';
 
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -70,29 +70,39 @@ function App() {
                       <Route path="/expenses" element={<ExpenseManagement />} />
                       <Route path="/treasury" element={<TreasuryManagement />} />
                       <Route path="/journal" element={<JournalView />} />
-                      <Route path="/reports/advanced" element={<AdvancedReports />} />
 
-                      {/* Reports */}
-                      <Route path="/reports/general-ledger" element={<GeneralLedger />} />
-                      <Route path="/reports/trial-balance" element={<TrialBalance />} />
-                      <Route path="/reports/income-statement" element={<IncomeStatement />} />
-                      <Route path="/reports/balance-sheet" element={<BalanceSheet />} />
-                      <Route path="/reports/equity-statement" element={<EquityStatement />} />
-                      <Route path="/reports/capital-distribution" element={<CapitalDistribution />} />
-                      <Route path="/reports/cash-flow" element={<CashFlowReport />} />
+                      {/* Reports Hub */}
+                      <Route path="/reports" element={<ReportsHub />} />
+
+                      {/* Financial Reports (accessed via Reports Hub or direct link) */}
+                      <Route path="/general-ledger" element={<GeneralLedger />} />
+                      <Route path="/trial-balance" element={<TrialBalance />} />
+                      <Route path="/income-statement" element={<IncomeStatement />} />
+                      <Route path="/balance-sheet" element={<BalanceSheet />} />
+                      <Route path="/equity-statement" element={<EquityStatement />} />
+                      <Route path="/capital-distribution" element={<CapitalDistribution />} />
+                      <Route path="/cash-flow" element={<CashFlowReport />} />
+                      <Route path="/debtors" element={<DebtorsView />} />
+                      <Route path="/crop-performance" element={<CropPerformance />} />
+
+                      {/* Legacy Routes (Redirect to new paths if needed) */}
+                      <Route path="/reports/general-ledger" element={<Navigate to="/general-ledger" replace />} />
+                      <Route path="/reports/trial-balance" element={<Navigate to="/trial-balance" replace />} />
+                      <Route path="/reports/income-statement" element={<Navigate to="/income-statement" replace />} />
+                      <Route path="/reports/balance-sheet" element={<Navigate to="/balance-sheet" replace />} />
+                      <Route path="/reports/advanced" element={<Navigate to="/reports" replace />} />
 
                       {/* Setup Pages */}
                       <Route path="/crops" element={<CropManagement />} />
                       <Route path="/contacts" element={<ContactManagement />} />
                       <Route path="/contacts/:contactId" element={<ContactDetails />} />
-                      <Route path="/contracts" element={<ContractsManagement />} />
+
                       <Route path="/financial-accounts" element={<FinancialAccountManagement />} />
 
                       {/* New Features */}
                       <Route path="/seasons" element={<SeasonManagement />} />
                       <Route path="/daily-prices" element={<DailyPrices />} />
                       <Route path="/backups" element={<BackupManagement />} />
-                      <Route path="/debtors" element={<DebtorsView />} />
 
                       {/* Default Redirect */}
                       <Route path="*" element={<Navigate to="/dashboard" />} />

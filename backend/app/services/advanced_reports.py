@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, case
 from datetime import date, timedelta
 from typing import List, Dict, Any
-from app.models import Sale, Purchase, Crop, Contact, Season, GeneralLedger, InventoryBatch
+from app.models import Sale, Purchase, Crop, Contact, Season, GeneralLedger, InventoryBatch, Expense
+from sqlalchemy import extract
 
 def get_crop_profitability(db: Session, season_id: int):
     """
@@ -190,3 +191,38 @@ def get_debt_report(db: Session):
             })
             
     return {"receivables": receivables, "payables": payables}
+
+def get_expenses_stats(db: Session):
+    """
+    إحصائيات المصروفات للوحة التحكم
+    """
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+    start_of_month = today.replace(day=1)
+
+    # Queries
+    total_today = db.query(func.sum(Expense.amount)).filter(Expense.expense_date == today).scalar() or 0
+    total_week = db.query(func.sum(Expense.amount)).filter(Expense.expense_date >= start_of_week).scalar() or 0
+    total_month = db.query(func.sum(Expense.amount)).filter(Expense.expense_date >= start_of_month).scalar() or 0
+    total_all_time = db.query(func.sum(Expense.amount)).scalar() or 0
+
+    # Category Distribution (Group by Debit Account Name)
+    # Assuming Expense has relationship to debit_account
+    from app.models import FinancialAccount
+    distribution_query = db.query(
+        FinancialAccount.account_name.label('category'),
+        func.sum(Expense.amount).label('total')
+    ).join(Expense, Expense.debit_account_id == FinancialAccount.account_id)\
+     .group_by(FinancialAccount.account_name)\
+     .order_by(desc('total'))\
+     .all()
+
+    distribution = [{"category": row.category, "amount": row.total} for row in distribution_query]
+
+    return {
+        "total_today": total_today,
+        "total_week": total_week,
+        "total_month": total_month,
+        "total_all_time": total_all_time,
+        "distribution": distribution
+    }

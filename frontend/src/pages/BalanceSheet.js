@@ -1,123 +1,176 @@
 import React, { useState } from 'react';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
+import { usePageState } from '../hooks';
+import { PageHeader, PageLoading, Card } from '../components/common';
+import { formatCurrency } from '../utils';
 
 const BalanceSheet = () => {
     const [reportData, setReportData] = useState(null);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [endDate, setEndDate] = useState(new Date());
+
+    const {
+        isLoading,
+        startLoading,
+        stopLoading,
+        error,
+        showError
+    } = usePageState();
 
     const handleGenerateReport = async () => {
-        setLoading(true);
-        setError(null);
+        startLoading();
         setReportData(null);
 
         try {
-            const response = await fetch(`http://localhost:8000/api/v1/reports/balance-sheet?end_date=${endDate}`);
+            const dateStr = endDate.toISOString().split('T')[0];
+            const response = await fetch(`http://localhost:8000/api/v1/reports/balance-sheet?end_date=${dateStr}`);
+
             if (!response.ok) {
-                throw new Error('Failed to generate report');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to generate report');
             }
             const data = await response.json();
             setReportData(data);
         } catch (err) {
-            setError(err.message);
+            console.error(err);
+            showError(err.message);
         } finally {
-            setLoading(false);
+            stopLoading();
         }
     };
 
-    const renderMoney = (amount) => new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount);
+    const handlePrint = () => {
+        window.print();
+    };
 
     return (
-        <div className="container mt-4">
-            <h1>الميزانية العمومية</h1>
-            <div className="card card-body mb-4">
+        <div className="container-fluid">
+            <PageHeader
+                title="الميزانية العمومية"
+                subtitle="تقرير المركز المالي (الأصول، الخصوم، وحقوق الملكية)"
+                icon="bi-bank"
+            />
+
+            {/* Filter Card */}
+            <Card className="mb-4">
                 <div className="row g-3 align-items-end">
-                    <div className="col-md-4">
-                        <label htmlFor="end_date" className="form-label">في تاريخ</label>
-                        <input type="date" className="form-control" id="end_date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                    <div className="col-md-6">
+                        <label className="form-label fw-bold">الميزانية في تاريخ</label>
+                        <DatePicker
+                            selected={endDate}
+                            onChange={setEndDate}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                        />
                     </div>
-                    <div className="col-md-4">
-                        <button className="btn btn-primary w-100" onClick={handleGenerateReport} disabled={loading}>
-                            {loading ? 'جاري إنشاء التقرير...' : 'عرض التقرير'}
+                    <div className="col-md-6 d-flex gap-2">
+                        <button
+                            className="btn btn-primary flex-grow-1"
+                            onClick={handleGenerateReport}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'جاري التحضير...' : 'عرض التقرير'}
                         </button>
+                        {reportData && (
+                            <button className="btn btn-outline-secondary" onClick={handlePrint}>
+                                <i className="bi bi-printer"></i>
+                            </button>
+                        )}
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            {error && <div className="alert alert-danger">{error}</div>}
+            {error && <div className="alert alert-danger mb-4">{error}</div>}
 
-            {reportData && (
-                <div className="card">
-                    <div className="card-header text-center">
-                        <h2>الميزانية العمومية</h2>
-                        <p className="mb-0">في {reportData.end_date}</p>
+            {isLoading && <PageLoading text="جاري إعداد الميزانية العمومية..." />}
+
+            {reportData && !isLoading && (
+                <div className="card border-0 shadow-lg print-section">
+                    <div className="card-header bg-white text-center py-4 border-bottom">
+                        <h3 className="fw-bold text-primary mb-2">الميزانية العمومية</h3>
+                        <p className="text-muted mb-0">كما في {reportData.end_date}</p>
                     </div>
-                    <div className="card-body">
-                        <div className="row">
-                            {/* Assets */}
+                    <div className="card-body p-4">
+                        <div className="row g-4">
+                            {/* Assets Column */}
                             <div className="col-md-6">
-                                <h4 className="text-center">الأصول</h4>
-                                <hr />
-                                <table className="table">
-                                    <tbody>
-                                        {reportData.assets.map((item, index) => (
-                                            <tr key={`asset-${index}`}>
-                                                <td>{item.account_name}</td>
-                                                <td className="text-end">{renderMoney(item.balance)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr className="table-light fw-bold">
-                                            <td>إجمالي الأصول</td>
-                                            <td className="text-end">{renderMoney(reportData.total_assets)}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                                <div className="card h-100 border shadow-sm">
+                                    <div className="card-header bg-success text-white py-3">
+                                        <h5 className="mb-0 fw-bold text-center">الأصول</h5>
+                                    </div>
+                                    <div className="card-body">
+                                        <table className="table table-hover mb-0">
+                                            <tbody>
+                                                {reportData.assets.map((item, index) => (
+                                                    <tr key={`asset-${index}`}>
+                                                        <td>{item.account_name}</td>
+                                                        <td className="text-end fw-medium">{formatCurrency(item.balance)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="card-footer bg-light fw-bold fs-5 d-flex justify-content-between">
+                                        <span>إجمالي الأصول</span>
+                                        <span className="text-success">{formatCurrency(reportData.total_assets)}</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Liabilities and Equity */}
+                            {/* Liabilities & Equity Column */}
                             <div className="col-md-6">
-                                <h4 className="text-center">الخصوم وحقوق الملكية</h4>
-                                <hr />
-                                <h5>الخصوم</h5>
-                                <table className="table">
-                                    <tbody>
-                                        {reportData.liabilities.map((item, index) => (
-                                            <tr key={`lia-${index}`}>
-                                                <td>{item.account_name}</td>
-                                                <td className="text-end">{renderMoney(item.balance)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr className="table-light fw-bold">
-                                            <td>إجمالي الخصوم</td>
-                                            <td className="text-end">{renderMoney(reportData.total_liabilities)}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                                <div className="d-flex flex-column h-100 gap-4">
+                                    {/* Liabilities */}
+                                    <div className="card border shadow-sm flex-grow-1">
+                                        <div className="card-header bg-warning text-dark py-3">
+                                            <h5 className="mb-0 fw-bold text-center">الخصوم (الالتزامات)</h5>
+                                        </div>
+                                        <div className="card-body">
+                                            <table className="table table-hover mb-0">
+                                                <tbody>
+                                                    {reportData.liabilities.map((item, index) => (
+                                                        <tr key={`lia-${index}`}>
+                                                            <td>{item.account_name}</td>
+                                                            <td className="text-end fw-medium">{formatCurrency(item.balance)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="card-footer bg-light fw-bold d-flex justify-content-between">
+                                            <span>إجمالي الخصوم</span>
+                                            <span>{formatCurrency(reportData.total_liabilities)}</span>
+                                        </div>
+                                    </div>
 
-                                <h5 className="mt-3">حقوق الملكية</h5>
-                                <table className="table">
-                                    <tbody>
-                                        {reportData.equity.map((item, index) => (
-                                            <tr key={`eq-${index}`}>
-                                                <td>{item.account_name}</td>
-                                                <td className="text-end">{renderMoney(item.balance)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr className="table-light fw-bold">
-                                            <td>إجمالي حقوق الملكية</td>
-                                            <td className="text-end">{renderMoney(reportData.total_equity)}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                                <div className="d-flex justify-content-between p-3 mt-2 fw-bold table-light">
-                                    <h6>إجمالي الخصوم وحقوق الملكية</h6>
-                                    <h6>{renderMoney(reportData.total_liabilities_and_equity)}</h6>
+                                    {/* Equity */}
+                                    <div className="card border shadow-sm flex-grow-1">
+                                        <div className="card-header bg-info text-white py-3">
+                                            <h5 className="mb-0 fw-bold text-center">حقوق الملكية</h5>
+                                        </div>
+                                        <div className="card-body">
+                                            <table className="table table-hover mb-0">
+                                                <tbody>
+                                                    {reportData.equity.map((item, index) => (
+                                                        <tr key={`eq-${index}`}>
+                                                            <td>{item.account_name}</td>
+                                                            <td className="text-end fw-medium">{formatCurrency(item.balance)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="card-footer bg-light fw-bold d-flex justify-content-between">
+                                            <span>إجمالي حقوق الملكية</span>
+                                            <span>{formatCurrency(reportData.total_equity)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Total Liabilities + Equity */}
+                                    <div className="alert alert-secondary d-flex justify-content-between align-items-center fw-bold fs-5 mb-0 shadow-sm">
+                                        <span>إجمالي الخصوم وحقوق الملكية</span>
+                                        <span>{formatCurrency(reportData.total_liabilities_and_equity)}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
