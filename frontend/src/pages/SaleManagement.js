@@ -315,8 +315,8 @@ function SaleManagement() {
 
             {/* Sales Table */}
             <div className="card border-0 shadow-sm">
-                <div className="card-header bg-white border-bottom">
-                    <h5 className="mb-0">
+                <div className="card-header bg-transparent border-bottom">
+                    <h5 className="mb-0" style={{ color: 'var(--text-primary)' }}>
                         <i className="bi bi-list-ul me-2"></i>
                         سجل المبيعات ({filteredSales.length})
                     </h5>

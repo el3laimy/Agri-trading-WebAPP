@@ -69,13 +69,20 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
         t_type = "IN" if t.debit > 0 else "OUT"
         amount = t.debit if t.debit > 0 else t.credit
         
+        contact_name = None
+        if t.source_type in ['CASH_RECEIPT', 'CASH_PAYMENT'] and t.source_id:
+             payment = db.query(models.Payment).get(t.source_id)
+             if payment and payment.contact:
+                 contact_name = payment.contact.name
+
         result.append(schemas.TreasuryTransaction(
             transaction_id=t.entry_id,
             date=t.entry_date,
             description=t.description,
             amount=amount,
             type=t_type,
-            source=t.source_type
+            source=t.source_type,
+            contact_name=contact_name
         ))
         
     return result
@@ -279,4 +286,83 @@ def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate) -> di
         "voucher_id": cash_entry.entry_id,
         "expense_id": db_expense.expense_id
     }
+
+
+def delete_transaction(db: Session, transaction_id: int):
+    """
+    حذف معاملة مالية (قبض/صرف/مصروف)
+    1. البحث عن القيد المحاسبي
+    2. تحديد نوع المعاملة والمصدر
+    3. عكس التأثير المالي على الأرصدة
+    4. حذف القيود والسجل الأصلي
+    """
+    # 1. البحث عن القيد الرئيسي
+    gl_entry = db.query(models.GeneralLedger).filter(models.GeneralLedger.entry_id == transaction_id).first()
+    if not gl_entry:
+        raise ValueError("المعاملة غير موجودة")
+
+    source_type = gl_entry.source_type
+    source_id = gl_entry.source_id
+
+    # 2. البحث عن جميع القيود المرتبطة بهذه المعاملة
+    related_entries = db.query(models.GeneralLedger).filter(
+        models.GeneralLedger.source_type == source_type,
+        models.GeneralLedger.source_id == source_id
+    ).all()
+
+    # 3. عكس التأثير المالي وتحديث الأرصدة
+    for entry in related_entries:
+        account = db.query(models.FinancialAccount).get(entry.account_id)
+        if not account:
+            continue
+
+        # تحديد طبيعة الحساب لحساب التغير في الرصيد
+        # الأصول والمصروفات: الرصيد = مدين - دائن
+        # الخصوم والإيرادات وحقوق الملكية: الرصيد = دائن - مدين
+        is_normal_debit = account.account_type in ['ASSET', 'CASH', 'EXPENSE', 'RECEIVABLE']
+        
+        # التغير الذي أحدثه القيد في الرصيد
+        if is_normal_debit:
+            balance_change = entry.debit - entry.credit
+        else:
+            balance_change = entry.credit - entry.debit
+            
+        # لعكس التأثير، نطرح التغيير (نضيف السالب)
+        crud.update_account_balance(db, account.account_id, -balance_change)
+
+    # 4. حذف السجلات
+    # حذف السجل الأصلي (Payment / Expense)
+    if source_type in ['CASH_RECEIPT', 'CASH_PAYMENT']:
+        db.query(models.Payment).filter(models.Payment.payment_id == source_id).delete()
+    elif source_type == 'QUICK_EXPENSE':
+        db.query(models.Expense).filter(models.Expense.expense_id == source_id).delete()
+    
+    # حذف قيود اليومية
+    for entry in related_entries:
+        db.delete(entry)
+        
+
+    db.commit()
+    return {"success": True, "message": "تم حذف المعاملة بنجاح"}
+
+def update_transaction(db: Session, transaction_id: int, data: dict, transaction_type: str):
+    """
+    تحديث معاملة مالية
+    الاستراتيجية: حذف المعاملة القديمة وإنشاء واحدة جديدة
+    """
+    # 1. حذف القديم
+    delete_transaction(db, transaction_id)
+    
+    # 2. إنشاء الجديد بناءً على النوع
+    if transaction_type == 'CASH_RECEIPT':
+        create_data = schemas.CashReceiptCreate(**data)
+        return create_cash_receipt(db, create_data)
+    elif transaction_type == 'CASH_PAYMENT':
+        create_data = schemas.CashPaymentCreate(**data)
+        return create_cash_payment(db, create_data)
+    elif transaction_type == 'QUICK_EXPENSE':
+        create_data = schemas.QuickExpenseCreate(**data)
+        return create_quick_expense(db, create_data)
+    
+    raise ValueError("Invalid transaction type")
 

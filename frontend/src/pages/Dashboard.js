@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getDashboardKpis, getDashboardAlerts, getSalesByCrop, getTopCustomers } from '../api/reports';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +24,7 @@ const DEFAULT_LAYOUT = ['quick_stats', 'main_kpis', 'charts', 'secondary_kpis', 
 
 function Dashboard() {
     const { user, updateConfig } = useAuth();
+    const { theme } = useTheme();
     const navigate = useNavigate();
 
     const [kpis, setKpis] = useState(null);
@@ -325,6 +327,9 @@ function Dashboard() {
                     }]
                 };
 
+                const chartTextColor = theme === 'dark' ? '#CBD5E1' : '#475569';
+                const chartGridColor = theme === 'dark' ? '#334155' : '#E2E8F0';
+
                 const chartOptions = {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -332,17 +337,22 @@ function Dashboard() {
                         legend: {
                             position: 'bottom',
                             labels: {
+                                color: chartTextColor,
                                 font: { family: 'Cairo', size: 12 },
                                 usePointStyle: true,
                                 padding: 15
                             }
                         },
                         tooltip: {
-                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            backgroundColor: theme === 'dark' ? '#1E293B' : 'rgba(0,0,0,0.8)',
+                            titleColor: theme === 'dark' ? '#F8FAFC' : '#fff',
+                            bodyColor: theme === 'dark' ? '#CBD5E1' : '#fff',
                             titleFont: { family: 'Cairo' },
                             bodyFont: { family: 'Cairo' },
                             padding: 12,
-                            cornerRadius: 8
+                            cornerRadius: 8,
+                            borderColor: theme === 'dark' ? '#334155' : 'transparent',
+                            borderWidth: 1
                         }
                     }
                 };
@@ -351,9 +361,9 @@ function Dashboard() {
                     <div className="row mt-2" key={id}>
                         <div className="col-lg-7 mb-4">
                             <div className="card border-0 shadow-sm h-100">
-                                <div className="card-header bg-white border-0 py-3">
+                                <div className="card-header bg-transparent border-0 py-3">
                                     <div className="d-flex justify-content-between align-items-center">
-                                        <h5 className="fw-bold mb-0">
+                                        <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
                                             <i className="bi bi-bar-chart-fill me-2 text-primary"></i>
                                             ملخص الأداء المالي
                                         </h5>
@@ -372,15 +382,19 @@ function Dashboard() {
                                                 indexAxis: 'y',
                                                 scales: {
                                                     x: {
-                                                        grid: { display: false },
+                                                        grid: { display: false, drawBorder: false },
                                                         ticks: {
+                                                            color: chartTextColor,
                                                             font: { family: 'Cairo' },
                                                             callback: (value) => formatCurrency(value, true)
                                                         }
                                                     },
                                                     y: {
-                                                        grid: { display: false },
-                                                        ticks: { font: { family: 'Cairo' } }
+                                                        grid: { color: chartGridColor, borderDash: [5, 5], drawBorder: false },
+                                                        ticks: {
+                                                            color: chartTextColor,
+                                                            font: { family: 'Cairo' }
+                                                        }
                                                     }
                                                 }
                                             }}
@@ -391,8 +405,8 @@ function Dashboard() {
                         </div>
                         <div className="col-lg-5 mb-4">
                             <div className="card border-0 shadow-sm h-100">
-                                <div className="card-header bg-white border-0 py-3">
-                                    <h5 className="fw-bold mb-0">
+                                <div className="card-header bg-transparent border-0 py-3">
+                                    <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
                                         <i className="bi bi-pie-chart-fill me-2 text-success"></i>
                                         المبيعات حسب المحصول
                                     </h5>
@@ -476,9 +490,9 @@ function Dashboard() {
                     <div className="row" key={id}>
                         <div className="col-12">
                             <div className="card border-0 shadow-sm mb-4">
-                                <div className="card-header bg-white border-0 py-3">
+                                <div className="card-header bg-transparent border-0 py-3">
                                     <div className="d-flex justify-content-between align-items-center">
-                                        <h5 className="fw-bold mb-0">
+                                        <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
                                             <i className="bi bi-trophy-fill me-2 text-warning"></i>
                                             أفضل العملاء
                                         </h5>
@@ -572,9 +586,9 @@ function Dashboard() {
                     <div className="row" key={id}>
                         <div className="col-12">
                             <div className="card border-0 shadow-sm mb-4">
-                                <div className="card-header bg-white border-0 py-3">
+                                <div className="card-header bg-transparent border-0 py-3">
                                     <div className="d-flex justify-content-between align-items-center">
-                                        <h5 className="fw-bold mb-0">
+                                        <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
                                             <i className="bi bi-bell-fill me-2 text-warning"></i>
                                             التنبيهات الذكية
                                             {alerts.length > 0 && (
@@ -627,8 +641,8 @@ function Dashboard() {
                     <div className="row mt-2" key={id}>
                         <div className="col-12">
                             <div className="card border-0 shadow-sm">
-                                <div className="card-header bg-white border-0 py-3">
-                                    <h5 className="fw-bold mb-0">
+                                <div className="card-header bg-transparent border-0 py-3">
+                                    <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
                                         <i className="bi bi-lightning-charge-fill me-2 text-primary"></i>
                                         إجراءات سريعة
                                     </h5>

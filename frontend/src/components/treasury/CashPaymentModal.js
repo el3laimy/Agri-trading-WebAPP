@@ -50,13 +50,14 @@ function CashPaymentModal({
                                 />
                             </div>
                             <div className="mb-3">
-                                <label className="form-label fw-bold">المورد (اختياري)</label>
+                                <label className="form-label fw-bold">المورد *</label>
                                 <select
                                     className="form-select"
                                     value={formData.contact_id}
                                     onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })}
+                                    required
                                 >
-                                    <option value="">-- بدون تحديد مورد --</option>
+                                    <option value="">-- اختر المورد --</option>
                                     {contacts.filter(c => c.is_supplier).map(c => (
                                         <option key={c.contact_id} value={c.contact_id}>{c.name}</option>
                                     ))}

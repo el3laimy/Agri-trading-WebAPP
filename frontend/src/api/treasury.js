@@ -26,8 +26,27 @@ export const createCashPayment = async (paymentData) => {
     return response.data;
 };
 
-export const createQuickExpense = async (expenseData) => {
-    const response = await axios.post(`${API_URL}/quick-expense`, expenseData);
+export const createQuickExpense = async (data) => {
+    const response = await axios.post(`${API_URL}/quick-expense`, data);
     return response.data;
 };
 
+export const updateCashReceipt = async (id, data) => {
+    const response = await axios.put(`${API_URL}/cash-receipt/${id}`, data);
+    return response.data;
+};
+
+export const updateCashPayment = async (id, data) => {
+    const response = await axios.put(`${API_URL}/cash-payment/${id}`, data);
+    return response.data;
+};
+
+export const updateQuickExpense = async (id, data) => {
+    const response = await axios.put(`${API_URL}/quick-expense/${id}`, data);
+    return response.data;
+};
+
+export const deleteTransaction = async (id) => {
+    const response = await axios.delete(`${API_URL}/${id}`);
+    return response.data;
+};

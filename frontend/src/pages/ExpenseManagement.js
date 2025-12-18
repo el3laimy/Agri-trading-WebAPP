@@ -251,12 +251,12 @@ const ExpenseManagement = () => {
                 {/* Form or List Section */}
                 <div className="col-lg-8">
                     {showForm ? (
-                        <div className="card border-0 shadow-sm rounded-4 h-100 fade-in">
-                            <div className="card-header bg-white border-bottom pt-4 px-4 pb-3 d-flex justify-content-between align-items-center">
+                        <div className="card border-0 shadow-sm rounded-4 h-100 fade-in" style={{ backgroundColor: 'var(--bg-card)' }}>
+                            <div className="card-header border-bottom pt-4 px-4 pb-3 d-flex justify-content-between align-items-center" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>
                                 <h5 className="mb-0 fw-bold">
                                     {editingExpense ? 'تعديل المصروف' : 'تسجيل مصروف جديد'}
                                 </h5>
-                                <button className="btn btn-close bg-light" onClick={() => setShowForm(false)}></button>
+                                <button className="btn btn-close" style={{ filter: 'var(--icon-filter, none)' }} onClick={() => setShowForm(false)}></button>
                             </div>
                             <ExpenseForm
                                 expense={editingExpense}
@@ -265,18 +265,19 @@ const ExpenseManagement = () => {
                             />
                         </div>
                     ) : (
-                        <div className="card border-0 shadow-sm rounded-4 h-100">
-                            <div className="card-header bg-white border-bottom pt-4 px-4 pb-3">
+                        <div className="card border-0 shadow-sm rounded-4 h-100" style={{ backgroundColor: 'var(--bg-card)' }}>
+                            <div className="card-header border-bottom pt-4 px-4 pb-3" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>
                                 <div className="row g-3 align-items-center">
                                     <div className="col">
                                         <h5 className="mb-0 fw-bold">سجل العمليات</h5>
                                     </div>
                                     <div className="col-auto">
                                         <div className="input-group">
-                                            <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-search"></i></span>
+                                            <span className="input-group-text border-end-0" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}><i className="bi bi-search"></i></span>
                                             <input
                                                 type="text"
-                                                className="form-control bg-light border-start-0"
+                                                className="form-control border-start-0"
+                                                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                                 placeholder="بحث..."
                                                 value={searchTerm}
                                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -286,8 +287,8 @@ const ExpenseManagement = () => {
                                 </div>
                             </div>
                             <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead className="bg-light text-muted small text-uppercase">
+                                <table className="table table-hover align-middle mb-0" style={{ color: 'var(--text-primary)' }}>
+                                    <thead style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }} className="small text-uppercase">
                                         <tr>
                                             <th className="px-4 py-3 border-0 rounded-start">المبلغ</th>
                                             <th className="py-3 border-0">الوصف</th>

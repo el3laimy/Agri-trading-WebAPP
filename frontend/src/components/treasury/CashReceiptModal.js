@@ -50,13 +50,14 @@ function CashReceiptModal({
                                 />
                             </div>
                             <div className="mb-3">
-                                <label className="form-label fw-bold">العميل (اختياري)</label>
+                                <label className="form-label fw-bold">العميل *</label>
                                 <select
                                     className="form-select"
                                     value={formData.contact_id}
                                     onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })}
+                                    required
                                 >
-                                    <option value="">-- بدون تحديد عميل --</option>
+                                    <option value="">-- اختر العميل --</option>
                                     {contacts.filter(c => c.is_customer).map(c => (
                                         <option key={c.contact_id} value={c.contact_id}>{c.name}</option>
                                     ))}

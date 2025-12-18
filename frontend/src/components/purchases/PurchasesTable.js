@@ -44,11 +44,11 @@ function PurchasesTable({
                                 </td>
                                 <td className="text-center">
                                     <strong>{originalQty.toFixed(0)}</strong>
-                                    <small className="text-muted ms-1">{originalUnit}</small>
+                                    <small className="ms-1" style={{ color: 'var(--text-secondary)' }}>{originalUnit}</small>
                                 </td>
                                 <td className="text-center">
                                     {originalPrice.toLocaleString('ar-EG')}
-                                    <small className="text-muted">/{originalUnit}</small>
+                                    <small style={{ color: 'var(--text-secondary)' }}>/{originalUnit}</small>
                                 </td>
                                 <td className="text-center fw-bold text-danger">
                                     {(p.total_cost ?? 0).toLocaleString('ar-EG')} ج.م

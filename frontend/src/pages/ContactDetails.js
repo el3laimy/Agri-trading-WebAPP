@@ -177,13 +177,13 @@ function ContactDetails() {
                                 {summary.contact_type !== 'SUPPLIER' && (
                                     <>
                                         <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center bg-light">
+                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
                                                 <small className="text-muted d-block">إجمالي المبيعات</small>
                                                 <strong className="text-success">{formatCurrency(summary.total_sales)}</strong>
                                             </div>
                                         </div>
                                         <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center bg-light">
+                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
                                                 <small className="text-muted d-block">المحصل</small>
                                                 <strong className="text-primary">{formatCurrency(summary.total_received)}</strong>
                                             </div>
@@ -193,13 +193,13 @@ function ContactDetails() {
                                 {summary.contact_type !== 'CUSTOMER' && (
                                     <>
                                         <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center bg-light">
+                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
                                                 <small className="text-muted d-block">إجمالي المشتريات</small>
                                                 <strong className="text-danger">{formatCurrency(summary.total_purchases)}</strong>
                                             </div>
                                         </div>
                                         <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center bg-light">
+                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
                                                 <small className="text-muted d-block">المدفوع</small>
                                                 <strong className="text-warning">{formatCurrency(summary.total_paid)}</strong>
                                             </div>
@@ -301,7 +301,7 @@ function ContactDetails() {
                                         return (
                                             <React.Fragment key={index}>
                                                 {/* صف المعاملة */}
-                                                <tr>
+                                                <tr style={{ color: 'var(--text-primary)' }}>
                                                     <td className="text-center">
                                                         <span className={`fw-bold ${isDebit ? 'text-danger' : 'text-success'}`} style={{ fontSize: '1.1rem' }}>
                                                             {amount?.toLocaleString('ar-EG') || 0}
@@ -315,7 +315,7 @@ function ContactDetails() {
                                                     <td className="text-center">{formatDate(entry.date)}</td>
                                                 </tr>
                                                 {/* صف الباقي */}
-                                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                <tr style={{ backgroundColor: 'var(--primary-50)' }}>
                                                     <td className="text-center">
                                                         <span className={`fw-bold ${entry.balance >= 0 ? 'text-danger' : 'text-success'}`} style={{ fontSize: '1.1rem' }}>
                                                             {Math.abs(entry.balance)?.toLocaleString('ar-EG') || 0}

@@ -46,3 +46,51 @@ def create_quick_expense(expense: schemas.QuickExpenseCreate, db: Session = Depe
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.delete("/{transaction_id}")
+def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
+    """حذف معاملة مالية"""
+    try:
+        result = treasury.delete_transaction(db, transaction_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/cash-receipt/{transaction_id}")
+def update_cash_receipt(transaction_id: int, receipt: schemas.CashReceiptCreate, db: Session = Depends(get_db)):
+    """تحديث إيصال قبض"""
+    try:
+        data = receipt.model_dump()
+        result = treasury.update_transaction(db, transaction_id, data, 'CASH_RECEIPT')
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/cash-payment/{transaction_id}")
+def update_cash_payment(transaction_id: int, payment: schemas.CashPaymentCreate, db: Session = Depends(get_db)):
+    """تحديث إيصال صرف"""
+    try:
+        data = payment.model_dump()
+        result = treasury.update_transaction(db, transaction_id, data, 'CASH_PAYMENT')
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/quick-expense/{transaction_id}")
+def update_quick_expense(transaction_id: int, expense: schemas.QuickExpenseCreate, db: Session = Depends(get_db)):
+    """تحديث مصروف سريع"""
+    try:
+        data = expense.model_dump()
+        result = treasury.update_transaction(db, transaction_id, data, 'QUICK_EXPENSE')
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+

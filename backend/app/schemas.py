@@ -275,6 +275,7 @@ class TreasuryTransaction(BaseModel):
     amount: float
     type: str  # 'IN' or 'OUT'
     source: Optional[str] = None
+    contact_name: Optional[str] = None
 
 class AccountStatementEntry(BaseModel):
     """سطر واحد في كشف الحساب"""
