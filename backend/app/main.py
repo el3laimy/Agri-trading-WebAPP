@@ -7,7 +7,7 @@ from app.database import Base, engine, SessionLocal
 # Import all models to ensure they are registered with SQLAlchemy
 from app.models import Crop, Contact, FinancialAccount, Purchase, Inventory, GeneralLedger
 from app.api.v1.api import api_router
-from app.core.bootstrap import bootstrap_financial_accounts
+from app.core.bootstrap import bootstrap_financial_accounts, bootstrap_roles_and_users
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -19,6 +19,8 @@ async def lifespan(app: FastAPI):
     try:
         print("Bootstrapping financial accounts...")
         bootstrap_financial_accounts(db)
+        print("Bootstrapping roles and users...")
+        bootstrap_roles_and_users(db)
         print("Bootstrap complete.")
     finally:
         db.close()

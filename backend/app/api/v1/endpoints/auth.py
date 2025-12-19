@@ -369,6 +369,42 @@ async def update_user(
 
 
 
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_admin)
+):
+    """حذف مستخدم"""
+    user = db.query(models.User).filter(
+        models.User.user_id == user_id
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="المستخدم غير موجود"
+        )
+    
+    # منع حذف المستخدم المسؤول الرئيسي أو النفس
+    if user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="لا يمكن حذف المستخدم المسؤول الرئيسي"
+        )
+    
+    if user.user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="لا يمكنك حذف حسابك الخاص"
+        )
+    
+    db.delete(user)
+    db.commit()
+    
+    return {"message": "تم حذف المستخدم بنجاح"}
+
+
 # ============================================
 # Role Management Endpoints
 # ============================================

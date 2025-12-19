@@ -208,10 +208,63 @@ function Sidebar() {
                 <MenuSection
                     title="النظام"
                     icon="bi-shield-lock"
-                    items={system}
+                    items={[
+                        ...system,
+                        { path: '/users', label: 'المستخدمين', icon: 'bi-people-fill' }
+                    ]}
                     menuKey="system"
                 />
             </nav>
+
+            {/* Logout and Shutdown Actions */}
+            <div className="px-3 pb-2">
+                <button
+                    onClick={() => {
+                        localStorage.clear();
+                        window.location.href = '/login';
+                    }}
+                    className="btn w-100 d-flex align-items-center justify-content-center text-white mb-2"
+                    style={{
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    <i className="bi bi-box-arrow-right ms-2"></i>
+                    تسجيل الخروج
+                </button>
+
+                <button
+                    onClick={async () => {
+                        if (window.confirm('هل أنت متأكد من إغلاق النظام؟')) {
+                            try {
+                                const token = localStorage.getItem('token');
+                                await fetch('http://localhost:8000/api/v1/system/shutdown', {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                alert('تم إرسال أمر الإغلاق. يمكنك الآن إغلاق المتصفح.');
+                                window.close();
+                            } catch (e) {
+                                console.error(e);
+                                alert('فشل في إغلاق الخادم');
+                            }
+                        }
+                    }}
+                    className="btn w-100 d-flex align-items-center justify-content-center text-white"
+                    style={{
+                        background: 'rgba(220, 53, 69, 0.8)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    <i className="bi bi-power ms-2"></i>
+                    إغلاق النظام
+                </button>
+            </div>
 
             {/* Footer */}
             <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>

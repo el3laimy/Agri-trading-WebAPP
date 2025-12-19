@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import contacts, crops, purchases, sales, financial_accounts, reports, expenses, journal, inventory, payments, seasons, sale_returns, purchase_returns, daily_prices, treasury, auth, backup, notifications, contracts, capital
+from app.api.v1.endpoints import contacts, crops, purchases, sales, financial_accounts, reports, expenses, journal, inventory, payments, seasons, sale_returns, purchase_returns, daily_prices, treasury, auth, backup, notifications, contracts, capital, system
 
 api_router = APIRouter()
 
@@ -24,4 +24,5 @@ api_router.include_router(backup.router, prefix="/backup", tags=["backup"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(contracts.router, prefix="/contracts", tags=["contracts"])
 api_router.include_router(capital.router, prefix="/capital", tags=["capital"])
+api_router.include_router(system.router, prefix="/system", tags=["system"])
 

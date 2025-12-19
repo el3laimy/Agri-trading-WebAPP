@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 from app import models, crud
+import json
+from app.auth.jwt import get_password_hash
 
 # تعريف أرقام الحسابات الأساسية كمتغيرات ثابتة لسهولة الوصول إليها
 INVENTORY_ACCOUNT_ID = 10103
@@ -36,3 +38,130 @@ def bootstrap_financial_accounts(db: Session):
             db.commit()
             db.refresh(new_acc)
 
+
+def bootstrap_roles_and_users(db: Session):
+    """
+    Checks for and creates the default roles and admin user if they don't exist.
+    """
+    try:
+        # Check if roles exist
+        existing_roles = db.query(models.Role).count()
+        
+        if existing_roles == 0:
+            print("Creating default roles...")
+            
+            # Admin Role
+            admin_role = models.Role(
+                name="admin", # Keep English name for code reference
+                name_ar="مدير النظام",
+                description="صلاحيات كاملة على جميع أجزاء النظام",
+                permissions=json.dumps([
+                    "dashboard:view",
+                    "sales:read", "sales:write", "sales:delete",
+                    "purchases:read", "purchases:write", "purchases:delete",
+                    "inventory:read", "inventory:write",
+                    "treasury:read", "treasury:write",
+                    "expenses:read", "expenses:write", "expenses:delete",
+                    "contacts:read", "contacts:write", "contacts:delete",
+                    "reports:view", "reports:export",
+                    "settings:manage",
+                    "users:read", "users:write", "users:delete"
+                ])
+            )
+            db.add(admin_role)
+            
+            # Accountant Role
+            accountant_role = models.Role(
+                name="accountant",
+                name_ar="محاسب",
+                description="صلاحيات المحاسبة والتقارير",
+                permissions=json.dumps([
+                    "dashboard:view",
+                    "sales:read", "sales:write",
+                    "purchases:read", "purchases:write",
+                    "inventory:read",
+                    "treasury:read", "treasury:write",
+                    "expenses:read", "expenses:write",
+                    "contacts:read",
+                    "reports:view", "reports:export"
+                ])
+            )
+            db.add(accountant_role)
+            
+            # Sales Role
+            sales_role = models.Role(
+                name="sales",
+                name_ar="موظف مبيعات",
+                description="صلاحيات المبيعات فقط",
+                permissions=json.dumps([
+                    "dashboard:view",
+                    "sales:read", "sales:write",
+                    "inventory:read",
+                    "contacts:read"
+                ])
+            )
+            db.add(sales_role)
+            
+            # Purchasing Role
+            purchasing_role = models.Role(
+                name="purchasing",
+                name_ar="موظف مشتريات",
+                description="صلاحيات المشتريات فقط",
+                permissions=json.dumps([
+                    "dashboard:view",
+                    "purchases:read", "purchases:write",
+                    "inventory:read",
+                    "contacts:read"
+                ])
+            )
+            db.add(purchasing_role)
+            
+            # Viewer Role
+            viewer_role = models.Role(
+                name="viewer",
+                name_ar="مشاهد",
+                description="مشاهدة فقط بدون تعديل",
+                permissions=json.dumps([
+                    "dashboard:view",
+                    "sales:read",
+                    "purchases:read",
+                    "inventory:read",
+                    "contacts:read",
+                    "reports:view"
+                ])
+            )
+            db.add(viewer_role)
+            
+            db.commit()
+            print("✅ Default roles created")
+        
+        # Check if Admin user exists
+        admin_user = db.query(models.User).filter(
+            models.User.username == "admin"
+        ).first()
+        
+        if not admin_user:
+            print("Creating Admin user...")
+            
+            # Get admin role
+            admin_role = db.query(models.Role).filter(
+                models.Role.name == "admin"
+            ).first()
+            
+            if admin_role:
+                admin_user = models.User(
+                    username="admin",
+                    password_hash=get_password_hash("admin123"),
+                    full_name="مدير النظام",
+                    email="admin@example.com",
+                    role_id=admin_role.role_id,
+                    is_active=True,
+                    is_superuser=True
+                )
+                db.add(admin_user)
+                db.commit()
+                print("✅ Admin user created (admin/admin123)")
+        
+    except Exception as e:
+        print(f"❌ Error bootstrapping roles/users: {e}")
+        db.rollback()

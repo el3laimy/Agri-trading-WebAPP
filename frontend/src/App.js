@@ -37,6 +37,7 @@ import CashFlowReport from './pages/CashFlowReport';
 
 import BackupManagement from './pages/BackupManagement';
 import DebtorsView from './pages/DebtorsView';
+import UserManagement from './pages/UserManagement';
 
 // New Pages
 import ReportsHub from './pages/ReportsHub';
@@ -102,7 +103,9 @@ function App() {
                       {/* New Features */}
                       <Route path="/seasons" element={<SeasonManagement />} />
                       <Route path="/daily-prices" element={<DailyPrices />} />
+                      <Route path="/daily-prices" element={<DailyPrices />} />
                       <Route path="/backups" element={<BackupManagement />} />
+                      <Route path="/users" element={<UserManagement />} />
 
                       {/* Default Redirect */}
                       <Route path="*" element={<Navigate to="/dashboard" />} />
