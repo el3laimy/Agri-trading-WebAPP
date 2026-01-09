@@ -63,14 +63,14 @@ function ReportsHub() {
     ];
 
     return (
-        <div className="container-fluid">
+        <div className="p-6 max-w-7xl mx-auto font-sans">
             <PageHeader
                 title="مركز التقارير المالية"
                 subtitle="نظرة شاملة على أداء الشركة ووضعها المالي"
                 icon="bi-file-earmark-text"
             />
 
-            <div className="row g-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {reports.map((report, index) => (
                     <ReportCard
                         key={index}

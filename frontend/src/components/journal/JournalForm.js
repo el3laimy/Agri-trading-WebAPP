@@ -74,36 +74,36 @@ const JournalForm = ({ accounts, onSubmit, onCancel }) => {
     };
 
     return (
-        <div className="card border-0 shadow-sm mb-4">
-            <div className="card-header bg-primary text-white">
-                <h5 className="mb-0">
-                    <i className="bi bi-plus-circle me-2"></i>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 mb-6 overflow-hidden">
+            <div className="bg-emerald-600 text-white px-5 py-4">
+                <h5 className="font-bold flex items-center gap-2 mb-0">
+                    <i className="bi bi-plus-circle"></i>
                     إضافة قيد محاسبي جديد
                 </h5>
             </div>
-            <div className="card-body">
+            <div className="p-5">
                 {error && (
-                    <div className="alert alert-danger">
-                        <i className="bi bi-exclamation-triangle me-2"></i>{error}
+                    <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 mb-4 flex items-center gap-2">
+                        <i className="bi bi-exclamation-triangle"></i>{error}
                     </div>
                 )}
                 <form onSubmit={handleSubmit}>
-                    <div className="row mb-3">
-                        <div className="col-md-4">
-                            <label className="form-label">تاريخ القيد</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">تاريخ القيد</label>
                             <DatePicker
                                 selected={entryDate}
                                 onChange={date => setEntryDate(date)}
-                                className="form-control"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 dateFormat="yyyy-MM-dd"
                                 required
                             />
                         </div>
-                        <div className="col-md-8">
-                            <label className="form-label">وصف القيد</label>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">وصف القيد</label>
                             <input
                                 type="text"
-                                className="form-control"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                 placeholder="أدخل وصف القيد المحاسبي"
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
@@ -112,22 +112,22 @@ const JournalForm = ({ accounts, onSubmit, onCancel }) => {
                         </div>
                     </div>
 
-                    <div className="table-responsive mb-3">
-                        <table className="table table-bordered">
-                            <thead className="table-light">
+                    <div className="overflow-x-auto mb-4">
+                        <table className="min-w-full border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                            <thead className="bg-gray-50 dark:bg-slate-700">
                                 <tr>
-                                    <th style={{ width: '40%' }}>الحساب</th>
-                                    <th style={{ width: '25%' }}>مدين</th>
-                                    <th style={{ width: '25%' }}>دائن</th>
-                                    <th style={{ width: '10%' }}></th>
+                                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '40%' }}>الحساب</th>
+                                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '25%' }}>مدين</th>
+                                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '25%' }}>دائن</th>
+                                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '10%' }}></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
                                 {lines.map((line, index) => (
-                                    <tr key={index}>
-                                        <td>
+                                    <tr key={index} className="bg-white dark:bg-slate-800">
+                                        <td className="px-4 py-2">
                                             <select
-                                                className="form-select"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                                                 value={line.account_id}
                                                 onChange={e => handleLineChange(index, 'account_id', e.target.value)}
                                                 required
@@ -140,34 +140,34 @@ const JournalForm = ({ accounts, onSubmit, onCancel }) => {
                                                 ))}
                                             </select>
                                         </td>
-                                        <td>
+                                        <td className="px-4 py-2">
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 min="0"
-                                                className="form-control text-end"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 text-left focus:ring-2 focus:ring-emerald-500"
                                                 placeholder="0.00"
                                                 value={line.debit}
                                                 onChange={e => handleLineChange(index, 'debit', e.target.value)}
                                                 disabled={!!line.credit}
                                             />
                                         </td>
-                                        <td>
+                                        <td className="px-4 py-2">
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 min="0"
-                                                className="form-control text-end"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 text-left focus:ring-2 focus:ring-emerald-500"
                                                 placeholder="0.00"
                                                 value={line.credit}
                                                 onChange={e => handleLineChange(index, 'credit', e.target.value)}
                                                 disabled={!!line.debit}
                                             />
                                         </td>
-                                        <td>
+                                        <td className="px-4 py-2">
                                             <button
                                                 type="button"
-                                                className="btn btn-outline-danger btn-sm"
+                                                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                                                 onClick={() => removeLine(index)}
                                                 disabled={lines.length <= 2}
                                             >
@@ -177,13 +177,13 @@ const JournalForm = ({ accounts, onSubmit, onCancel }) => {
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot className="table-secondary">
+                            <tfoot className="bg-gray-100 dark:bg-slate-700">
                                 <tr>
-                                    <td className="fw-bold">الإجمالي</td>
-                                    <td className={`text-end fw-bold ${isBalanced ? 'text-success' : 'text-danger'}`}>
+                                    <td className="px-4 py-3 font-bold text-gray-700 dark:text-gray-300">الإجمالي</td>
+                                    <td className={`px-4 py-3 text-left font-bold ${isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                         {formatCurrency(totalDebit)}
                                     </td>
-                                    <td className={`text-end fw-bold ${isBalanced ? 'text-success' : 'text-danger'}`}>
+                                    <td className={`px-4 py-3 text-left font-bold ${isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                         {formatCurrency(totalCredit)}
                                     </td>
                                     <td></td>
@@ -192,20 +192,20 @@ const JournalForm = ({ accounts, onSubmit, onCancel }) => {
                         </table>
                     </div>
 
-                    <div className="d-flex justify-content-between align-items-center">
-                        <button type="button" className="btn btn-outline-primary" onClick={addLine}>
-                            <i className="bi bi-plus me-1"></i>
+                    <div className="flex justify-between items-center">
+                        <button type="button" className="px-4 py-2 border border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center gap-1" onClick={addLine}>
+                            <i className="bi bi-plus"></i>
                             إضافة سطر
                         </button>
-                        <div className="d-flex gap-2">
-                            <span className={`badge ${isBalanced ? 'bg-success' : 'bg-warning'} p-2 d-flex align-items-center`}>
+                        <div className="flex gap-2 items-center">
+                            <span className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center ${isBalanced ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                                 {isBalanced ? '✓ القيد متوازن' : '⚠ القيد غير متوازن'}
                             </span>
-                            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+                            <button type="button" className="px-4 py-2 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors" onClick={onCancel}>
                                 إلغاء
                             </button>
-                            <button type="submit" className="btn btn-success" disabled={!isBalanced}>
-                                <i className="bi bi-check-lg me-1"></i>
+                            <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-1" disabled={!isBalanced}>
+                                <i className="bi bi-check-lg"></i>
                                 حفظ القيد
                             </button>
                         </div>

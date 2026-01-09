@@ -13,51 +13,34 @@ function EmptyState({
     variant = 'default' // default, success, warning, info
 }) {
     const variants = {
-        default: { bg: '#F8F9FA', iconColor: '#6C757D', borderColor: '#DEE2E6' },
-        success: { bg: '#D4EDDA', iconColor: '#28A745', borderColor: '#C3E6CB' },
-        warning: { bg: '#FFF3CD', iconColor: '#FFC107', borderColor: '#FFE69C' },
-        info: { bg: '#D1ECF1', iconColor: '#17A2B8', borderColor: '#BEE5EB' }
+        default: { bg: 'bg-gray-50', iconColor: 'text-gray-500', border: 'border-gray-300' },
+        success: { bg: 'bg-green-50', iconColor: 'text-green-600', border: 'border-green-300' },
+        warning: { bg: 'bg-amber-50', iconColor: 'text-amber-500', border: 'border-amber-300' },
+        info: { bg: 'bg-blue-50', iconColor: 'text-blue-500', border: 'border-blue-300' }
     };
 
     const style = variants[variant] || variants.default;
 
     return (
-        <div
-            className="text-center py-5 px-4 rounded-3"
-            style={{
-                backgroundColor: style.bg,
-                border: `2px dashed ${style.borderColor}`
-            }}
-        >
-            <div
-                className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{
-                    width: '80px',
-                    height: '80px',
-                    backgroundColor: 'white',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                }}
-            >
-                <i
-                    className={`bi ${icon}`}
-                    style={{ fontSize: '2.5rem', color: style.iconColor }}
-                ></i>
+        <div className={`text-center py-12 px-6 rounded-xl border-2 border-dashed ${style.bg} ${style.border}`}>
+            <div className="w-20 h-20 rounded-full bg-white shadow-md inline-flex items-center justify-center mb-4">
+                <i className={`bi ${icon} text-4xl ${style.iconColor}`}></i>
             </div>
 
-            <h5 className="fw-bold mb-2" style={{ color: '#343A40' }}>
+            <h5 className="font-bold text-gray-800 mb-2 text-lg">
                 {title}
             </h5>
 
-            <p className="text-muted mb-3" style={{ maxWidth: '300px', margin: '0 auto' }}>
+            <p className="text-gray-500 mb-4 max-w-xs mx-auto">
                 {message}
             </p>
 
             {actionLabel && onAction && (
                 <button
-                    className="btn btn-primary"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
                     onClick={onAction}
                 >
-                    <i className="bi bi-plus-circle me-2"></i>
+                    <i className="bi bi-plus-circle"></i>
                     {actionLabel}
                 </button>
             )}
@@ -182,3 +165,4 @@ export const EmptySearch = ({ searchTerm }) => (
 );
 
 export default EmptyState;
+

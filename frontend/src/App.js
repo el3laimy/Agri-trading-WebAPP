@@ -103,7 +103,6 @@ function App() {
                       {/* New Features */}
                       <Route path="/seasons" element={<SeasonManagement />} />
                       <Route path="/daily-prices" element={<DailyPrices />} />
-                      <Route path="/daily-prices" element={<DailyPrices />} />
                       <Route path="/backups" element={<BackupManagement />} />
                       <Route path="/users" element={<UserManagement />} />
 

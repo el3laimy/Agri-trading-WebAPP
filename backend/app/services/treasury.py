@@ -4,7 +4,7 @@ from datetime import date
 from typing import List, Optional
 
 from app import models, schemas, crud
-from app.core.bootstrap import CASH_ACCOUNT_ID, ACCOUNTS_RECEIVABLE_ID, ACCOUNTS_PAYABLE_ID
+from app.core.settings import get_setting
 
 def get_treasury_summary(db: Session, target_date: date = None):
     if target_date is None:
@@ -12,24 +12,27 @@ def get_treasury_summary(db: Session, target_date: date = None):
     
     # 1. Opening Balance: Sum of all transactions BEFORE target_date for CASH accounts
     # Balance = Sum(Debit) - Sum(Credit) [Asset Account]
+    
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+    
     opening_balance_query = db.query(
         func.sum(models.GeneralLedger.debit - models.GeneralLedger.credit)
     ).join(models.FinancialAccount, models.GeneralLedger.account_id == models.FinancialAccount.account_id)\
      .filter(models.FinancialAccount.account_type.in_(['CASH', 'ASSET']))\
-     .filter(models.FinancialAccount.account_id == CASH_ACCOUNT_ID)\
+     .filter(models.FinancialAccount.account_id == cash_id)\
      .filter(models.GeneralLedger.entry_date < target_date)
     
     opening_balance = opening_balance_query.scalar() or 0.0
 
     # 2. Total IN (Day): Sum of Debits to Cash accounts on target_date
     total_in = db.query(func.sum(models.GeneralLedger.debit))\
-        .filter(models.GeneralLedger.account_id == CASH_ACCOUNT_ID)\
+        .filter(models.GeneralLedger.account_id == cash_id)\
         .filter(models.GeneralLedger.entry_date == target_date)\
         .scalar() or 0.0
 
     # 3. Total OUT (Day): Sum of Credits to Cash accounts on target_date
     total_out = db.query(func.sum(models.GeneralLedger.credit))\
-        .filter(models.GeneralLedger.account_id == CASH_ACCOUNT_ID)\
+        .filter(models.GeneralLedger.account_id == cash_id)\
         .filter(models.GeneralLedger.entry_date == target_date)\
         .scalar() or 0.0
 
@@ -37,7 +40,7 @@ def get_treasury_summary(db: Session, target_date: date = None):
     closing_balance = opening_balance + total_in - total_out
 
     # 5. Current Balance (Total System Balance right now)
-    cash_account = crud.get_financial_account(db, CASH_ACCOUNT_ID)
+    cash_account = crud.get_financial_account(db, cash_id)
     current_balance = cash_account.current_balance if cash_account else 0.0
 
     return schemas.TreasurySummary(
@@ -49,9 +52,11 @@ def get_treasury_summary(db: Session, target_date: date = None):
     )
 
 def get_treasury_transactions(db: Session, target_date: date = None, limit: int = 100):
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+
     # Get all ledger entries affecting Cash accounts
     query = db.query(models.GeneralLedger)\
-        .filter(models.GeneralLedger.account_id == CASH_ACCOUNT_ID)
+        .filter(models.GeneralLedger.account_id == cash_id)
         
     if target_date:
         query = query.filter(models.GeneralLedger.entry_date == target_date)
@@ -88,13 +93,17 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
     return result
 
 
-def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate) -> dict:
+def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate, user_id: int = None) -> dict:
     """
     إنشاء إيصال قبض نقدي
     القيد: من حـ/ النقدية إلى حـ/ الذمم المدينة (أو إيراد عام)
     
     التحسين: إنشاء سجل Payment ليظهر في كشف حساب العميل
     """
+    # Get Account IDs
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+    accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
+
     # 1. إنشاء سجل Payment إذا كان هناك عميل محدد
     payment_id = None
     if receipt.contact_id:
@@ -104,10 +113,11 @@ def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate) -> dict
             contact_id=receipt.contact_id,
             payment_method='CASH',
             notes=receipt.description,
-            credit_account_id=ACCOUNTS_RECEIVABLE_ID,
-            debit_account_id=CASH_ACCOUNT_ID,
+            credit_account_id=accounts_receivable_id,
+            debit_account_id=cash_id,
             transaction_type='GENERAL',  # قبض عام على الحساب
-            transaction_id=None  # ليس مربوط بفاتورة محددة
+            transaction_id=None,  # ليس مربوط بفاتورة محددة
+            created_by=user_id
         )
         db.add(db_payment)
         db.flush()  # للحصول على payment_id
@@ -116,12 +126,13 @@ def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate) -> dict
     # 2. قيد النقدية (مدين - دخول)
     cash_entry = models.GeneralLedger(
         entry_date=receipt.receipt_date,
-        account_id=CASH_ACCOUNT_ID,
+        account_id=cash_id,
         debit=receipt.amount,
         credit=0.0,
         description=receipt.description,
         source_type="CASH_RECEIPT",
-        source_id=payment_id or 0
+        source_id=payment_id or 0,
+        created_by=user_id
     )
     db.add(cash_entry)
     
@@ -129,19 +140,20 @@ def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate) -> dict
     if receipt.contact_id:
         receivable_entry = models.GeneralLedger(
             entry_date=receipt.receipt_date,
-            account_id=ACCOUNTS_RECEIVABLE_ID,
+            account_id=accounts_receivable_id,
             debit=0.0,
             credit=receipt.amount,
             description=receipt.description,
             source_type="CASH_RECEIPT",
-            source_id=payment_id or 0
+            source_id=payment_id or 0,
+            created_by=user_id
         )
         db.add(receivable_entry)
     
     # 4. تحديث أرصدة الحسابات
-    crud.update_account_balance(db, CASH_ACCOUNT_ID, receipt.amount)
+    crud.update_account_balance(db, cash_id, receipt.amount)
     if receipt.contact_id:
-        crud.update_account_balance(db, ACCOUNTS_RECEIVABLE_ID, -receipt.amount)
+        crud.update_account_balance(db, accounts_receivable_id, -receipt.amount)
     
     db.commit()
     
@@ -153,13 +165,17 @@ def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate) -> dict
     }
 
 
-def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate) -> dict:
+def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate, user_id: int = None) -> dict:
     """
     إنشاء إيصال صرف نقدي
     القيد: من حـ/ الذمم الدائنة (أو مصروف عام) إلى حـ/ النقدية
     
     التحسين: إنشاء سجل Payment ليظهر في كشف حساب المورد
     """
+    # Get Account IDs
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+    accounts_payable_id = int(get_setting(db, "ACCOUNTS_PAYABLE_ID"))
+
     # 1. إنشاء سجل Payment إذا كان هناك مورد محدد
     payment_id = None
     if payment.contact_id:
@@ -169,10 +185,11 @@ def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate) -> dict
             contact_id=payment.contact_id,
             payment_method='CASH',
             notes=payment.description,
-            credit_account_id=CASH_ACCOUNT_ID,
-            debit_account_id=ACCOUNTS_PAYABLE_ID,
+            credit_account_id=cash_id,
+            debit_account_id=accounts_payable_id,
             transaction_type='GENERAL',  # صرف عام على الحساب
-            transaction_id=None  # ليس مربوط بفاتورة محددة
+            transaction_id=None,  # ليس مربوط بفاتورة محددة
+            created_by=user_id
         )
         db.add(db_payment)
         db.flush()  # للحصول على payment_id
@@ -181,12 +198,13 @@ def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate) -> dict
     # 2. قيد النقدية (دائن - خروج)
     cash_entry = models.GeneralLedger(
         entry_date=payment.payment_date,
-        account_id=CASH_ACCOUNT_ID,
+        account_id=cash_id,
         debit=0.0,
         credit=payment.amount,
         description=payment.description,
         source_type="CASH_PAYMENT",
-        source_id=payment_id or 0
+        source_id=payment_id or 0,
+        created_by=user_id
     )
     db.add(cash_entry)
     
@@ -194,18 +212,19 @@ def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate) -> dict
     if payment.contact_id:
         payable_entry = models.GeneralLedger(
             entry_date=payment.payment_date,
-            account_id=ACCOUNTS_PAYABLE_ID,
+            account_id=accounts_payable_id,
             debit=payment.amount,
             credit=0.0,
             description=payment.description,
             source_type="CASH_PAYMENT",
-            source_id=payment_id or 0
+            source_id=payment_id or 0,
+            created_by=user_id
         )
         db.add(payable_entry)
-        crud.update_account_balance(db, ACCOUNTS_PAYABLE_ID, -payment.amount)
+        crud.update_account_balance(db, accounts_payable_id, -payment.amount)
     
     # 4. تحديث رصيد الحساب النقدي
-    crud.update_account_balance(db, CASH_ACCOUNT_ID, -payment.amount)
+    crud.update_account_balance(db, cash_id, -payment.amount)
     
     db.commit()
     
@@ -217,7 +236,7 @@ def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate) -> dict
     }
 
 
-def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate) -> dict:
+def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate, user_id: int = None) -> dict:
     """
     تسجيل مصروف سريع من الخزينة
     القيد: من حـ/ المصروفات إلى حـ/ النقدية
@@ -238,6 +257,8 @@ def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate) -> di
         db.add(expense_account)
         db.commit()
     
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+
     # 1. إنشاء سجل المصروفات (Expense Model)
     # لضمان ظهوره في تقارير المصروفات
     db_expense = models.Expense(
@@ -245,7 +266,8 @@ def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate) -> di
         description=expense.description,
         amount=expense.amount,
         debit_account_id=expense_account_id,
-        credit_account_id=CASH_ACCOUNT_ID
+        credit_account_id=cash_id,
+        created_by=user_id
     )
     db.add(db_expense)
     db.flush() # للحصول على expense_id
@@ -258,25 +280,27 @@ def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate) -> di
         credit=0.0,
         description=expense.description,
         source_type="QUICK_EXPENSE",
-        source_id=db_expense.expense_id
+        source_id=db_expense.expense_id,
+        created_by=user_id
     )
     db.add(expense_entry)
     
     # قيد النقدية (دائن - خروج)
     cash_entry = models.GeneralLedger(
         entry_date=expense.expense_date,
-        account_id=CASH_ACCOUNT_ID,
+        account_id=cash_id,
         debit=0.0,
         credit=expense.amount,
         description=expense.description,
         source_type="QUICK_EXPENSE",
-        source_id=db_expense.expense_id
+        source_id=db_expense.expense_id,
+        created_by=user_id
     )
     db.add(cash_entry)
     
     # تحديث الأرصدة
     crud.update_account_balance(db, expense_account_id, expense.amount)
-    crud.update_account_balance(db, CASH_ACCOUNT_ID, -expense.amount)
+    crud.update_account_balance(db, cash_id, -expense.amount)
     
     db.commit()
     

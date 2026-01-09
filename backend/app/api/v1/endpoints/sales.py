@@ -9,9 +9,39 @@ from app.services import sales as sales_service
 
 router = APIRouter()
 
+from app.auth.dependencies import get_current_user
+from app import models
+
+@router.get("/last-price/{crop_id}/{customer_id}")
+def get_last_sale_price(
+    crop_id: int,
+    customer_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    الحصول على آخر سعر بيع لمحصول معين لعميل معين
+    مفيد لتعبئة السعر الافتراضي في النموذج
+    """
+    last_sale = db.query(models.Sale).filter(
+        models.Sale.crop_id == crop_id,
+        models.Sale.customer_id == customer_id
+    ).order_by(models.Sale.sale_date.desc()).first()
+    
+    if last_sale:
+        return {
+            "selling_unit_price": float(last_sale.selling_unit_price),
+            "sale_date": last_sale.sale_date.isoformat() if last_sale.sale_date else None,
+            "quantity_sold_kg": float(last_sale.quantity_sold_kg) if last_sale.quantity_sold_kg else None
+        }
+    return {"selling_unit_price": None, "sale_date": None, "quantity_sold_kg": None}
+
 @router.post("/", response_model=schemas.SaleRead)
-def create_sale(sale: schemas.SaleCreate, db: Session = Depends(get_db)):
-    return sales_service.create_new_sale(db=db, sale=sale)
+def create_sale(
+    sale: schemas.SaleCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return sales_service.create_new_sale(db=db, sale=sale, user_id=current_user.user_id)
 
 @router.get("/", response_model=List[schemas.SaleRead])
 def read_sales(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -48,6 +78,56 @@ def read_sales(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
         response_sales.append(sale_response)
         
     return response_sales
+
+@router.put("/{sale_id}", response_model=schemas.SaleRead)
+def update_sale(
+    sale_id: int,
+    sale_update: schemas.SaleCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """تعديل عملية بيع"""
+    db_sale = db.query(models.Sale).filter(models.Sale.sale_id == sale_id).first()
+    if not db_sale:
+        raise HTTPException(status_code=404, detail="عملية البيع غير موجودة")
+    
+    # Update sale fields
+    db_sale.crop_id = sale_update.crop_id
+    db_sale.customer_id = sale_update.customer_id
+    db_sale.sale_date = sale_update.sale_date
+    db_sale.quantity_sold_kg = sale_update.quantity_sold_kg
+    db_sale.selling_unit_price = sale_update.selling_unit_price
+    db_sale.selling_pricing_unit = sale_update.selling_pricing_unit
+    db_sale.specific_selling_factor = sale_update.specific_selling_factor
+    db_sale.total_sale_amount = sale_update.total_sale_amount
+    
+    db.commit()
+    db.refresh(db_sale)
+    
+    return db_sale
+
+@router.delete("/{sale_id}")
+def delete_sale(
+    sale_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """حذف عملية بيع"""
+    db_sale = db.query(models.Sale).filter(models.Sale.sale_id == sale_id).first()
+    if not db_sale:
+        raise HTTPException(status_code=404, detail="عملية البيع غير موجودة")
+    
+    # Delete related journal entries
+    db.query(models.JournalEntry).filter(
+        models.JournalEntry.reference_type == 'SALE',
+        models.JournalEntry.reference_id == sale_id
+    ).delete()
+    
+    # Delete the sale
+    db.delete(db_sale)
+    db.commit()
+    
+    return {"message": "تم حذف عملية البيع بنجاح"}
 
 from fastapi.responses import StreamingResponse
 from app.services import invoices

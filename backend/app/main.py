@@ -2,12 +2,17 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
+import decimal
+
+# Configure Global Decimal Context
+decimal.getcontext().rounding = decimal.ROUND_HALF_UP
 
 from app.database import Base, engine, SessionLocal
 # Import all models to ensure they are registered with SQLAlchemy
 from app.models import Crop, Contact, FinancialAccount, Purchase, Inventory, GeneralLedger
 from app.api.v1.api import api_router
-from app.core.bootstrap import bootstrap_financial_accounts, bootstrap_roles_and_users
+from app.core.bootstrap import bootstrap_system
+from app.services.backup import auto_backup_on_startup
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -17,11 +22,12 @@ async def lifespan(app: FastAPI):
     # On startup
     db = SessionLocal()
     try:
-        print("Bootstrapping financial accounts...")
-        bootstrap_financial_accounts(db)
-        print("Bootstrapping roles and users...")
-        bootstrap_roles_and_users(db)
+        print("Bootstrapping system...")
+        bootstrap_system(db)
         print("Bootstrap complete.")
+        
+        # Auto-backup on startup
+        auto_backup_on_startup()
     finally:
         db.close()
     yield
@@ -56,6 +62,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from app.core.error_handling import setup_exception_handlers
+setup_exception_handlers(app)
 
 @app.get("/", tags=["Root"])
 @limiter.limit("100/minute")

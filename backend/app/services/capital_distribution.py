@@ -8,13 +8,7 @@ from datetime import date
 from typing import Optional
 
 from app import models, schemas
-from app.core.bootstrap import (
-    CASH_ACCOUNT_ID,
-    INVENTORY_ACCOUNT_ID,
-    ACCOUNTS_RECEIVABLE_ID,
-    ACCOUNTS_PAYABLE_ID,
-    OWNER_EQUITY_ID
-)
+from app.core.settings import get_setting
 from app.services.reporting import generate_income_statement
 
 
@@ -44,27 +38,35 @@ def generate_capital_distribution(
     # ============ الجانب الأيمن (الأصول / استخدامات التمويل) ============
     
     # 1. النقدية (رصيد حساب الخزينة)
-    cash_account = db.query(models.FinancialAccount).filter(
-        models.FinancialAccount.account_id == CASH_ACCOUNT_ID
-    ).first()
-    cash_in_hand = cash_account.current_balance if cash_account else 0.0
+    cash_id = get_setting(db, "CASH_ACCOUNT_ID")
+    if cash_id:
+        cash_account = db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(cash_id)
+        ).first()
+        cash_in_hand = float(cash_account.current_balance) if cash_account else 0.0
+    else:
+        cash_in_hand = 0.0
     
     # 2. قيمة المخزون (من جدول المخزون)
     inventory_value = db.query(
         func.sum(models.Inventory.current_stock_kg * models.Inventory.average_cost_per_kg)
     ).scalar() or 0.0
+    inventory_value = float(inventory_value)
     
     # 3. الديون لنا (من العملاء) - نفس منطق تقرير الديون
     # المبيعات - المرتجعات - المدفوعات
     total_sales = db.query(func.sum(models.Sale.total_sale_amount)).scalar() or 0.0
+    total_sales = float(total_sales)
     
     # مرتجعات المبيعات
     sale_returns = db.query(func.sum(models.SaleReturn.refund_amount)).scalar() or 0.0
+    sale_returns = float(sale_returns)
     
     # المدفوعات المستلمة من العملاء (من جدول Payments للعملاء)
     customer_payments = db.query(func.sum(models.Payment.amount)).join(
         models.Contact, models.Payment.contact_id == models.Contact.contact_id
     ).filter(models.Contact.is_customer == True).scalar() or 0.0
+    customer_payments = float(customer_payments)
     
     accounts_receivable = total_sales - sale_returns - customer_payments
     
@@ -74,30 +76,37 @@ def generate_capital_distribution(
     # ============ الجانب الأيسر (مصادر التمويل) ============
     
     # 1. رأس المال الأصلي
-    equity_account = db.query(models.FinancialAccount).filter(
-        models.FinancialAccount.account_id == OWNER_EQUITY_ID
-    ).first()
-    owner_capital = abs(equity_account.current_balance) if equity_account else 0.0
+    equity_id = get_setting(db, "OWNER_EQUITY_ID")
+    if equity_id:
+        equity_account = db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(equity_id)
+        ).first()
+        owner_capital = abs(float(equity_account.current_balance)) if equity_account else 0.0
+    else:
+        owner_capital = 0.0
     
     # 2. صافي الربح (من قائمة الدخل - من البداية للتوازن)
     try:
         all_time_start = date(2000, 1, 1)
         income_statement = generate_income_statement(db, all_time_start, report_date)
-        net_profit = income_statement.get('net_income', 0.0)
+        net_profit = float(income_statement.get('net_income', 0.0))
     except Exception:
         net_profit = 0.0
     
     # 3. الديون علينا (للموردين) - نفس منطق تقرير الديون
     # المشتريات - المرتجعات - المدفوعات
     total_purchases = db.query(func.sum(models.Purchase.total_cost)).scalar() or 0.0
+    total_purchases = float(total_purchases)
     
     # مرتجعات المشتريات
     purchase_returns = db.query(func.sum(models.PurchaseReturn.returned_cost)).scalar() or 0.0
+    purchase_returns = float(purchase_returns)
     
     # المدفوعات للموردين (من جدول Payments للموردين)
     supplier_payments = db.query(func.sum(models.Payment.amount)).join(
         models.Contact, models.Payment.contact_id == models.Contact.contact_id
     ).filter(models.Contact.is_supplier == True).scalar() or 0.0
+    supplier_payments = float(supplier_payments)
     
     accounts_payable = total_purchases - purchase_returns - supplier_payments
     

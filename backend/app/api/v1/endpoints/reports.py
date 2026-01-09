@@ -182,3 +182,51 @@ def get_expenses_stats(db: Session = Depends(get_db)):
     إحصائيات المصروفات
     """
     return advanced_reports.get_expenses_stats(db)
+
+
+# --- Dashboard Enhanced Endpoints ---
+
+
+
+@router.get("/dashboard/recent-activities")
+def get_recent_activities(
+    limit: int = Query(10, description="عدد العمليات"),
+    db: Session = Depends(get_db)
+):
+    """آخر العمليات (مبيعات ومشتريات)"""
+    return dashboard.get_recent_activities(db, limit)
+
+
+@router.get("/dashboard/season-summary")
+def get_season_summary(db: Session = Depends(get_db)):
+    """ملخص الموسم الحالي مع نسبة التقدم"""
+    return dashboard.get_current_season_summary(db)
+
+
+@router.get("/dashboard/advanced-chart")
+def get_advanced_chart(
+    start_date: date,
+    end_date: date,
+    compare_start_date: Optional[date] = None,
+    compare_end_date: Optional[date] = None,
+    crop_id: Optional[int] = None,
+    include_expenses: bool = False,
+    db: Session = Depends(get_db)
+):
+    """
+    بيانات الرسم البياني المتقدم
+    - يدعم نطاق تاريخ مخصص
+    - يدعم المقارنة بفترة سابقة
+    - يدعم فلترة المحصول
+    - يدعم عرض المصاريف
+    """
+    return dashboard.get_advanced_chart_data(
+        db, 
+        start_date, 
+        end_date, 
+        compare_start_date, 
+        compare_end_date, 
+        crop_id, 
+        include_expenses
+    )
+

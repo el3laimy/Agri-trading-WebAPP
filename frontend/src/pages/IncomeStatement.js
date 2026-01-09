@@ -46,7 +46,7 @@ const IncomeStatement = () => {
     };
 
     return (
-        <div className="container-fluid">
+        <div className="p-6">
             <PageHeader
                 title="قائمة الدخل"
                 subtitle="تقرير الأرباح والخسائر والنتائج التشغيلية"
@@ -54,36 +54,36 @@ const IncomeStatement = () => {
             />
 
             {/* Filter Card */}
-            <Card className="mb-4">
-                <div className="row g-3 align-items-end">
-                    <div className="col-md-4">
-                        <label className="form-label fw-bold">من تاريخ</label>
+            <Card className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">من تاريخ</label>
                         <DatePicker
                             selected={startDate}
                             onChange={setStartDate}
-                            className="form-control"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                             dateFormat="yyyy-MM-dd"
                         />
                     </div>
-                    <div className="col-md-4">
-                        <label className="form-label fw-bold">إلى تاريخ</label>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">إلى تاريخ</label>
                         <DatePicker
                             selected={endDate}
                             onChange={setEndDate}
-                            className="form-control"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                             dateFormat="yyyy-MM-dd"
                         />
                     </div>
-                    <div className="col-md-4 d-flex gap-2">
+                    <div className="flex gap-2">
                         <button
-                            className="btn btn-primary flex-grow-1"
+                            className="flex-grow px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
                             onClick={handleGenerateReport}
                             disabled={isLoading}
                         >
                             {isLoading ? 'جاري التحضير...' : 'عرض التقرير'}
                         </button>
                         {reportData && (
-                            <button className="btn btn-outline-secondary" onClick={handlePrint}>
+                            <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors" onClick={handlePrint}>
                                 <i className="bi bi-printer"></i>
                             </button>
                         )}
@@ -91,70 +91,74 @@ const IncomeStatement = () => {
                 </div>
             </Card>
 
-            {error && <div className="alert alert-danger mb-4">{error}</div>}
+            {error && (
+                <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 mb-6">
+                    {error}
+                </div>
+            )}
 
             {isLoading && <PageLoading text="جاري إعداد قائمة الدخل..." />}
 
             {reportData && !isLoading && (
-                <div className="card border-0 shadow-lg print-section">
-                    <div className="card-header bg-white text-center py-4 border-bottom">
-                        <h3 className="fw-bold text-primary mb-2">قائمة الدخل</h3>
-                        <p className="text-muted mb-0">للفترة من {reportData.start_date} إلى {reportData.end_date}</p>
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 print-section overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-slate-700 text-center py-6 border-b border-gray-200 dark:border-slate-600">
+                        <h3 className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mb-2">قائمة الدخل</h3>
+                        <p className="text-gray-500 dark:text-gray-400">للفترة من {reportData.start_date} إلى {reportData.end_date}</p>
                     </div>
-                    <div className="card-body p-4">
+                    <div className="p-6">
                         {/* Revenues */}
-                        <div className="mb-4">
-                            <h5 className="fw-bold text-success border-bottom pb-2 mb-3">
-                                <i className="bi bi-arrow-down-circle me-2"></i>الإيرادات
+                        <div className="mb-6">
+                            <h5 className="font-bold text-green-600 dark:text-green-400 border-b-2 border-green-200 dark:border-green-800 pb-2 mb-4 flex items-center gap-2">
+                                <i className="bi bi-arrow-down-circle"></i>الإيرادات
                             </h5>
-                            <table className="table table-hover">
-                                <tbody>
+                            <table className="w-full">
+                                <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {reportData.revenues.map((item, index) => (
-                                        <tr key={`rev-${index}`}>
-                                            <td>{item.account_name}</td>
-                                            <td className="text-end fw-medium">{formatCurrency(item.amount)}</td>
+                                        <tr key={`rev-${index}`} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                            <td className="py-3 text-gray-700 dark:text-gray-300">{item.account_name}</td>
+                                            <td className="py-3 text-left font-medium text-gray-800 dark:text-gray-200">{formatCurrency(item.amount)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot>
-                                    <tr className="table-success fw-bold">
-                                        <td>إجمالي الإيرادات</td>
-                                        <td className="text-end">{formatCurrency(reportData.total_revenue)}</td>
+                                    <tr className="bg-green-50 dark:bg-green-900/20 font-bold">
+                                        <td className="py-3 px-4 text-green-700 dark:text-green-400">إجمالي الإيرادات</td>
+                                        <td className="py-3 px-4 text-left text-green-700 dark:text-green-400">{formatCurrency(reportData.total_revenue)}</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
 
                         {/* Expenses */}
-                        <div className="mb-4">
-                            <h5 className="fw-bold text-danger border-bottom pb-2 mb-3">
-                                <i className="bi bi-arrow-up-circle me-2"></i>المصروفات
+                        <div className="mb-6">
+                            <h5 className="font-bold text-red-500 dark:text-red-400 border-b-2 border-red-200 dark:border-red-800 pb-2 mb-4 flex items-center gap-2">
+                                <i className="bi bi-arrow-up-circle"></i>المصروفات
                             </h5>
-                            <table className="table table-hover">
-                                <tbody>
+                            <table className="w-full">
+                                <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {reportData.expenses.map((item, index) => (
-                                        <tr key={`exp-${index}`}>
-                                            <td>{item.account_name}</td>
-                                            <td className="text-end fw-medium">{formatCurrency(item.amount)}</td>
+                                        <tr key={`exp-${index}`} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                            <td className="py-3 text-gray-700 dark:text-gray-300">{item.account_name}</td>
+                                            <td className="py-3 text-left font-medium text-gray-800 dark:text-gray-200">{formatCurrency(item.amount)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot>
-                                    <tr className="table-danger fw-bold">
-                                        <td>إجمالي المصروفات</td>
-                                        <td className="text-end">{formatCurrency(reportData.total_expense)}</td>
+                                    <tr className="bg-red-50 dark:bg-red-900/20 font-bold">
+                                        <td className="py-3 px-4 text-red-600 dark:text-red-400">إجمالي المصروفات</td>
+                                        <td className="py-3 px-4 text-left text-red-600 dark:text-red-400">{formatCurrency(reportData.total_expense)}</td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
 
                         {/* Net Income Summary */}
-                        <div className={`alert ${reportData.net_income >= 0 ? 'alert-success' : 'alert-danger'} d-flex justify-content-between align-items-center mt-4 p-4 shadow-sm`}>
+                        <div className={`flex justify-between items-center p-6 rounded-xl mt-6 shadow-sm ${reportData.net_income >= 0 ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'}`}>
                             <div>
-                                <h4 className="fw-bold mb-0">صافي الربح / (الخسارة)</h4>
-                                <small>الناتج النهائي للعمليات خلال الفترة</small>
+                                <h4 className={`font-bold text-lg ${reportData.net_income >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>صافي الربح / (الخسارة)</h4>
+                                <small className="text-gray-500 dark:text-gray-400">الناتج النهائي للعمليات خلال الفترة</small>
                             </div>
-                            <h2 className="fw-bold mb-0 display-6">
+                            <h2 className={`font-bold text-3xl ${reportData.net_income >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                                 {formatCurrency(reportData.net_income)}
                             </h2>
                         </div>

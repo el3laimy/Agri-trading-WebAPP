@@ -15,13 +15,21 @@ def get_db():
     finally:
         db.close()
 
+from app.auth.dependencies import get_current_user
+
+# ... imports ...
+
 @router.post("/", response_model=schemas.ExpenseRead)
-def create_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
+def create_expense(
+    expense: schemas.ExpenseCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     """
     Create a new expense, automatically generating the corresponding general ledger entries.
     """
     # You might want to add extra validation here, e.g., ensure debit and credit accounts are valid types
-    return crud.create_expense(db=db, expense=expense)
+    return crud.create_expense(db=db, expense=expense, user_id=current_user.user_id)
 
 @router.get("/", response_model=List[schemas.ExpenseRead])
 def read_expenses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

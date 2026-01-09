@@ -75,109 +75,133 @@ function InventoryView() {
             {isLoading && !inventory.length ? (
                 <PageLoading text="جاري جرد المخزون..." />
             ) : (
-                <Card className="border-0 shadow-lg">
-                    <div className="table-responsive">
-                        <table className="table table-hover align-middle mb-0">
-                            <thead className="table-light">
-                                <tr>
-                                    <th className="py-3 px-4">المحصول</th>
-                                    <th className="py-3 text-center">الكمية الحالية</th>
-                                    <th className="py-3 text-center">متوسط التكلفة</th>
-                                    <th className="py-3 text-center">القيمة الإجمالية</th>
-                                    <th className="py-3 text-center" style={{ width: '50px' }}></th>
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-colors">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right" dir="rtl">
+                            <thead>
+                                <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700">
+                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200">المحصول</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center">الكمية الحالية</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center">متوسط التكلفة</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center">القيمة الإجمالية</th>
+                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center" style={{ width: '50px' }}></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                 {inventory.map(item => (
                                     <React.Fragment key={item.crop.crop_id}>
                                         <tr
                                             onClick={() => toggleRow(item.crop.crop_id)}
-                                            className={`cursor-pointer transition-colors ${expandedCropId === item.crop.crop_id ? 'bg-light' : ''}`}
-                                            style={{ cursor: 'pointer' }}
+                                            className={`group cursor-pointer transition-colors hover:bg-emerald-50/50 dark:hover:bg-slate-700/50 ${expandedCropId === item.crop.crop_id ? 'bg-emerald-50/30 dark:bg-slate-700/30' : ''}`}
                                         >
-                                            <td className="px-4">
-                                                <div className="d-flex align-items-center">
-                                                    <div className="bg-success bg-opacity-10 p-2 rounded me-2">
-                                                        <i className="bi bi-flower1 text-success"></i>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                                                        <i className="bi bi-flower1"></i>
                                                     </div>
-                                                    <strong>{item.crop.crop_name}</strong>
+                                                    <span className="mr-3 font-bold text-gray-800 dark:text-gray-100">{item.crop.crop_name}</span>
                                                 </div>
                                             </td>
-                                            <td className="text-center">
-                                                <span className={`badge ${item.current_stock_kg <= (item.low_stock_threshold || 100) ? 'bg-warning text-dark' : 'bg-primary-subtle text-primary'} fs-6 fw-normal px-3`}>
-                                                    {item.current_stock_kg.toFixed(2)} كجم
-                                                </span>
-                                                {item.current_stock_kg <= (item.low_stock_threshold || 100) && (
-                                                    <div className="text-warning small mt-1">
+                                            <td className="px-6 py-4 text-center">
+                                                {item.crop.is_complex_unit ? (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.gross_stock_kg <= (item.low_stock_threshold || 100) ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`} title="الوزن القائم (Physical Gross)">
+                                                            {Number(item.gross_stock_kg).toLocaleString('en-US')} كجم (قائم)
+                                                        </span>
+                                                        <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                            <i className="bi bi-bag-fill"></i>
+                                                            {item.bag_count} عبوة
+                                                        </div>
+                                                        <div className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 pt-1 border-t border-gray-100 dark:border-slate-700 w-full" title="صافي الوزن المرجعي (Financial Net)">
+                                                            <i className="bi bi-calculator me-1"></i>
+                                                            صافي: {Number(item.net_stock_kg).toLocaleString('en-US')} كجم
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${item.current_stock_kg <= (item.low_stock_threshold || 100) ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`}>
+                                                        {Number(item.current_stock_kg).toLocaleString('en-US')} كجم
+                                                    </span>
+                                                )}
+
+                                                {(item.current_stock_kg <= (item.low_stock_threshold || 100) || (item.crop.is_complex_unit && item.gross_stock_kg <= (item.low_stock_threshold || 100))) && (
+                                                    <div className="text-amber-500 dark:text-amber-400 text-[10px] font-bold mt-1 animate-pulse">
                                                         <i className="bi bi-exclamation-triangle-fill me-1"></i>
                                                         مخزون منخفض
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="text-center text-muted fw-bold">
-                                                {formatCurrency(item.average_cost_per_kg)} <small className="fw-normal">/كجم</small>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                    {formatCurrency(item.average_cost_per_kg)} <small className="opacity-75">/كجم</small>
+                                                </div>
                                             </td>
-                                            <td className="text-center fw-bold text-success">
-                                                {formatCurrency(item.current_stock_kg * item.average_cost_per_kg)}
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                                    {formatCurrency(item.current_stock_kg * item.average_cost_per_kg)}
+                                                </div>
                                             </td>
-                                            <td className="text-center text-muted">
-                                                <i className={`bi bi-chevron-${expandedCropId === item.crop.crop_id ? 'up' : 'down'}`}></i>
+                                            <td className="px-6 py-4 text-center text-gray-400 dark:text-gray-500">
+                                                <i className={`bi bi-chevron-${expandedCropId === item.crop.crop_id ? 'up' : 'down'} transition-transform duration-300`}></i>
                                             </td>
                                         </tr>
                                         {expandedCropId === item.crop.crop_id && (
-                                            <tr className="bg-light">
-                                                <td colSpan="5" className="p-4 border-start border-4 border-success">
-                                                    <div className="bg-white rounded border shadow-sm p-3">
-                                                        <h6 className="mb-3 fw-bold text-success border-bottom pb-2">
-                                                            <i className="bi bi-layers me-2"></i>
-                                                            تفاصيل الدفعات (نظام FIFO)
-                                                        </h6>
+                                            <tr>
+                                                <td colSpan="5" className="p-0 border-t border-emerald-100 dark:border-slate-700">
+                                                    <div className="bg-emerald-50/20 dark:bg-slate-900/40 p-6 animate-fade-in">
+                                                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-emerald-100 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
+                                                            <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border-b border-emerald-100 dark:border-slate-700 flex items-center gap-2">
+                                                                <i className="bi bi-layers text-emerald-600 dark:text-emerald-400"></i>
+                                                                <h6 className="m-0 text-sm font-bold text-emerald-800 dark:text-emerald-200">تفاصيل الدفعات (نظام FIFO)</h6>
+                                                            </div>
 
-                                                        {loadingBatches[item.crop.crop_id] ? (
-                                                            <div className="text-center py-3">
-                                                                <div className="spinner-border spinner-border-sm text-success mb-2" role="status"></div>
-                                                                <div className="small text-muted">جاري تحميل البيانات...</div>
+                                                            <div className="p-4">
+                                                                {loadingBatches[item.crop.crop_id] ? (
+                                                                    <div className="flex flex-col items-center py-6 text-emerald-600 dark:text-emerald-400">
+                                                                        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin mb-2"></div>
+                                                                        <span className="text-xs font-medium">جاري التحميل...</span>
+                                                                    </div>
+                                                                ) : batches[item.crop.crop_id] && batches[item.crop.crop_id].length > 0 ? (
+                                                                    <div className="overflow-x-auto">
+                                                                        <table className="w-full text-xs text-right" dir="rtl">
+                                                                            <thead>
+                                                                                <tr className="text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                                                                    <th className="pb-3 pr-2">الدفعة #</th>
+                                                                                    <th className="pb-3">تاريخ الشراء</th>
+                                                                                    <th className="pb-3 text-center">الكمية</th>
+                                                                                    <th className="pb-3 text-center">التكلفة (كجم)</th>
+                                                                                    <th className="pb-3 text-center">الصلاحية</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                                                                                {batches[item.crop.crop_id].map(batch => (
+                                                                                    <tr key={batch.batch_id} className="text-gray-600 dark:text-gray-300">
+                                                                                        <td className="py-2.5 pr-2 font-mono opacity-60">#{batch.batch_id}</td>
+                                                                                        <td className="py-2.5">{batch.purchase_date}</td>
+                                                                                        <td className="py-2.5 text-center font-bold">{batch.quantity_kg.toLocaleString('en-US')} كجم</td>
+                                                                                        <td className="py-2.5 text-center">{formatCurrency(batch.cost_per_kg)}</td>
+                                                                                        <td className="py-2.5 text-center">
+                                                                                            {batch.expiry_date ? (
+                                                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded ${new Date(batch.expiry_date) < new Date() ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'}`}>
+                                                                                                    {batch.expiry_date}
+                                                                                                    {new Date(batch.expiry_date) < new Date() && <i className="bi bi-exclamation-circle-fill ms-1"></i>}
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                <span className="text-gray-300 dark:text-gray-600">-</span>
+                                                                                            )}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-col items-center py-6 text-gray-400 dark:text-gray-500">
+                                                                        <i className="bi bi-info-circle text-2xl mb-2"></i>
+                                                                        <p className="text-xs">لا توجد تفاصيل دفعات متاحة (رصيد افتتاحي)</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ) : batches[item.crop.crop_id] && batches[item.crop.crop_id].length > 0 ? (
-                                                            <table className="table table-sm table-bordered mb-0">
-                                                                <thead className="table-light small text-muted">
-                                                                    <tr>
-                                                                        <th>الدفعة #</th>
-                                                                        <th>تاريخ الشراء</th>
-                                                                        <th>المورد</th>
-                                                                        <th>الكمية المتبقية</th>
-                                                                        <th>التكلفة (كجم)</th>
-                                                                        <th>الصلاحية</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {batches[item.crop.crop_id].map(batch => (
-                                                                        <tr key={batch.batch_id}>
-                                                                            <td className="text-muted small">#{batch.batch_id}</td>
-                                                                            <td>{batch.purchase_date}</td>
-                                                                            <td>{batch.supplier_name}</td>
-                                                                            <td className="fw-bold text-dark">{batch.quantity_kg} كجم</td>
-                                                                            <td>{formatCurrency(batch.cost_per_kg)}</td>
-                                                                            <td className={batch.expiry_date && new Date(batch.expiry_date) < new Date() ? 'text-danger fw-bold' : ''}>
-                                                                                {batch.expiry_date ? (
-                                                                                    <>
-                                                                                        {batch.expiry_date}
-                                                                                        {new Date(batch.expiry_date) < new Date() && <i className="bi bi-exclamation-circle-fill ms-1" title="منتهية الصلاحية"></i>}
-                                                                                    </>
-                                                                                ) : (
-                                                                                    <span className="text-muted">-</span>
-                                                                                )}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        ) : (
-                                                            <div className="text-center text-muted py-3 border rounded bg-white">
-                                                                <i className="bi bi-info-circle mb-2 d-block fs-5"></i>
-                                                                لا توجد تفاصيل دفعات متاحة لهذا المحصول (رصيد افتتاحي)
-                                                            </div>
-                                                        )}
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -195,7 +219,7 @@ function InventoryView() {
                             </tbody>
                         </table>
                     </div>
-                </Card>
+                </div>
             )}
         </div>
     );

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_URL = '/api/v1';
 
 export const getSeasons = async () => {
     const response = await axios.get(`${API_URL}/seasons`);

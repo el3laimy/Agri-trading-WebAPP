@@ -44,7 +44,7 @@ const BalanceSheet = () => {
     };
 
     return (
-        <div className="container-fluid">
+        <div className="p-6">
             <PageHeader
                 title="الميزانية العمومية"
                 subtitle="تقرير المركز المالي (الأصول، الخصوم، وحقوق الملكية)"
@@ -52,27 +52,27 @@ const BalanceSheet = () => {
             />
 
             {/* Filter Card */}
-            <Card className="mb-4">
-                <div className="row g-3 align-items-end">
-                    <div className="col-md-6">
-                        <label className="form-label fw-bold">الميزانية في تاريخ</label>
+            <Card className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">الميزانية في تاريخ</label>
                         <DatePicker
                             selected={endDate}
                             onChange={setEndDate}
-                            className="form-control"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                             dateFormat="yyyy-MM-dd"
                         />
                     </div>
-                    <div className="col-md-6 d-flex gap-2">
+                    <div className="flex gap-2">
                         <button
-                            className="btn btn-primary flex-grow-1"
+                            className="flex-grow px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
                             onClick={handleGenerateReport}
                             disabled={isLoading}
                         >
                             {isLoading ? 'جاري التحضير...' : 'عرض التقرير'}
                         </button>
                         {reportData && (
-                            <button className="btn btn-outline-secondary" onClick={handlePrint}>
+                            <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors" onClick={handlePrint}>
                                 <i className="bi bi-printer"></i>
                             </button>
                         )}
@@ -80,97 +80,97 @@ const BalanceSheet = () => {
                 </div>
             </Card>
 
-            {error && <div className="alert alert-danger mb-4">{error}</div>}
+            {error && (
+                <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 mb-6">
+                    {error}
+                </div>
+            )}
 
             {isLoading && <PageLoading text="جاري إعداد الميزانية العمومية..." />}
 
             {reportData && !isLoading && (
-                <div className="card border-0 shadow-lg print-section">
-                    <div className="card-header bg-white text-center py-4 border-bottom">
-                        <h3 className="fw-bold text-primary mb-2">الميزانية العمومية</h3>
-                        <p className="text-muted mb-0">كما في {reportData.end_date}</p>
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 print-section overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-slate-700 text-center py-6 border-b border-gray-200 dark:border-slate-600">
+                        <h3 className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mb-2">الميزانية العمومية</h3>
+                        <p className="text-gray-500 dark:text-gray-400">كما في {reportData.end_date}</p>
                     </div>
-                    <div className="card-body p-4">
-                        <div className="row g-4">
+                    <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Assets Column */}
-                            <div className="col-md-6">
-                                <div className="card h-100 border shadow-sm">
-                                    <div className="card-header bg-success text-white py-3">
-                                        <h5 className="mb-0 fw-bold text-center">الأصول</h5>
+                            <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                <div className="bg-green-600 text-white py-4 px-5">
+                                    <h5 className="font-bold text-center">الأصول</h5>
+                                </div>
+                                <div className="p-4">
+                                    <table className="w-full">
+                                        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                            {reportData.assets.map((item, index) => (
+                                                <tr key={`asset-${index}`} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                    <td className="py-3 text-gray-700 dark:text-gray-300">{item.account_name}</td>
+                                                    <td className="py-3 text-left font-medium text-gray-800 dark:text-gray-200">{formatCurrency(item.balance)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-slate-700 px-5 py-4 flex justify-between items-center font-bold text-lg">
+                                    <span className="text-gray-700 dark:text-gray-300">إجمالي الأصول</span>
+                                    <span className="text-green-600 dark:text-green-400">{formatCurrency(reportData.total_assets)}</span>
+                                </div>
+                            </div>
+
+                            {/* Liabilities & Equity Column */}
+                            <div className="flex flex-col gap-6">
+                                {/* Liabilities */}
+                                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex-grow">
+                                    <div className="bg-amber-500 text-white py-4 px-5">
+                                        <h5 className="font-bold text-center">الخصوم (الالتزامات)</h5>
                                     </div>
-                                    <div className="card-body">
-                                        <table className="table table-hover mb-0">
-                                            <tbody>
-                                                {reportData.assets.map((item, index) => (
-                                                    <tr key={`asset-${index}`}>
-                                                        <td>{item.account_name}</td>
-                                                        <td className="text-end fw-medium">{formatCurrency(item.balance)}</td>
+                                    <div className="p-4">
+                                        <table className="w-full">
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                                {reportData.liabilities.map((item, index) => (
+                                                    <tr key={`lia-${index}`} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                        <td className="py-3 text-gray-700 dark:text-gray-300">{item.account_name}</td>
+                                                        <td className="py-3 text-left font-medium text-gray-800 dark:text-gray-200">{formatCurrency(item.balance)}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="card-footer bg-light fw-bold fs-5 d-flex justify-content-between">
-                                        <span>إجمالي الأصول</span>
-                                        <span className="text-success">{formatCurrency(reportData.total_assets)}</span>
+                                    <div className="bg-gray-50 dark:bg-slate-700 px-5 py-4 flex justify-between items-center font-bold">
+                                        <span className="text-gray-700 dark:text-gray-300">إجمالي الخصوم</span>
+                                        <span className="text-gray-800 dark:text-gray-200">{formatCurrency(reportData.total_liabilities)}</span>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Liabilities & Equity Column */}
-                            <div className="col-md-6">
-                                <div className="d-flex flex-column h-100 gap-4">
-                                    {/* Liabilities */}
-                                    <div className="card border shadow-sm flex-grow-1">
-                                        <div className="card-header bg-warning text-dark py-3">
-                                            <h5 className="mb-0 fw-bold text-center">الخصوم (الالتزامات)</h5>
-                                        </div>
-                                        <div className="card-body">
-                                            <table className="table table-hover mb-0">
-                                                <tbody>
-                                                    {reportData.liabilities.map((item, index) => (
-                                                        <tr key={`lia-${index}`}>
-                                                            <td>{item.account_name}</td>
-                                                            <td className="text-end fw-medium">{formatCurrency(item.balance)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div className="card-footer bg-light fw-bold d-flex justify-content-between">
-                                            <span>إجمالي الخصوم</span>
-                                            <span>{formatCurrency(reportData.total_liabilities)}</span>
-                                        </div>
+                                {/* Equity */}
+                                <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex-grow">
+                                    <div className="bg-cyan-600 text-white py-4 px-5">
+                                        <h5 className="font-bold text-center">حقوق الملكية</h5>
                                     </div>
+                                    <div className="p-4">
+                                        <table className="w-full">
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                                {reportData.equity.map((item, index) => (
+                                                    <tr key={`eq-${index}`} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                        <td className="py-3 text-gray-700 dark:text-gray-300">{item.account_name}</td>
+                                                        <td className="py-3 text-left font-medium text-gray-800 dark:text-gray-200">{formatCurrency(item.balance)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-slate-700 px-5 py-4 flex justify-between items-center font-bold">
+                                        <span className="text-gray-700 dark:text-gray-300">إجمالي حقوق الملكية</span>
+                                        <span className="text-gray-800 dark:text-gray-200">{formatCurrency(reportData.total_equity)}</span>
+                                    </div>
+                                </div>
 
-                                    {/* Equity */}
-                                    <div className="card border shadow-sm flex-grow-1">
-                                        <div className="card-header bg-info text-white py-3">
-                                            <h5 className="mb-0 fw-bold text-center">حقوق الملكية</h5>
-                                        </div>
-                                        <div className="card-body">
-                                            <table className="table table-hover mb-0">
-                                                <tbody>
-                                                    {reportData.equity.map((item, index) => (
-                                                        <tr key={`eq-${index}`}>
-                                                            <td>{item.account_name}</td>
-                                                            <td className="text-end fw-medium">{formatCurrency(item.balance)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div className="card-footer bg-light fw-bold d-flex justify-content-between">
-                                            <span>إجمالي حقوق الملكية</span>
-                                            <span>{formatCurrency(reportData.total_equity)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Total Liabilities + Equity */}
-                                    <div className="alert alert-secondary d-flex justify-content-between align-items-center fw-bold fs-5 mb-0 shadow-sm">
-                                        <span>إجمالي الخصوم وحقوق الملكية</span>
-                                        <span>{formatCurrency(reportData.total_liabilities_and_equity)}</span>
-                                    </div>
+                                {/* Total Liabilities + Equity */}
+                                <div className="bg-gray-100 dark:bg-slate-700 rounded-xl p-5 flex justify-between items-center font-bold text-lg shadow-sm">
+                                    <span className="text-gray-700 dark:text-gray-300">إجمالي الخصوم وحقوق الملكية</span>
+                                    <span className="text-gray-800 dark:text-gray-200">{formatCurrency(reportData.total_liabilities_and_equity)}</span>
                                 </div>
                             </div>
                         </div>

@@ -40,7 +40,9 @@ const SalePaymentForm = ({ sale, onSave, onCancel }) => {
     };
 
     const paymentAccounts = accounts.filter(acc => acc.account_type === 'ASSET');
-    const remainingAmount = sale.total_sale_amount - (sale.amount_received || 0);
+    const totalAmount = parseFloat(sale.total_sale_amount) || 0;
+    const amountReceived = parseFloat(sale.amount_received) || 0;
+    const remainingAmount = totalAmount - amountReceived;
 
     return (
         <div className="modal show d-block" tabIndex="-1">
@@ -52,9 +54,9 @@ const SalePaymentForm = ({ sale, onSave, onCancel }) => {
                             <button type="button" className="btn-close" onClick={onCancel}></button>
                         </div>
                         <div className="modal-body">
-                            <p><strong>Customer:</strong> {sale.customer.name}</p>
-                            <p><strong>Total Amount:</strong> {sale.total_sale_amount.toFixed(2)}</p>
-                            <p><strong>Amount Received:</strong> {(sale.amount_received || 0).toFixed(2)}</p>
+                            <p><strong>Customer:</strong> {sale.customer?.name || 'N/A'}</p>
+                            <p><strong>Total Amount:</strong> {totalAmount.toFixed(2)}</p>
+                            <p><strong>Amount Received:</strong> {amountReceived.toFixed(2)}</p>
                             <p className="fw-bold"><strong>Amount Due:</strong> {remainingAmount.toFixed(2)}</p>
                             <hr />
                             <div className="mb-3">

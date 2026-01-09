@@ -1,14 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 import json
 from . import models, schemas
-from .core.bootstrap import (
-    INVENTORY_ACCOUNT_ID, 
-    ACCOUNTS_RECEIVABLE_ID, 
-    ACCOUNTS_PAYABLE_ID,
-    SALES_REVENUE_ACCOUNT_ID,
-    INVENTORY_LOSS_ACCOUNT_ID,
-    INVENTORY_GAIN_ACCOUNT_ID
-)
+from .core.settings import get_setting
 
 # --- Crop CRUD Functions ---
 
@@ -26,12 +19,85 @@ def create_crop(db: Session, crop: schemas.CropCreate):
         crop_name=crop.crop_name,
         allowed_pricing_units=json.dumps(crop.allowed_pricing_units),
         conversion_factors=json.dumps(crop.conversion_factors),
-        is_active=crop.is_active
+        is_active=crop.is_active,
+        is_complex_unit=crop.is_complex_unit,
+        default_tare_per_bag=crop.default_tare_per_bag,
+        standard_unit_weight=crop.standard_unit_weight
     )
     db.add(db_crop)
     db.commit()
     db.refresh(db_crop)
     return db_crop
+
+def delete_crop(db: Session, crop_id: int):
+    # Basic delete, will fail if foreign keys exist
+    db_crop = get_crop(db, crop_id)
+    if db_crop:
+        db.delete(db_crop)
+        db.commit()
+    return db_crop
+
+def get_crop_dependencies(db: Session, crop_id: int) -> dict:
+    """Check for dependent records in various tables"""
+    dependencies = {
+        "sales": db.query(models.Sale).filter(models.Sale.crop_id == crop_id).count(),
+        "purchases": db.query(models.Purchase).filter(models.Purchase.crop_id == crop_id).count(),
+        "inventory": db.query(models.Inventory).filter(models.Inventory.crop_id == crop_id).count(),
+        "inventory_batches": db.query(models.InventoryBatch).filter(models.InventoryBatch.crop_id == crop_id).count(),
+        "supply_contracts": db.query(models.SupplyContract).filter(models.SupplyContract.crop_id == crop_id).count(),
+        "daily_prices": db.query(models.DailyPrice).filter(models.DailyPrice.crop_id == crop_id).count(),
+        "inventory_adjustments": db.query(models.InventoryAdjustment).filter(models.InventoryAdjustment.crop_id == crop_id).count(),
+    }
+    return dependencies
+
+def migrate_crop_data(db: Session, old_crop_id: int, new_crop_id: int):
+    """Migrate all related data from old_crop_id to new_crop_id"""
+    
+    # Update related tables
+    db.query(models.Sale).filter(models.Sale.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+    db.query(models.Purchase).filter(models.Purchase.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+    db.query(models.Inventory).filter(models.Inventory.crop_id == old_crop_id).update({"crop_id": new_crop_id}) # Likely to fail unique constraint if new crop already has inventory, handled in logic? Actually Inventory is usually 1:1. 
+    # For Inventory: if target crop already has inventory, we might need to merge. 
+    # Current simple logic: specific inventory row update might fail. 
+    # Better logic for inventory: Delete old inventory row if target exists, or update if not.
+    # Check if target inventory exists
+    target_inventory = db.query(models.Inventory).filter(models.Inventory.crop_id == new_crop_id).first()
+    if target_inventory:
+         # Move Stock
+         source_inventory = db.query(models.Inventory).filter(models.Inventory.crop_id == old_crop_id).first()
+         if source_inventory:
+             target_inventory.current_stock_kg += source_inventory.current_stock_kg
+             # Recalculate average cost? Complex. For now just accum stock.
+             db.delete(source_inventory)
+    else:
+        db.query(models.Inventory).filter(models.Inventory.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+
+    db.query(models.InventoryBatch).filter(models.InventoryBatch.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+    db.query(models.SupplyContract).filter(models.SupplyContract.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+    db.query(models.DailyPrice).filter(models.DailyPrice.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+    db.query(models.InventoryAdjustment).filter(models.InventoryAdjustment.crop_id == old_crop_id).update({"crop_id": new_crop_id})
+    
+    db.commit()
+    
+    # Finally delete the old crop
+    delete_crop(db, old_crop_id)
+
+def delete_crop_with_dependencies(db: Session, crop_id: int):
+    """Force delete crop and all its related data"""
+    
+    # Delete related records first
+    db.query(models.Sale).filter(models.Sale.crop_id == crop_id).delete()
+    db.query(models.Purchase).filter(models.Purchase.crop_id == crop_id).delete()
+    db.query(models.InventoryBatch).filter(models.InventoryBatch.crop_id == crop_id).delete()
+    db.query(models.SupplyContract).filter(models.SupplyContract.crop_id == crop_id).delete()
+    db.query(models.DailyPrice).filter(models.DailyPrice.crop_id == crop_id).delete()
+    db.query(models.InventoryAdjustment).filter(models.InventoryAdjustment.crop_id == crop_id).delete()
+    db.query(models.Inventory).filter(models.Inventory.crop_id == crop_id).delete()
+    
+    db.commit()
+    
+    # Delete the crop
+    delete_crop(db, crop_id)
 
 # --- Contact CRUD Functions ---
 
@@ -81,19 +147,71 @@ def delete_financial_account(db: Session, account_id: int) -> models.FinancialAc
         db.refresh(db_account)
     return db_account
 
+def update_balance_by_nature(db: Session, account_id: int, amount: float, entry_type: str):
+    """
+    تحديث رصيد الحساب بناءً على طبيعته.
+    
+    Args:
+        db: جلسة قاعدة البيانات
+        account_id: معرف الحساب
+        amount: المبلغ (دائماً موجب)
+        entry_type: نوع القيد ('debit' أو 'credit')
+        
+    Logic:
+        - الأصول والمصروفات (طبيعتها مدينة): 
+            - Debit يزيد الرصيد
+            - Credit ينقص الرصيد
+        - الخصوم، الإيرادات، حقوق الملكية (طبيعتها دائنة):
+            - Credit يزيد الرصيد
+            - Debit ينقص الرصيد
+    """
+    account = db.query(models.FinancialAccount).filter(models.FinancialAccount.account_id == account_id).first()
+    if not account:
+        return
+
+    # تحديد ما إذا كان الحساب طبيعته مدينة
+    # ASSET, CASH, EXPENSE, RECEIVABLE -> Debit increases
+    is_normal_debit = account.account_type in ['ASSET', 'CASH', 'EXPENSE', 'RECEIVABLE']
+    
+    from decimal import Decimal
+    change = Decimal(0)
+    # Ensure amount is Decimal. Convert to string first to avoid float precision issues if input is float
+    amount = Decimal(str(amount)) 
+    
+    if is_normal_debit:
+        if entry_type.lower() == 'debit':
+            change = amount
+        else:
+            change = -amount
+    else:
+        # LIABILITY, EQUITY, REVENUE, PAYABLE -> Credit increases
+        if entry_type.lower() == 'credit':
+            change = amount
+        else:
+            change = -amount
+            
+    account.current_balance += change
+    db.add(account)
+
+# Legacy wrapper for backward compatibility if needed, but better to refactor usage
 def update_account_balance(db: Session, account_id: int, amount: float):
+    # This old function assumed the caller knew the sign (+/-)
+    # We will deprecate it, but keep it for now if needed.
+    # Actually, let's keep it simple: just update the balance.
     account = db.query(models.FinancialAccount).filter(models.FinancialAccount.account_id == account_id).first()
     if account:
-        account.current_balance += amount
+        from decimal import Decimal
+        account.current_balance += Decimal(str(amount))
         db.add(account)
 
 # --- General Ledger CRUD Functions ---
 
-def create_ledger_entry(db: Session, entry: schemas.GeneralLedgerCreate, source_type: str, source_id: int):
+def create_ledger_entry(db: Session, entry: schemas.GeneralLedgerCreate, source_type: str, source_id: int, created_by: int = None):
     db_entry = models.GeneralLedger(
         **entry.model_dump(),
         source_type=source_type,
-        source_id=source_id
+        source_id=source_id,
+        created_by=created_by
     )
     db.add(db_entry)
     return db_entry
@@ -139,9 +257,12 @@ def create_inventory_adjustment(db: Session, adjustment: schemas.InventoryAdjust
     if adjustment.quantity_kg < 0:
         # Loss/Spoilage: Debit Expense (Loss), Credit Inventory
         # Debit Loss
+        loss_id = int(get_setting(db, "INVENTORY_LOSS_ACCOUNT_ID", 50102))
+        inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
+
         db.add(models.GeneralLedger(
             entry_date=adjustment.adjustment_date,
-            account_id=INVENTORY_LOSS_ACCOUNT_ID,
+            account_id=loss_id,
             debit=abs_value,
             credit=0.0,
             description=adj_description,
@@ -151,7 +272,7 @@ def create_inventory_adjustment(db: Session, adjustment: schemas.InventoryAdjust
         # Credit Inventory
         db.add(models.GeneralLedger(
             entry_date=adjustment.adjustment_date,
-            account_id=INVENTORY_ACCOUNT_ID,
+            account_id=inventory_id,
             debit=0.0,
             credit=abs_value,
             description=adj_description,
@@ -159,15 +280,18 @@ def create_inventory_adjustment(db: Session, adjustment: schemas.InventoryAdjust
             source_id=db_adjustment.adjustment_id
         ))
         # Update Balances
-        update_account_balance(db, INVENTORY_LOSS_ACCOUNT_ID, abs_value)
-        update_account_balance(db, INVENTORY_ACCOUNT_ID, -abs_value)
+        update_account_balance(db, loss_id, abs_value)
+        update_account_balance(db, inventory_id, -abs_value)
         
     elif adjustment.quantity_kg > 0:
         # Gain: Debit Inventory, Credit Revenue (Gain)
+        gain_id = int(get_setting(db, "INVENTORY_GAIN_ACCOUNT_ID", 40102))
+        inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
+
         # Debit Inventory
         db.add(models.GeneralLedger(
             entry_date=adjustment.adjustment_date,
-            account_id=INVENTORY_ACCOUNT_ID,
+            account_id=inventory_id,
             debit=abs_value,
             credit=0.0,
             description=adj_description,
@@ -177,7 +301,7 @@ def create_inventory_adjustment(db: Session, adjustment: schemas.InventoryAdjust
         # Credit Revenue
         db.add(models.GeneralLedger(
             entry_date=adjustment.adjustment_date,
-            account_id=INVENTORY_GAIN_ACCOUNT_ID,
+            account_id=gain_id,
             debit=0.0,
             credit=abs_value,
             description=adj_description,
@@ -185,8 +309,8 @@ def create_inventory_adjustment(db: Session, adjustment: schemas.InventoryAdjust
             source_id=db_adjustment.adjustment_id
         ))
         # Update Balances
-        update_account_balance(db, INVENTORY_ACCOUNT_ID, abs_value)
-        update_account_balance(db, INVENTORY_GAIN_ACCOUNT_ID, -abs_value)
+        update_account_balance(db, inventory_id, abs_value)
+        update_account_balance(db, gain_id, -abs_value)
 
     db.commit()
     db.refresh(db_adjustment)
@@ -207,6 +331,18 @@ def get_purchases(db: Session, skip: int = 0, limit: int = 100):
 def create_purchase_record(db: Session, purchase_data: dict) -> models.Purchase:
     db_purchase = models.Purchase(**purchase_data)
     db.add(db_purchase)
+    db.flush() # Flush to get the purchase_id
+    
+    # Create Audit Log
+    db_log = models.AuditLog(
+        action_type="CREATE",
+        table_name="purchases",
+        record_id=db_purchase.purchase_id,
+        new_values=json.dumps(purchase_data, default=str),
+        user_id=purchase_data.get('created_by')
+    )
+    db.add(db_log)
+    
     return db_purchase
 
 
@@ -243,9 +379,11 @@ def get_expenses(db: Session, skip: int = 0, limit: int = 100):
         .all()
     )
 
-def create_expense(db: Session, expense: schemas.ExpenseCreate) -> models.Expense:
+def create_expense(db: Session, expense: schemas.ExpenseCreate, user_id: int = None) -> models.Expense:
     # 1. Create the expense record
-    db_expense = models.Expense(**expense.model_dump())
+    expense_data = expense.model_dump()
+    expense_data['created_by'] = user_id
+    db_expense = models.Expense(**expense_data)
     db.add(db_expense)
     db.flush() # Flush to get the expense_id for the ledger entries
 
@@ -313,10 +451,13 @@ def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> mo
     # 5. إضافة القيود المحاسبية - عكس قيد البيع
     return_description = f"مرتجع مبيعات - فاتورة #{sale.sale_id}"
     
+    sales_revenue_id = int(get_setting(db, "SALES_REVENUE_ACCOUNT_ID"))
+    accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
+
     # مدين: إيرادات المبيعات (تخفيض الإيراد)
     debit_entry = models.GeneralLedger(
         entry_date=sale_return.return_date,
-        account_id=SALES_REVENUE_ACCOUNT_ID,
+        account_id=sales_revenue_id,
         debit=refund_amount,
         credit=0.0,
         description=return_description,
@@ -328,7 +469,7 @@ def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> mo
     # دائن: الذمم المدينة (تخفيض دين العميل)
     credit_entry = models.GeneralLedger(
         entry_date=sale_return.return_date,
-        account_id=ACCOUNTS_RECEIVABLE_ID,
+        account_id=accounts_receivable_id,
         debit=0.0,
         credit=refund_amount,
         description=return_description,
@@ -338,8 +479,8 @@ def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> mo
     db.add(credit_entry)
     
     # 6. تحديث أرصدة الحسابات
-    update_account_balance(db, SALES_REVENUE_ACCOUNT_ID, refund_amount)  # increase (debit)
-    update_account_balance(db, ACCOUNTS_RECEIVABLE_ID, -refund_amount)  # decrease (credit)
+    update_account_balance(db, sales_revenue_id, refund_amount)  # increase (debit)
+    update_account_balance(db, accounts_receivable_id, -refund_amount)  # decrease (credit)
     
     # 7. تحديث إجمالي المبيعة الأصلية (اختياري)
     sale.total_sale_amount -= refund_amount
@@ -390,10 +531,13 @@ def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnC
     # 5. إضافة القيود المحاسبية - عكس قيد الشراء
     return_description = f"مرتجع مشتريات - فاتورة #{purchase.purchase_id}"
     
+    accounts_payable_id = int(get_setting(db, "ACCOUNTS_PAYABLE_ID"))
+    inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
+
     # مدين: الذمم الدائنة (تخفيض دينا للمورد)
     debit_entry = models.GeneralLedger(
         entry_date=purchase_return.return_date,
-        account_id=ACCOUNTS_PAYABLE_ID,
+        account_id=accounts_payable_id,
         debit=returned_cost,
         credit=0.0,
         description=return_description,
@@ -405,7 +549,7 @@ def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnC
     # دائن: المخزون (تخفيض قيمة المخزون)
     credit_entry = models.GeneralLedger(
         entry_date=purchase_return.return_date,
-        account_id=INVENTORY_ACCOUNT_ID,
+        account_id=inventory_id,
         debit=0.0,
         credit=returned_cost,
         description=return_description,
@@ -415,8 +559,8 @@ def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnC
     db.add(credit_entry)
     
     # 6. تحديث أرصدة الحسابات
-    update_account_balance(db, ACCOUNTS_PAYABLE_ID, -returned_cost)  # decrease payable (debit)
-    update_account_balance(db, INVENTORY_ACCOUNT_ID, -returned_cost)  # decrease inventory (credit)
+    update_account_balance(db, accounts_payable_id, -returned_cost)  # decrease payable (debit)
+    update_account_balance(db, inventory_id, -returned_cost)  # decrease inventory (credit)
     
     # 7. تحديث إجمالي المشتراة الأصلية
     purchase.total_cost -= returned_cost

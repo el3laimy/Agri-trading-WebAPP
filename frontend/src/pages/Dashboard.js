@@ -1,12 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { getDashboardKpis, getDashboardAlerts, getSalesByCrop, getTopCustomers } from '../api/reports';
+import React, { useState, useEffect } from 'react';
+import { useDashboard } from '../hooks/useDashboard';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
 
-ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler);
+// Dashboard Widgets
+import {
+    GlassKpiCard,
+    MiniStatPill,
+    ActivityItem,
+    SeasonProgressCard,
+    DashboardSkeleton,
+    RefreshButton,
+    SectionHeader,
+    EmptyState
+} from '../components/dashboard/DashboardWidgets';
+import AdvancedChartWidget from '../components/dashboard/charts/AdvancedChartWidget';
+import SalesDistributionWidget from '../components/dashboard/charts/SalesDistributionWidget';
 
 /* --- Widget Definitions --- */
 const WIDGETS = [
@@ -20,18 +30,26 @@ const WIDGETS = [
     { id: 'quick_actions', label: 'الإجراءات السريعة' }
 ];
 
-const DEFAULT_LAYOUT = ['quick_stats', 'main_kpis', 'charts', 'secondary_kpis', 'top_customers', 'alerts', 'quick_actions'];
+const DEFAULT_LAYOUT = ['quick_stats', 'main_kpis', 'charts', 'secondary_kpis', 'recent_activity', 'top_customers', 'alerts', 'quick_actions'];
 
 function Dashboard() {
     const { user, updateConfig } = useAuth();
     const { theme } = useTheme();
     const navigate = useNavigate();
 
-    const [kpis, setKpis] = useState(null);
-    const [alerts, setAlerts] = useState([]);
-    const [salesByCrop, setSalesByCrop] = useState([]);
-    const [topCustomers, setTopCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // TanStack Query - fetches all dashboard data
+    const {
+        kpis,
+        alerts,
+        salesByCrop,
+        topCustomers,
+
+        recentActivities,
+        seasonSummary,
+        isLoading: loading,
+        refetchAll
+    } = useDashboard();
+
     const [refreshing, setRefreshing] = useState(false);
     const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -48,36 +66,23 @@ function Dashboard() {
         return 'مساء الخير';
     };
 
-    const fetchData = useCallback(async (showRefresh = false) => {
-        if (showRefresh) setRefreshing(true);
-        else setLoading(true);
-
+    // Manual refresh handler
+    const handleRefresh = async () => {
+        setRefreshing(true);
         try {
-            const [kpisData, alertsData, salesData, customersData] = await Promise.all([
-                getDashboardKpis(),
-                getDashboardAlerts().catch(() => []),
-                getSalesByCrop().catch(() => []),
-                getTopCustomers(5).catch(() => [])
-            ]);
-            setKpis(kpisData);
-            setAlerts(alertsData);
-            setSalesByCrop(salesData);
-            setTopCustomers(customersData);
+            await refetchAll();
             setLastUpdate(new Date());
-        } catch (error) {
-            console.error("Failed to fetch dashboard data:", error);
         } finally {
-            setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    };
 
+    // Set initial lastUpdate when data loads
     useEffect(() => {
-        fetchData();
-        // Auto-refresh every 5 minutes
-        const interval = setInterval(() => fetchData(true), 5 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [fetchData]);
+        if (kpis && !lastUpdate) {
+            setLastUpdate(new Date());
+        }
+    }, [kpis, lastUpdate]);
 
     useEffect(() => {
         if (user && user.dashboard_config) {
@@ -118,16 +123,17 @@ function Dashboard() {
         setTempLayout(newLayout);
     };
 
+    // Format Currency
     const formatCurrency = (amount, compact = false) => {
         if (compact && Math.abs(amount) >= 1000000) {
             return new Intl.NumberFormat('ar-EG', {
-                style: 'decimal', minimumFractionDigits: 1, maximumFractionDigits: 1
-            }).format(amount / 1000000) + 'م';
+                minimumFractionDigits: 1, maximumFractionDigits: 1
+            }).format(amount / 1000000) + ' م';
         }
         if (compact && Math.abs(amount) >= 1000) {
             return new Intl.NumberFormat('ar-EG', {
-                style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0
-            }).format(amount / 1000) + 'ك';
+                minimumFractionDigits: 0, maximumFractionDigits: 0
+            }).format(amount / 1000) + ' ك';
         }
         return new Intl.NumberFormat('ar-EG', {
             style: 'currency', currency: 'EGP', minimumFractionDigits: 0, maximumFractionDigits: 0
@@ -138,441 +144,388 @@ function Dashboard() {
         return new Intl.NumberFormat('ar-EG').format(num || 0);
     };
 
-    // Calculate trend (mock - in real app, compare with previous period)
-    const getTrend = (value) => {
-        // This would normally compare with previous period
-        if (value > 0) return { direction: 'up', color: '#28A745', icon: 'bi-arrow-up-short' };
-        if (value < 0) return { direction: 'down', color: '#DC3545', icon: 'bi-arrow-down-short' };
-        return { direction: 'stable', color: '#6C757D', icon: 'bi-dash' };
+    // Format Date
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
     };
 
+    // Format Relative Time
+    const formatRelativeTime = (timestamp) => {
+        if (!timestamp) return '';
+        const now = new Date();
+        const date = new Date(timestamp);
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'الآن';
+        if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
+        if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+        if (diffDays < 7) return `منذ ${diffDays} يوم`;
+        return formatDate(timestamp);
+    };
+
+    // Loading State
     if (loading || !kpis) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-                <div className="text-center">
-                    <div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status">
-                        <span className="visually-hidden">جاري التحميل...</span>
-                    </div>
-                    <p className="text-muted">جاري تحميل لوحة التحكم...</p>
-                </div>
+            <div className="container mx-auto px-4 py-8">
+                <DashboardSkeleton />
             </div>
         );
     }
 
-    // --- Enhanced KPI Card Component ---
-    const KpiCard = ({ title, value, icon, color, formatAsCurrency = true, onClick, subtitle, trend, compact = false }) => (
-        <div className="col-md-6 col-lg-3 mb-4">
-            <div
-                className="card border-0 shadow-sm h-100 kpi-card-enhanced"
-                onClick={onClick}
-                style={{
-                    cursor: onClick ? 'pointer' : 'default',
-                    borderRight: `4px solid ${color}`,
-                    transition: 'all 0.3s ease'
-                }}
-            >
-                <div className="card-body">
-                    <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p className="text-muted mb-1 small">{title}</p>
-                            <h4 className="fw-bold mb-0" style={{ color }}>
-                                {formatAsCurrency ? formatCurrency(value, compact) : formatNumber(value)}
-                            </h4>
-                            {subtitle && <small className="text-muted">{subtitle}</small>}
-                        </div>
-                        <div className="p-2 rounded-circle" style={{ backgroundColor: `${color}15` }}>
-                            <i className={`bi ${icon} fs-4`} style={{ color }}></i>
-                        </div>
-                    </div>
-                    {trend && (
-                        <div className="mt-2 pt-2 border-top">
-                            <small style={{ color: getTrend(trend).color }}>
-                                <i className={`bi ${getTrend(trend).icon}`}></i>
-                                {Math.abs(trend)}% عن الفترة السابقة
-                            </small>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
 
-    // --- Mini Stat Card for Quick Stats ---
-    const MiniStat = ({ label, value, icon, trend }) => (
-        <div className="col-md-3 col-6">
-            <div className="text-center px-3 py-2 h-100" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)' }}>
-                <div className="d-flex align-items-center justify-content-center mb-1">
-                    <i className={`bi ${icon} me-2 opacity-75`}></i>
-                    <small className="text-white-50">{label}</small>
-                </div>
-                <h5 className="fw-bold mb-0">{value}</h5>
-            </div>
-        </div>
-    );
+
+
+
+
 
     /* Render Functions based on ID */
     const renderWidget = (id) => {
         switch (id) {
+            // =============== HERO HEADER ===============
             case 'quick_stats':
                 return (
-                    <div className="row mb-4" key={id}>
-                        <div className="col-12">
-                            <div
-                                className="card border-0 shadow-sm"
-                                style={{
-                                    background: 'linear-gradient(135deg, #1E5631 0%, #2D7A4A 50%, #3D8B4F 100%)',
-                                    borderRadius: '16px'
-                                }}
-                            >
-                                <div className="card-body text-white py-4">
-                                    <div className="row g-0">
-                                        <MiniStat
-                                            label="مبيعات اليوم"
-                                            value={formatCurrency(kpis.today_sales, true)}
-                                            icon="bi-cart-check"
-                                        />
-                                        <MiniStat
-                                            label="تحصيلات اليوم"
-                                            value={formatCurrency(kpis.today_collections, true)}
-                                            icon="bi-cash-coin"
-                                        />
-                                        <MiniStat
-                                            label="رصيد الخزينة"
-                                            value={formatCurrency(kpis.cash_balance, true)}
-                                            icon="bi-safe2"
-                                        />
-                                        <MiniStat
-                                            label="هامش الربح"
-                                            value={`${kpis.gross_margin || 0}%`}
-                                            icon="bi-percent"
-                                        />
+                    <div className="mb-8 animate-fade-in" key={id}>
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-800 dark:via-emerald-700 dark:to-teal-700 p-8 shadow-xl">
+                            {/* Decorative Elements */}
+                            <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+                            <div className="absolute bottom-0 right-0 w-72 h-72 bg-teal-400/20 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+                            <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-emerald-300/10 rounded-full blur-2xl" />
+
+                            <div className="relative z-10">
+                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                                    {/* Welcome Section */}
+                                    <div className="text-white">
+                                        <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                                            <span className="text-4xl">👋</span>
+                                            {getGreeting()}، {user?.username || 'مستخدم'}
+                                        </h1>
+                                        <p className="text-emerald-100 text-lg">نظرة شاملة على أداء المزرعة والعمليات</p>
                                     </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => { setTempLayout(layout); setShowConfigModal(true); }}
+                                            className="p-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all border border-white/10"
+                                            title="تخصيص"
+                                        >
+                                            <i className="bi bi-gear text-lg" />
+                                        </button>
+                                        <RefreshButton onClick={handleRefresh} isRefreshing={refreshing} />
+                                    </div>
+                                </div>
+
+                                {/* Quick Stats */}
+                                <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <MiniStatPill
+                                        label="مبيعات اليوم"
+                                        value={formatCurrency(kpis.today_sales, true)}
+                                        icon="bi-cart-check"
+                                    />
+                                    <MiniStatPill
+                                        label="تحصيلات اليوم"
+                                        value={formatCurrency(kpis.today_collections, true)}
+                                        icon="bi-cash-coin"
+                                    />
+                                    <MiniStatPill
+                                        label="رصيد الخزينة"
+                                        value={formatCurrency(kpis.cash_balance, true)}
+                                        icon="bi-safe2"
+                                    />
+                                    <MiniStatPill
+                                        label="هامش الربح"
+                                        value={`${kpis.gross_margin || 0}%`}
+                                        icon="bi-percent"
+                                    />
                                 </div>
                             </div>
                         </div>
                     </div>
                 );
 
+            // =============== MAIN KPIs ===============
             case 'main_kpis':
                 return (
-                    <div className="row" key={id}>
-                        <KpiCard
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" key={id}>
+                        <GlassKpiCard
                             title="إجمالي الإيرادات"
                             value={kpis.total_revenue}
                             icon="bi-cash-stack"
-                            color="#1E5631"
+                            gradient="from-emerald-500 to-teal-500"
                             onClick={() => navigate('/sales')}
-                            compact
+                            formatValue={(v) => formatCurrency(v, true)}
+                            delay={0}
                         />
-                        <KpiCard
+                        <GlassKpiCard
                             title="صافي الربح"
                             value={kpis.net_profit}
                             icon="bi-graph-up-arrow"
-                            color="#28A745"
+                            gradient="from-green-500 to-emerald-500"
                             onClick={() => navigate('/reports/income-statement')}
-                            compact
+                            formatValue={(v) => formatCurrency(v, true)}
+                            delay={100}
                         />
-                        <KpiCard
+                        <GlassKpiCard
                             title="قيمة المخزون"
                             value={kpis.inventory_value}
                             icon="bi-box-seam"
-                            color="#C4A35A"
+                            gradient="from-amber-500 to-orange-500"
                             subtitle={`${formatNumber(kpis.total_stock_kg)} كجم`}
                             onClick={() => navigate('/inventory')}
-                            compact
+                            formatValue={(v) => formatCurrency(v, true)}
+                            delay={200}
                         />
-                        <KpiCard
+                        <GlassKpiCard
                             title="رصيد الخزينة"
                             value={kpis.cash_balance}
                             icon="bi-wallet2"
-                            color="#17A2B8"
+                            gradient="from-blue-500 to-cyan-500"
                             onClick={() => navigate('/treasury')}
-                            compact
+                            formatValue={(v) => formatCurrency(v, true)}
+                            delay={300}
                         />
                     </div>
                 );
 
+            // =============== CHARTS ===============
             case 'charts':
-                const revenueExpenseData = {
-                    labels: ['الإيرادات', 'تكلفة المبيعات', 'المصروفات', 'صافي الربح'],
-                    datasets: [{
-                        label: 'المبالغ (ج.م)',
-                        data: [kpis.total_revenue, kpis.total_revenue - kpis.gross_profit, kpis.total_expenses, kpis.net_profit],
-                        backgroundColor: [
-                            'rgba(30, 86, 49, 0.8)',
-                            'rgba(220, 53, 69, 0.8)',
-                            'rgba(255, 193, 7, 0.8)',
-                            'rgba(40, 167, 69, 0.8)'
-                        ],
-                        borderRadius: 8,
-                        borderWidth: 0
-                    }]
-                };
-
-                const salesByCropChartData = {
-                    labels: salesByCrop.map(s => s.crop),
-                    datasets: [{
-                        data: salesByCrop.map(s => s.total),
-                        backgroundColor: [
-                            '#1E5631',
-                            '#C4A35A',
-                            '#3D8B4F',
-                            '#8D6E63',
-                            '#4CAF50',
-                            '#FDD835',
-                            '#26A69A',
-                            '#7CB342'
-                        ],
-                        borderWidth: 0
-                    }]
-                };
-
-                const chartTextColor = theme === 'dark' ? '#CBD5E1' : '#475569';
-                const chartGridColor = theme === 'dark' ? '#334155' : '#E2E8F0';
-
-                const chartOptions = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: chartTextColor,
-                                font: { family: 'Cairo', size: 12 },
-                                usePointStyle: true,
-                                padding: 15
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: theme === 'dark' ? '#1E293B' : 'rgba(0,0,0,0.8)',
-                            titleColor: theme === 'dark' ? '#F8FAFC' : '#fff',
-                            bodyColor: theme === 'dark' ? '#CBD5E1' : '#fff',
-                            titleFont: { family: 'Cairo' },
-                            bodyFont: { family: 'Cairo' },
-                            padding: 12,
-                            cornerRadius: 8,
-                            borderColor: theme === 'dark' ? '#334155' : 'transparent',
-                            borderWidth: 1
-                        }
-                    }
-                };
-
                 return (
-                    <div className="row mt-2" key={id}>
-                        <div className="col-lg-7 mb-4">
-                            <div className="card border-0 shadow-sm h-100">
-                                <div className="card-header bg-transparent border-0 py-3">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
-                                            <i className="bi bi-bar-chart-fill me-2 text-primary"></i>
-                                            ملخص الأداء المالي
-                                        </h5>
-                                        <span className="badge bg-light text-dark">
-                                            <i className="bi bi-calendar me-1"></i>
-                                            الموسم الحالي
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="card-body">
-                                    <div style={{ height: '300px' }}>
-                                        <Bar
-                                            data={revenueExpenseData}
-                                            options={{
-                                                ...chartOptions,
-                                                indexAxis: 'y',
-                                                scales: {
-                                                    x: {
-                                                        grid: { display: false, drawBorder: false },
-                                                        ticks: {
-                                                            color: chartTextColor,
-                                                            font: { family: 'Cairo' },
-                                                            callback: (value) => formatCurrency(value, true)
-                                                        }
-                                                    },
-                                                    y: {
-                                                        grid: { color: chartGridColor, borderDash: [5, 5], drawBorder: false },
-                                                        ticks: {
-                                                            color: chartTextColor,
-                                                            font: { family: 'Cairo' }
-                                                        }
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
+                        {/* Weekly Trend Chart -> Advanced Chart Widget */}
+                        <div className="lg:col-span-2">
+                            <AdvancedChartWidget />
                         </div>
-                        <div className="col-lg-5 mb-4">
-                            <div className="card border-0 shadow-sm h-100">
-                                <div className="card-header bg-transparent border-0 py-3">
-                                    <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
-                                        <i className="bi bi-pie-chart-fill me-2 text-success"></i>
-                                        المبيعات حسب المحصول
-                                    </h5>
-                                </div>
-                                <div className="card-body d-flex align-items-center justify-content-center">
-                                    {salesByCrop.length > 0 ? (
-                                        <div style={{ height: '300px', width: '100%' }}>
-                                            <Doughnut
-                                                data={salesByCropChartData}
-                                                options={{
-                                                    ...chartOptions,
-                                                    cutout: '65%',
-                                                    plugins: {
-                                                        ...chartOptions.plugins,
-                                                        tooltip: {
-                                                            ...chartOptions.plugins.tooltip,
-                                                            callbacks: {
-                                                                label: (context) => {
-                                                                    return `${context.label}: ${formatCurrency(context.raw)}`;
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="text-center text-muted py-5">
-                                            <i className="bi bi-pie-chart display-4 mb-3 d-block opacity-25"></i>
-                                            <p>لا توجد بيانات مبيعات</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+
+                        {/* Doughnut Chart -> Sales Distribution Widget */}
+                        <div className="h-full">
+                            <SalesDistributionWidget
+                                salesByCrop={salesByCrop}
+                                loading={loading}
+                            />
                         </div>
                     </div>
                 );
 
+            // =============== SECONDARY KPIs ===============
             case 'secondary_kpis':
                 return (
-                    <div className="row" key={id}>
-                        <KpiCard
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" key={id}>
+                        <GlassKpiCard
                             title="مستحقات من العملاء"
                             value={kpis.total_receivables}
                             icon="bi-person-check"
-                            color="#FFC107"
+                            gradient="from-yellow-500 to-amber-500"
                             onClick={() => navigate('/debtors?type=receivables')}
                             subtitle="عملاء مدينين"
-                            compact
+                            formatValue={(v) => formatCurrency(v, true)}
+                            delay={0}
                         />
-                        <KpiCard
+                        <GlassKpiCard
                             title="مستحقات للموردين"
                             value={kpis.total_payables}
                             icon="bi-truck"
-                            color="#DC3545"
+                            gradient="from-red-500 to-rose-500"
                             onClick={() => navigate('/debtors?type=payables')}
                             subtitle="موردين دائنين"
-                            compact
+                            formatValue={(v) => formatCurrency(v, true)}
+                            delay={100}
                         />
-                        <KpiCard
+                        <GlassKpiCard
                             title="عدد المبيعات"
                             value={kpis.sales_count}
                             icon="bi-receipt"
-                            color="#6F42C1"
-                            formatAsCurrency={false}
+                            gradient="from-purple-500 to-violet-500"
                             subtitle="عملية"
+                            formatValue={formatNumber}
+                            delay={200}
                         />
-                        <KpiCard
+                        <GlassKpiCard
                             title="عدد المشتريات"
                             value={kpis.purchases_count}
                             icon="bi-bag"
-                            color="#20C997"
-                            formatAsCurrency={false}
+                            gradient="from-teal-500 to-cyan-500"
                             subtitle="عملية"
+                            formatValue={formatNumber}
+                            delay={300}
                         />
                     </div>
                 );
 
+            // =============== RECENT ACTIVITY ===============
+            case 'recent_activity':
+                return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
+                        {/* Activity Timeline */}
+                        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden animate-fade-in">
+                            <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                    <span className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                                    النشاط الأخير
+                                </h3>
+                                <button
+                                    onClick={() => navigate('/sales')}
+                                    className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+                                >
+                                    عرض الكل
+                                </button>
+                            </div>
+                            <div className="divide-y divide-gray-100 dark:divide-slate-700 max-h-96 overflow-y-auto">
+                                {recentActivities.length > 0 ? (
+                                    recentActivities.map((activity) => (
+                                        <ActivityItem
+                                            key={activity.id}
+                                            activity={activity}
+                                            formatCurrency={(v) => formatCurrency(v, true)}
+                                            formatRelativeTime={formatRelativeTime}
+                                        />
+                                    ))
+                                ) : (
+                                    <EmptyState icon="bi-clock-history" title="لا توجد عمليات حديثة" />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Season Progress */}
+                        <div className="animate-fade-in">
+                            <SeasonProgressCard
+                                season={seasonSummary}
+                                formatDate={formatDate}
+                            />
+                        </div>
+                    </div>
+                );
+
+            // =============== TOP CUSTOMERS ===============
             case 'top_customers':
                 return (
-                    <div className="row" key={id}>
-                        <div className="col-12">
-                            <div className="card border-0 shadow-sm mb-4">
-                                <div className="card-header bg-transparent border-0 py-3">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
-                                            <i className="bi bi-trophy-fill me-2 text-warning"></i>
-                                            أفضل العملاء
-                                        </h5>
-                                        <button
-                                            className="btn btn-sm btn-outline-primary"
-                                            onClick={() => navigate('/contacts')}
-                                        >
-                                            عرض الكل
-                                        </button>
-                                    </div>
+                    <div className="mb-8" key={id}>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden animate-fade-in">
+                            <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                    <i className="bi bi-trophy-fill text-yellow-500" />
+                                    أفضل العملاء
+                                </h3>
+                                <button
+                                    onClick={() => navigate('/contacts')}
+                                    className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-xl transition-colors"
+                                >
+                                    عرض الكل
+                                </button>
+                            </div>
+                            {topCustomers.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-right">
+                                        <thead className="bg-gray-50 dark:bg-slate-700/50 text-gray-600 dark:text-gray-300 text-sm font-semibold">
+                                            <tr>
+                                                <th className="px-6 py-4 w-16">#</th>
+                                                <th className="px-6 py-4">العميل</th>
+                                                <th className="px-6 py-4 text-left">إجمالي المشتريات</th>
+                                                <th className="px-6 py-4 text-left">عدد العمليات</th>
+                                                <th className="px-6 py-4 text-center">الحالة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                            {topCustomers.map((customer, index) => (
+                                                <tr
+                                                    key={customer.contact_id}
+                                                    className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                                                    onClick={() => navigate(`/contacts/${customer.contact_id}`)}
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        {index === 0 && <span className="text-2xl">🥇</span>}
+                                                        {index === 1 && <span className="text-2xl">🥈</span>}
+                                                        {index === 2 && <span className="text-2xl">🥉</span>}
+                                                        {index > 2 && <span className="text-gray-400 font-medium">{index + 1}</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div
+                                                                className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
+                                                                style={{
+                                                                    backgroundColor: theme === 'dark' ? `hsl(${customer.contact_id * 40}, 50%, 25%)` : `hsl(${customer.contact_id * 40}, 70%, 90%)`,
+                                                                    color: theme === 'dark' ? `hsl(${customer.contact_id * 40}, 70%, 75%)` : `hsl(${customer.contact_id * 40}, 70%, 35%)`
+                                                                }}
+                                                            >
+                                                                {customer.name?.charAt(0)}
+                                                            </div>
+                                                            <span className="font-medium text-gray-700 dark:text-gray-200">{customer.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-left font-bold text-emerald-600 dark:text-emerald-400">
+                                                        {formatCurrency(customer.total_purchases)}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-left">
+                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200">
+                                                            {customer.transaction_count || '-'} عملية
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        {customer.outstanding > 0 ? (
+                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                                                                مدين: {formatCurrency(customer.outstanding, true)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                                                مسدد
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div className="card-body p-0">
-                                    {topCustomers.length > 0 ? (
-                                        <div className="table-responsive">
-                                            <table className="table table-hover mb-0">
-                                                <thead className="table-light">
-                                                    <tr>
-                                                        <th style={{ width: '5%' }}>#</th>
-                                                        <th>العميل</th>
-                                                        <th className="text-end">إجمالي المشتريات</th>
-                                                        <th className="text-end">عدد العمليات</th>
-                                                        <th className="text-center">الحالة</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {topCustomers.map((customer, index) => (
-                                                        <tr
-                                                            key={customer.contact_id}
-                                                            style={{ cursor: 'pointer' }}
-                                                            onClick={() => navigate(`/contacts/${customer.contact_id}`)}
-                                                        >
-                                                            <td>
-                                                                {index === 0 && <span className="badge bg-warning text-dark">🥇</span>}
-                                                                {index === 1 && <span className="badge bg-secondary">🥈</span>}
-                                                                {index === 2 && <span className="badge bg-danger">🥉</span>}
-                                                                {index > 2 && <span className="text-muted">{index + 1}</span>}
-                                                            </td>
-                                                            <td>
-                                                                <div className="d-flex align-items-center">
-                                                                    <div
-                                                                        className="rounded-circle d-flex align-items-center justify-content-center me-2"
-                                                                        style={{
-                                                                            width: '36px',
-                                                                            height: '36px',
-                                                                            backgroundColor: `hsl(${customer.contact_id * 40}, 70%, 85%)`
-                                                                        }}
-                                                                    >
-                                                                        <span className="fw-bold" style={{ color: `hsl(${customer.contact_id * 40}, 70%, 35%)` }}>
-                                                                            {customer.name?.charAt(0)}
-                                                                        </span>
-                                                                    </div>
-                                                                    <span className="fw-medium">{customer.name}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="text-end fw-bold text-success">
-                                                                {formatCurrency(customer.total_purchases)}
-                                                            </td>
-                                                            <td className="text-end">
-                                                                <span className="badge bg-light text-dark">
-                                                                    {customer.transaction_count || '-'} عملية
-                                                                </span>
-                                                            </td>
-                                                            <td className="text-center">
-                                                                {customer.outstanding > 0 ? (
-                                                                    <span className="badge bg-warning text-dark">
-                                                                        مدين: {formatCurrency(customer.outstanding, true)}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="badge bg-success">مسدد</span>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                            ) : (
+                                <div className="p-8">
+                                    <EmptyState icon="bi-people" title="لا توجد بيانات عملاء" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+
+            // =============== ALERTS ===============
+            case 'alerts':
+                const getAlertStyle = (type) => {
+                    const styles = {
+                        success: 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50',
+                        danger: 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50',
+                        warning: 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
+                        info: 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800/50'
+                    };
+                    return styles[type] || styles.info;
+                };
+
+                return (
+                    <div className="mb-8" key={id}>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 animate-fade-in">
+                            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                    <i className="bi bi-bell-fill text-yellow-500" />
+                                    التنبيهات الذكية
+                                    {alerts.length > 0 && (
+                                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{alerts.length}</span>
+                                    )}
+                                </h3>
+                            </div>
+                            <div className="p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {alerts.length > 0 ? alerts.map((alert, index) => (
+                                        <div key={index} className={`p-4 rounded-xl border flex items-start gap-3 ${getAlertStyle(alert.type)}`}>
+                                            <i className={`bi ${alert.icon} text-xl mt-0.5`} />
+                                            <div>
+                                                <p className="font-bold text-sm mb-1">{alert.title}</p>
+                                                <p className="text-sm opacity-80">{alert.message}</p>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="text-center py-4">
-                                            <i className="bi bi-people display-4 text-muted mb-3 d-block opacity-25"></i>
-                                            <p className="text-muted">لا توجد بيانات عملاء</p>
+                                    )) : (
+                                        <div className="col-span-full text-center py-8">
+                                            <i className="bi bi-check-circle text-5xl text-emerald-500 mb-3 block opacity-50" />
+                                            <p className="text-gray-500 dark:text-gray-400">لا توجد تنبيهات - كل شيء على ما يرام!</p>
                                         </div>
                                     )}
                                 </div>
@@ -581,91 +534,43 @@ function Dashboard() {
                     </div>
                 );
 
-            case 'alerts':
-                return (
-                    <div className="row" key={id}>
-                        <div className="col-12">
-                            <div className="card border-0 shadow-sm mb-4">
-                                <div className="card-header bg-transparent border-0 py-3">
-                                    <div className="d-flex justify-content-between align-items-center">
-                                        <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
-                                            <i className="bi bi-bell-fill me-2 text-warning"></i>
-                                            التنبيهات الذكية
-                                            {alerts.length > 0 && (
-                                                <span className="badge bg-danger ms-2">{alerts.length}</span>
-                                            )}
-                                        </h5>
-                                    </div>
-                                </div>
-                                <div className="card-body">
-                                    <div className="row g-3">
-                                        {alerts.length > 0 ? alerts.map((alert, index) => (
-                                            <div key={index} className="col-md-6 col-lg-4">
-                                                <div
-                                                    className={`alert alert-${alert.type} d-flex align-items-start mb-0 h-100`}
-                                                    style={{ borderRadius: '12px' }}
-                                                >
-                                                    <i className={`bi ${alert.icon} me-3 fs-4 mt-1`}></i>
-                                                    <div>
-                                                        <strong className="d-block mb-1">{alert.title}</strong>
-                                                        <small className="opacity-75">{alert.message}</small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )) : (
-                                            <div className="col-12 text-center py-4">
-                                                <i className="bi bi-check-circle display-4 text-success mb-3 d-block"></i>
-                                                <p className="text-muted mb-0">لا توجد تنبيهات حالية - كل شيء على ما يرام!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-
+            // =============== QUICK ACTIONS ===============
             case 'quick_actions':
                 const actions = [
-                    { label: 'بيع جديد', icon: 'bi-cart-plus', color: 'success', path: '/sales' },
-                    { label: 'شراء جديد', icon: 'bi-bag-plus', color: 'primary', path: '/purchases' },
-                    { label: 'الخزينة', icon: 'bi-safe2', color: 'warning', path: '/treasury' },
-                    { label: 'مصروف جديد', icon: 'bi-receipt', color: 'danger', path: '/expenses' },
-                    { label: 'تقرير الأرباح', icon: 'bi-graph-up', color: 'info', path: '/reports/income-statement' },
-                    { label: 'جهات التعامل', icon: 'bi-people', color: 'secondary', path: '/contacts' },
-                    { label: 'المخزون', icon: 'bi-box-seam', color: 'dark', path: '/inventory' },
-                    { label: 'دفتر الأستاذ', icon: 'bi-journal-bookmark', color: 'purple', path: '/reports/general-ledger', customColor: '#6F42C1' }
+                    { label: 'بيع جديد', icon: 'bi-cart-plus', gradient: 'from-emerald-500 to-teal-500', path: '/sales' },
+                    { label: 'شراء جديد', icon: 'bi-bag-plus', gradient: 'from-blue-500 to-cyan-500', path: '/purchases' },
+                    { label: 'الخزينة', icon: 'bi-safe2', gradient: 'from-amber-500 to-orange-500', path: '/treasury' },
+                    { label: 'مصروف جديد', icon: 'bi-receipt', gradient: 'from-red-500 to-rose-500', path: '/expenses' },
+                    { label: 'تقرير الأرباح', icon: 'bi-graph-up', gradient: 'from-cyan-500 to-blue-500', path: '/reports/income-statement' },
+                    { label: 'جهات التعامل', icon: 'bi-people', gradient: 'from-gray-500 to-slate-500', path: '/contacts' },
+                    { label: 'المخزون', icon: 'bi-box-seam', gradient: 'from-indigo-500 to-purple-500', path: '/inventory' },
+                    { label: 'دفتر الأستاذ', icon: 'bi-journal-bookmark', gradient: 'from-purple-500 to-pink-500', path: '/reports/general-ledger' }
                 ];
 
                 return (
-                    <div className="row mt-2" key={id}>
-                        <div className="col-12">
-                            <div className="card border-0 shadow-sm">
-                                <div className="card-header bg-transparent border-0 py-3">
-                                    <h5 className="fw-bold mb-0" style={{ color: 'var(--text-primary)' }}>
-                                        <i className="bi bi-lightning-charge-fill me-2 text-primary"></i>
-                                        إجراءات سريعة
-                                    </h5>
-                                </div>
-                                <div className="card-body">
-                                    <div className="row g-3">
-                                        {actions.map((action, index) => (
-                                            <div key={index} className="col-6 col-md-3">
-                                                <button
-                                                    className={`btn w-100 py-3 d-flex flex-column align-items-center justify-content-center ${action.customColor ? '' : `btn-outline-${action.color}`}`}
-                                                    style={action.customColor ? {
-                                                        borderColor: action.customColor,
-                                                        color: action.customColor,
-                                                        borderWidth: '2px'
-                                                    } : { borderWidth: '2px' }}
-                                                    onClick={() => navigate(action.path)}
-                                                >
-                                                    <i className={`bi ${action.icon} fs-4 mb-1`}></i>
-                                                    <span className="small">{action.label}</span>
-                                                </button>
+                    <div className="mb-8" key={id}>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 animate-fade-in">
+                            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                    <i className="bi bi-lightning-charge-fill text-amber-500" />
+                                    إجراءات سريعة
+                                </h3>
+                            </div>
+                            <div className="p-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                                    {actions.map((action, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => navigate(action.path)}
+                                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gradient-to-br hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-white/50"
+                                            style={{ '--tw-gradient-from': '', '--tw-gradient-to': '' }}
+                                        >
+                                            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+                                                <i className={`bi ${action.icon} text-white text-xl`} />
                                             </div>
-                                        ))}
-                                    </div>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">{action.label}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -678,113 +583,89 @@ function Dashboard() {
     };
 
     return (
-        <div className="container-fluid fade-in py-3">
-            {/* Header */}
-            <div className="row mb-4">
-                <div className="col-12">
-                    <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                            <h2 className="fw-bold mb-1" style={{ color: 'var(--primary-dark)' }}>
-                                <i className="bi bi-speedometer2 me-2"></i>
-                                {getGreeting()}، {user?.username || 'مستخدم'}
-                            </h2>
-                            <p className="text-muted mb-0">
-                                نظرة عامة على أداء المزرعة
-                                {lastUpdate && (
-                                    <span className="ms-2 text-muted small">
-                                        <i className="bi bi-clock me-1"></i>
-                                        آخر تحديث: {lastUpdate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-                        <div className="d-flex gap-2">
-                            <button
-                                className="btn btn-outline-secondary"
-                                onClick={() => { setTempLayout(layout); setShowConfigModal(true); }}
-                            >
-                                <i className="bi bi-gear-fill me-2"></i>تخصيص
-                            </button>
-                            <button
-                                className="btn btn-outline-primary"
-                                onClick={() => fetchData(true)}
-                                disabled={refreshing}
-                            >
-                                <i className={`bi ${refreshing ? 'bi-arrow-repeat spin' : 'bi-arrow-clockwise'} me-2`}></i>
-                                {refreshing ? 'جاري...' : 'تحديث'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+        <div className="container mx-auto px-4 py-8">
             {/* Render Widgets */}
             {layout.map(id => renderWidget(id))}
 
             {/* Config Modal */}
             {showConfigModal && (
-                <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow-lg">
-                            <div className="modal-header border-0">
-                                <h5 className="modal-title fw-bold">
-                                    <i className="bi bi-gear me-2"></i>
+                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setShowConfigModal(false)} />
+
+                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-200 dark:border-slate-700">
+                            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <i className="bi bi-gear text-emerald-600 dark:text-emerald-400" />
                                     تخصيص لوحة التحكم
-                                </h5>
-                                <button type="button" className="btn-close" onClick={() => setShowConfigModal(false)}></button>
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">اختر العناصر وقم بترتيبها</p>
                             </div>
-                            <div className="modal-body">
-                                <p className="text-muted small mb-3">اختر العناصر التي تريد عرضها ورتبها حسب أولويتك.</p>
-                                <ul className="list-group list-group-flush">
+
+                            <div className="p-6 max-h-96 overflow-y-auto">
+                                <ul className="space-y-2">
                                     {tempLayout.map((id, index) => {
                                         const widget = WIDGETS.find(w => w.id === id);
                                         return (
-                                            <li key={id} className="list-group-item d-flex justify-content-between align-items-center px-0">
-                                                <div className="d-flex align-items-center">
+                                            <li key={id} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl flex justify-between items-center">
+                                                <div className="flex items-center gap-3">
                                                     <input
-                                                        className="form-check-input me-3"
                                                         type="checkbox"
                                                         checked={true}
                                                         onChange={() => toggleWidget(id)}
+                                                        className="w-4 h-4 text-emerald-600 rounded border-gray-300 dark:border-slate-600 focus:ring-emerald-500"
                                                     />
-                                                    <span>{widget?.label || id}</span>
+                                                    <span className="font-medium text-gray-900 dark:text-gray-100">{widget?.label || id}</span>
                                                 </div>
-                                                <div className="btn-group btn-group-sm">
+                                                <div className="flex gap-1">
                                                     <button
-                                                        className="btn btn-outline-secondary"
+                                                        type="button"
                                                         disabled={index === 0}
                                                         onClick={() => moveWidget(index, 'up')}
+                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30"
                                                     >
-                                                        <i className="bi bi-arrow-up"></i>
+                                                        <i className="bi bi-arrow-up" />
                                                     </button>
                                                     <button
-                                                        className="btn btn-outline-secondary"
+                                                        type="button"
                                                         disabled={index === tempLayout.length - 1}
                                                         onClick={() => moveWidget(index, 'down')}
+                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30"
                                                     >
-                                                        <i className="bi bi-arrow-down"></i>
+                                                        <i className="bi bi-arrow-down" />
                                                     </button>
                                                 </div>
                                             </li>
                                         );
                                     })}
                                     {WIDGETS.filter(w => !tempLayout.includes(w.id)).map(widget => (
-                                        <li key={widget.id} className="list-group-item d-flex align-items-center px-0 bg-light">
+                                        <li key={widget.id} className="p-3 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center gap-3 opacity-60">
                                             <input
-                                                className="form-check-input me-3"
                                                 type="checkbox"
                                                 checked={false}
                                                 onChange={() => toggleWidget(widget.id)}
+                                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 dark:border-slate-600 focus:ring-emerald-500"
                                             />
-                                            <span className="text-muted">{widget.label}</span>
+                                            <span className="text-gray-500 dark:text-gray-400">{widget.label}</span>
                                         </li>
                                     ))}
                                 </ul>
                             </div>
-                            <div className="modal-footer border-0">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>إلغاء</button>
-                                <button type="button" className="btn btn-primary" onClick={handleSaveConfig}>
-                                    <i className="bi bi-check-lg me-1"></i>
+
+                            <div className="p-4 bg-gray-50 dark:bg-slate-700/50 flex gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfigModal(false)}
+                                    className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveConfig}
+                                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                                >
+                                    <i className="bi bi-check-lg" />
                                     حفظ التغييرات
                                 </button>
                             </div>
@@ -792,21 +673,6 @@ function Dashboard() {
                     </div>
                 </div>
             )}
-
-            {/* Add CSS for spin animation */}
-            <style>{`
-                .spin {
-                    animation: spin 1s linear infinite;
-                }
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-                .kpi-card-enhanced:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-                }
-            `}</style>
         </div>
     );
 }

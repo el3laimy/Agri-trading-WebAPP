@@ -41,3 +41,26 @@ export const deleteCrop = async (cropId) => {
         throw error;
     }
 };
+
+export const migrateAndDeleteCrop = async (cropId, targetCropId) => {
+    try {
+        // We match schemas.CropMigrationRequest on backend: { target_crop_id: int }
+        const response = await axios.post(`${API_URL}${cropId}/migrate-and-delete`, {
+            target_crop_id: targetCropId
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error migrating crop:", error);
+        throw error;
+    }
+};
+
+export const forceDeleteCrop = async (cropId) => {
+    try {
+        const response = await axios.delete(`${API_URL}${cropId}/force`);
+        return response.data;
+    } catch (error) {
+        console.error("Error force deleting crop:", error);
+        throw error;
+    }
+};

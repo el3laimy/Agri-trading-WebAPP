@@ -17,7 +17,6 @@ function Sidebar() {
         { path: '/treasury', label: 'الخزينة اليومية', icon: 'bi-wallet2' },
         { path: '/sales', label: 'المبيعات', icon: 'bi-cart-check' },
         { path: '/purchases', label: 'المشتريات', icon: 'bi-bag-check' },
-
         { path: '/expenses', label: 'المصروفات', icon: 'bi-cash-coin' },
     ];
 
@@ -27,10 +26,10 @@ function Sidebar() {
         { path: '/inventory-adjustments', label: 'تسوية المخزون', icon: 'bi-sliders' },
     ];
 
-    // التقارير المالية - تم التبسيط
+    // التقارير المالية
     const reports = [
-        { path: '/reports', label: 'مركز التقارير', icon: 'bi-grid-1x2-fill' }, // الرابط الرئيسي الجديد
-        { path: '/crop-performance', label: 'أداء المحاصيل', icon: 'bi-flower1' }, // التقرير الجديد
+        { path: '/reports', label: 'مركز التقارير', icon: 'bi-grid-1x2-fill' },
+        { path: '/crop-performance', label: 'أداء المحاصيل', icon: 'bi-flower1' },
         { path: '/capital-distribution', label: 'توزيع رأس المال', icon: 'bi-pie-chart-fill' },
         { path: '/reports/income-statement', label: 'قائمة الدخل', icon: 'bi-graph-up' },
         { path: '/reports/balance-sheet', label: 'الميزانية العمومية', icon: 'bi-bank' },
@@ -57,18 +56,14 @@ function Sidebar() {
         <NavLink
             to={item.path}
             className={({ isActive }) =>
-                `nav-link d-flex align-items-center ${isActive ? 'active-link' : ''} ${isSubItem ? 'text-white-50 py-2' : 'text-white py-2'}`
+                `flex items-center rounded-lg transition-all duration-200 mb-0.5
+                ${isSubItem ? 'text-white/70 py-2 pr-4 text-sm' : 'text-white py-2 px-3 text-[0.95rem]'}
+                ${isActive && !isSubItem ? 'bg-white/15' : 'hover:bg-white/5'}
+                ${isActive && isSubItem ? 'text-white bg-white/10' : ''}
+                `
             }
-            style={({ isActive }) => ({
-                backgroundColor: isActive && !isSubItem ? 'rgba(255,255,255,0.15)' : 'transparent',
-                borderRadius: '8px',
-                fontSize: isSubItem ? '0.9rem' : '0.95rem',
-                transition: 'all 0.2s ease',
-                paddingRight: isSubItem ? '1rem' : '0.75rem',
-                marginBottom: '2px',
-            })}
         >
-            <i className={`bi ${item.icon} ms-2`} style={{ fontSize: isSubItem ? '0.85rem' : '1rem' }}></i>
+            <i className={`bi ${item.icon} ml-2 ${isSubItem ? 'text-sm' : 'text-base'}`}></i>
             <span>{item.label}</span>
         </NavLink>
     );
@@ -76,35 +71,22 @@ function Sidebar() {
     const MenuSection = ({ title, icon, items, menuKey }) => (
         <div className="mb-2">
             <button
-                className="nav-link text-white w-100 d-flex align-items-center justify-content-between py-2"
+                className={`w-full flex items-center justify-between py-2 px-3 rounded-lg text-white transition-all duration-200 
+                    ${openMenus[menuKey] ? 'bg-white/10' : 'hover:bg-white/5'}`}
                 onClick={() => toggleMenu(menuKey)}
-                style={{
-                    background: openMenus[menuKey] ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    border: 'none',
-                    borderRadius: '8px',
-                    transition: 'all 0.2s ease'
-                }}
             >
-                <span className="d-flex align-items-center">
-                    <i className={`bi ${icon} ms-2`}></i>
-                    {title}
-                </span>
-                <i className={`bi bi-chevron-${openMenus[menuKey] ? 'up' : 'down'} transition-transform`}
-                    style={{
-                        fontSize: '0.75rem',
-                        transition: 'transform 0.2s ease'
-                    }}></i>
+                <div className="flex items-center">
+                    <i className={`bi ${icon} ml-2`}></i>
+                    <span>{title}</span>
+                </div>
+                <i className={`bi bi-chevron-${openMenus[menuKey] ? 'up' : 'down'} text-xs transition-transform duration-200`}></i>
             </button>
-            <div className={`collapse-menu ${openMenus[menuKey] ? 'show' : ''}`}
-                style={{
-                    maxHeight: openMenus[menuKey] ? '500px' : '0',
-                    overflow: 'hidden',
-                    transition: 'max-height 0.3s ease'
-                }}>
-                <ul className="nav flex-column me-3 mt-1 pe-2"
-                    style={{ borderRight: '2px solid rgba(196, 163, 90, 0.3)' }}>
+            <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${openMenus[menuKey] ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+            >
+                <ul className="flex flex-col mr-3 mt-1 pr-2 border-r-2 border-[#C4A35A]/30">
                     {items.map(item => (
-                        <li className="nav-item" key={item.path}>
+                        <li key={item.path}>
                             <NavItem item={item} isSubItem={true} />
                         </li>
                     ))}
@@ -114,125 +96,97 @@ function Sidebar() {
     );
 
     return (
-        <div className="sidebar d-flex flex-column flex-shrink-0 p-3 text-white"
-            style={{
-                width: 'var(--sidebar-width)',
-                background: 'linear-gradient(180deg, #1E5631 0%, #0D3320 100%)',
-                height: '100vh',
-                position: 'fixed',
-                right: 0,
-                top: 0,
-                overflowY: 'auto',
-                zIndex: 1000,
-                boxShadow: '-4px 0 20px rgba(0,0,0,0.15)'
-            }}>
+        <div className="h-screen fixed right-0 top-0 overflow-y-auto z-50 text-white shadow-2xl flex flex-col w-64 bg-gradient-to-b from-[#1E5631] to-[#0D3320]">
 
             {/* Logo Section */}
-            <a href="/" className="d-flex align-items-center mb-3 text-white text-decoration-none p-2 rounded"
-                style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <div className="d-flex align-items-center">
+            <div className="p-3">
+                <a href="/" className="flex items-center p-2 rounded-lg bg-white/10 mb-4 hover:bg-white/20 transition-colors no-underline text-white">
                     <img
                         src="/logo.png"
                         alt="Logo"
-                        style={{
-                            width: '45px',
-                            height: '45px',
-                            borderRadius: '10px',
-                            marginLeft: '10px',
-                            objectFit: 'cover',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                        }}
+                        className="w-11 h-11 rounded-lg ml-3 object-cover shadow-md"
                     />
                     <div>
-                        <span className="fw-bold d-block" style={{ fontSize: '1.1rem', lineHeight: '1.2' }}>
+                        <span className="font-bold block text-lg leading-tight">
                             المحاسبة الزراعية
                         </span>
-                        <small className="text-white-50" style={{ fontSize: '0.75rem' }}>
+                        <small className="text-white/50 text-xs">
                             نظام إدارة متكامل
                         </small>
                     </div>
-                </div>
-            </a>
+                </a>
 
-            <hr style={{ borderColor: 'rgba(255,255,255,0.15)', margin: '0.5rem 0 1rem' }} />
+                <hr className="border-white/15 mb-4" />
 
-            {/* Navigation */}
-            <nav className="flex-grow-1">
-                {/* العمليات اليومية */}
-                <div className="mb-3">
-                    <small className="text-white-50 text-uppercase fw-bold px-2 d-block mb-2"
-                        style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>
-                        العمليات اليومية
-                    </small>
-                    <ul className="nav nav-pills flex-column">
-                        {dailyOperations.map(item => (
-                            <li className="nav-item" key={item.path}>
-                                <NavItem item={item} />
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                {/* Navigation */}
+                <nav className="flex-grow space-y-4">
+                    {/* العمليات اليومية */}
+                    <div>
+                        <small className="text-white/50 uppercase font-bold px-2 block mb-2 text-[0.7rem] tracking-wider">
+                            العمليات اليومية
+                        </small>
+                        <ul className="space-y-1">
+                            {dailyOperations.map(item => (
+                                <li key={item.path}>
+                                    <NavItem item={item} />
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
 
-                {/* المخزون */}
-                <div className="mb-3">
-                    <small className="text-white-50 text-uppercase fw-bold px-2 d-block mb-2"
-                        style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>
-                        المخزون
-                    </small>
-                    <ul className="nav nav-pills flex-column">
-                        {inventoryItems.map(item => (
-                            <li className="nav-item" key={item.path}>
-                                <NavItem item={item} />
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                    {/* المخزون */}
+                    <div>
+                        <small className="text-white/50 uppercase font-bold px-2 block mb-2 text-[0.7rem] tracking-wider">
+                            المخزون
+                        </small>
+                        <ul className="space-y-1">
+                            {inventoryItems.map(item => (
+                                <li key={item.path}>
+                                    <NavItem item={item} />
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
 
-                {/* التقارير */}
-                <MenuSection
-                    title="التقارير المالية"
-                    icon="bi-file-earmark-bar-graph"
-                    items={reports}
-                    menuKey="reports"
-                />
+                    {/* التقارير */}
+                    <MenuSection
+                        title="التقارير المالية"
+                        icon="bi-file-earmark-bar-graph"
+                        items={reports}
+                        menuKey="reports"
+                    />
 
-                {/* الإعدادات */}
-                <MenuSection
-                    title="الإعدادات"
-                    icon="bi-gear"
-                    items={settings}
-                    menuKey="settings"
-                />
+                    {/* الإعدادات */}
+                    <MenuSection
+                        title="الإعدادات"
+                        icon="bi-gear"
+                        items={settings}
+                        menuKey="settings"
+                    />
 
-                {/* النظام */}
-                <MenuSection
-                    title="النظام"
-                    icon="bi-shield-lock"
-                    items={[
-                        ...system,
-                        { path: '/users', label: 'المستخدمين', icon: 'bi-people-fill' }
-                    ]}
-                    menuKey="system"
-                />
-            </nav>
+                    {/* النظام */}
+                    <MenuSection
+                        title="النظام"
+                        icon="bi-shield-lock"
+                        items={[
+                            ...system,
+                            { path: '/users', label: 'المستخدمين', icon: 'bi-people-fill' }
+                        ]}
+                        menuKey="system"
+                    />
+                </nav>
+            </div>
 
             {/* Logout and Shutdown Actions */}
-            <div className="px-3 pb-2">
+            <div className="mt-auto p-3 pb-4">
                 <button
                     onClick={() => {
                         localStorage.clear();
                         window.location.href = '/login';
                     }}
-                    className="btn w-100 d-flex align-items-center justify-content-center text-white mb-2"
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s',
-                        fontSize: '0.9rem'
-                    }}
+                    className="w-full flex items-center justify-center text-white mb-2 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-sm"
                 >
-                    <i className="bi bi-box-arrow-right ms-2"></i>
+                    <i className="bi bi-box-arrow-right ml-2"></i>
                     تسجيل الخروج
                 </button>
 
@@ -253,24 +207,16 @@ function Sidebar() {
                             }
                         }
                     }}
-                    className="btn w-100 d-flex align-items-center justify-content-center text-white"
-                    style={{
-                        background: 'rgba(220, 53, 69, 0.8)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '0.9rem'
-                    }}
+                    className="w-full flex items-center justify-center text-white py-2 rounded-lg bg-red-600/80 hover:bg-red-600 border-none transition-all text-sm shadow-md"
                 >
-                    <i className="bi bi-power ms-2"></i>
+                    <i className="bi bi-power ml-2"></i>
                     إغلاق النظام
                 </button>
             </div>
 
             {/* Footer */}
-            <div className="mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                <div className="text-center text-white-50" style={{ fontSize: '0.75rem' }}>
-                    <small>الإصدار 2.0</small>
-                </div>
+            <div className="p-3 border-t border-white/10 text-center">
+                <small className="text-white/50 text-xs">الإصدار 2.0</small>
             </div>
         </div>
     );

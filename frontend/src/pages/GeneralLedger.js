@@ -9,7 +9,6 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 
 const GeneralLedger = () => {
-    // Shared State Management
     const {
         isLoading,
         startLoading,
@@ -21,7 +20,6 @@ const GeneralLedger = () => {
         clearMessages
     } = usePageState();
 
-    // Data State
     const [entries, setEntries] = useState([]);
     const [filteredEntries, setFilteredEntries] = useState([]);
     const [accounts, setAccounts] = useState([]);
@@ -32,18 +30,15 @@ const GeneralLedger = () => {
         uniqueAccounts: 0
     });
 
-    // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedAccount, setSelectedAccount] = useState('');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
 
-    // UI State
     const [showEntryForm, setShowEntryForm] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const entriesPerPage = 20;
 
-    // Fetch Accounts
     const fetchAccounts = async () => {
         try {
             const response = await fetch('http://localhost:8000/api/v1/financial-accounts/');
@@ -54,14 +49,12 @@ const GeneralLedger = () => {
         }
     };
 
-    // Fetch Ledger Data
     const fetchLedger = useCallback(async () => {
         startLoading();
         try {
             const data = await getGeneralLedger();
             setEntries(data);
 
-            // Calculate stats immediately
             const totalDebit = data.reduce((sum, e) => sum + (e.debit || 0), 0);
             const totalCredit = data.reduce((sum, e) => sum + (e.credit || 0), 0);
             const uniqueAccounts = [...new Set(data.filter(e => e.account).map(e => e.account.account_id))].length;
@@ -84,9 +77,8 @@ const GeneralLedger = () => {
     useEffect(() => {
         fetchLedger();
         fetchAccounts();
-    }, []); // Run once on mount
+    }, []);
 
-    // Filter Logic
     useEffect(() => {
         let result = [...entries];
 
@@ -110,7 +102,7 @@ const GeneralLedger = () => {
         }
 
         setFilteredEntries(result);
-        setCurrentPage(1); // Reset pagination on filter change
+        setCurrentPage(1);
     }, [entries, searchTerm, selectedAccount, startDate, endDate]);
 
     const handleCreateEntry = async (entryData) => {
@@ -120,7 +112,7 @@ const GeneralLedger = () => {
             await createManualEntry(entryData);
             showSuccess('تم إضافة القيد المحاسبي بنجاح');
             setShowEntryForm(false);
-            fetchLedger(); // Refresh data
+            fetchLedger();
         } catch (err) {
             showError(err.message || 'فشل إضافة القيد');
         } finally {
@@ -135,75 +127,54 @@ const GeneralLedger = () => {
         setEndDate(null);
     };
 
-    // Pagination
     const indexOfLastEntry = currentPage * entriesPerPage;
     const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
     const currentEntries = filteredEntries.slice(indexOfFirstEntry, indexOfLastEntry);
     const totalPages = Math.ceil(filteredEntries.length / entriesPerPage);
 
     return (
-        <div className="container-fluid">
+        <div className="p-6">
             {/* Header */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
                 <PageHeader
                     title="دفتر الأستاذ العام"
                     subtitle="سجل شامل لجميع القيود والمعاملات المالية"
                     icon="bi-journal-bookmark"
                 />
                 <button
-                    className={`btn ${showEntryForm ? 'btn-secondary' : 'btn-primary'}`}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${showEntryForm ? 'bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                     onClick={() => {
                         setShowEntryForm(!showEntryForm);
                         clearMessages();
                     }}
                 >
-                    <i className={`bi ${showEntryForm ? 'bi-x-lg' : 'bi-plus-lg'} me-2`}></i>
+                    <i className={`bi ${showEntryForm ? 'bi-x-lg' : 'bi-plus-lg'}`}></i>
                     {showEntryForm ? 'إغلاق النموذج' : 'قيد جديد'}
                 </button>
             </div>
 
             {/* Notifications */}
-            <AlertToast
-                message={successMessage}
-                type="success"
-                onClose={clearMessages}
-            />
+            <AlertToast message={successMessage} type="success" onClose={clearMessages} />
             {error && !showEntryForm && <AlertToast message={error} type="error" onClose={clearMessages} />}
 
             {/* Statistics Row */}
             {!isLoading && (
-                <div className="row g-3 mb-4">
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100 border-end border-success border-4">
-                            <div className="card-body">
-                                <small className="text-muted d-block fw-bold display-6 mb-0 text-success">{formatCurrency(stats.totalDebit)}</small>
-                                <span className="text-muted small">إجمالي المدين (Debit)</span>
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 border-r-4 border-green-500">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(stats.totalDebit)}</div>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">إجمالي المدين (Debit)</span>
                     </div>
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100 border-end border-danger border-4">
-                            <div className="card-body">
-                                <small className="text-muted d-block fw-bold display-6 mb-0 text-danger">{formatCurrency(stats.totalCredit)}</small>
-                                <span className="text-muted small">إجمالي الدائن (Credit)</span>
-                            </div>
-                        </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 border-r-4 border-red-500">
+                        <div className="text-2xl font-bold text-red-500 dark:text-red-400">{formatCurrency(stats.totalCredit)}</div>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">إجمالي الدائن (Credit)</span>
                     </div>
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100 border-end border-primary border-4">
-                            <div className="card-body">
-                                <small className="text-muted d-block fw-bold display-6 mb-0 text-primary">{stats.entriesCount}</small>
-                                <span className="text-muted small">عدد القيود</span>
-                            </div>
-                        </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 border-r-4 border-emerald-500">
+                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.entriesCount}</div>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">عدد القيود</span>
                     </div>
-                    <div className="col-md-3">
-                        <div className="card border-0 shadow-sm h-100 border-end border-info border-4">
-                            <div className="card-body">
-                                <small className="text-muted d-block fw-bold display-6 mb-0 text-info">{stats.uniqueAccounts}</small>
-                                <span className="text-muted small">حسابات نشطة</span>
-                            </div>
-                        </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 border-r-4 border-cyan-500">
+                        <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{stats.uniqueAccounts}</div>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">حسابات نشطة</span>
                     </div>
                 </div>
             )}
@@ -221,28 +192,28 @@ const GeneralLedger = () => {
                 )
             )}
 
-            {/* Main Content Area: Loading or Data */}
+            {/* Main Content Area */}
             {isLoading && !showEntryForm ? (
                 <PageLoading text="جاري تحميل القيود..." />
             ) : (
                 <>
                     {/* Filters */}
-                    <Card className="mb-4">
-                        <div className="row g-3 align-items-end">
-                            <div className="col-md-3">
-                                <label className="form-label small fw-bold">بحث</label>
+                    <Card className="mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">بحث</label>
                                 <input
                                     type="text"
-                                    className="form-control form-control-sm"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                                     placeholder="الوصف أو اسم الحساب..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <div className="col-md-3">
-                                <label className="form-label small fw-bold">الحساب</label>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">الحساب</label>
                                 <select
-                                    className="form-select form-select-sm"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                                     value={selectedAccount}
                                     onChange={e => setSelectedAccount(e.target.value)}
                                 >
@@ -254,28 +225,28 @@ const GeneralLedger = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div className="col-md-2">
-                                <label className="form-label small fw-bold">من</label>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">من</label>
                                 <DatePicker
                                     selected={startDate}
                                     onChange={date => setStartDate(date)}
-                                    className="form-control form-control-sm"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                                     placeholderText="تاريخ البداية"
                                     dateFormat="yyyy-MM-dd"
                                 />
                             </div>
-                            <div className="col-md-2">
-                                <label className="form-label small fw-bold">إلى</label>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">إلى</label>
                                 <DatePicker
                                     selected={endDate}
                                     onChange={date => setEndDate(date)}
-                                    className="form-control form-control-sm"
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
                                     placeholderText="تاريخ النهاية"
                                     dateFormat="yyyy-MM-dd"
                                 />
                             </div>
-                            <div className="col-md-2">
-                                <button className="btn btn-outline-secondary btn-sm w-100" onClick={clearFilters}>
+                            <div>
+                                <button className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors" onClick={clearFilters}>
                                     إعادة تعيين
                                 </button>
                             </div>
@@ -285,35 +256,39 @@ const GeneralLedger = () => {
                     {/* Table */}
                     <Card title={`سجل القيود (${filteredEntries.length})`} icon="bi-table">
                         {filteredEntries.length === 0 ? (
-                            <div className="text-center py-5">
-                                <p className="text-muted">لا توجد قيود لعرضها.</p>
+                            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                                لا توجد قيود لعرضها.
                             </div>
                         ) : (
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead className="table-light">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full">
+                                    <thead className="bg-gray-50 dark:bg-slate-700">
                                         <tr>
-                                            <th style={{ width: '50px' }}>#</th>
-                                            <th style={{ width: '120px' }}>التاريخ</th>
-                                            <th>الحساب</th>
-                                            <th>الوصف</th>
-                                            <th className="text-end text-success">مدين</th>
-                                            <th className="text-end text-danger">دائن</th>
+                                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '50px' }}>#</th>
+                                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '120px' }}>التاريخ</th>
+                                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">الحساب</th>
+                                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">الوصف</th>
+                                            <th className="px-4 py-3 text-left text-sm font-semibold text-green-600 dark:text-green-400">مدين</th>
+                                            <th className="px-4 py-3 text-left text-sm font-semibold text-red-500 dark:text-red-400">دائن</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                         {currentEntries.map((entry, index) => (
-                                            <tr key={index}>
-                                                <td className="text-muted small">{entry.entry_id}</td>
-                                                <td><span className="badge bg-light text-dark fw-normal">{formatDate(entry.entry_date)}</span></td>
-                                                <td className="fw-medium">{entry.account?.account_name}</td>
-                                                <td className="text-muted small text-truncate" style={{ maxWidth: '250px' }} title={entry.description}>
+                                            <tr key={index} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                <td className="px-4 py-3 text-sm text-gray-400">{entry.entry_id}</td>
+                                                <td className="px-4 py-3">
+                                                    <span className="inline-block px-2 py-1 text-xs font-medium rounded bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-gray-300">
+                                                        {formatDate(entry.entry_date)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{entry.account?.account_name}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-[250px] truncate" title={entry.description}>
                                                     {entry.description}
                                                 </td>
-                                                <td className="text-end text-success">
+                                                <td className="px-4 py-3 text-left text-green-600 dark:text-green-400">
                                                     {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
                                                 </td>
-                                                <td className="text-end text-danger">
+                                                <td className="px-4 py-3 text-left text-red-500 dark:text-red-400">
                                                     {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                                                 </td>
                                             </tr>
@@ -325,28 +300,33 @@ const GeneralLedger = () => {
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="d-flex justify-content-center mt-4">
-                                <nav aria-label="Page navigation">
-                                    <ul className="pagination">
-                                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                                            <button className="page-link" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}>
-                                                السابق
-                                            </button>
-                                        </li>
-                                        {[...Array(totalPages)].map((_, i) => (
-                                            <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                                                <button className="page-link" onClick={() => setCurrentPage(i + 1)}>
-                                                    {i + 1}
-                                                </button>
-                                            </li>
-                                        ))}
-                                        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                                            <button className="page-link" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}>
-                                                التالي
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </nav>
+                            <div className="flex justify-center mt-6 gap-1">
+                                <button
+                                    className={`px-3 py-1 rounded border border-gray-300 dark:border-slate-600 text-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-slate-700'} text-gray-700 dark:text-gray-300`}
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    السابق
+                                </button>
+                                {[...Array(Math.min(totalPages, 5))].map((_, i) => {
+                                    const pageNum = i + 1;
+                                    return (
+                                        <button
+                                            key={i}
+                                            className={`px-3 py-1 rounded border text-sm ${currentPage === pageNum ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    className={`px-3 py-1 rounded border border-gray-300 dark:border-slate-600 text-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-slate-700'} text-gray-700 dark:text-gray-300`}
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    التالي
+                                </button>
                             </div>
                         )}
                     </Card>

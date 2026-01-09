@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* ===== Color Palette - Premium Agri-Trading ===== */
   /* Primary Colors - Emerald Green (Growth & Prosperity) */
@@ -91,52 +95,72 @@
 }
 
 [data-theme="dark"] {
-  /* Dark Mode Overrides - Deep Slate Strategy */
-  --bg-body: #0F172A;
-  /* Slate 900 */
+  /* Dark Mode Overrides - Advanced Deep Slate Strategy */
+  /* Purpose: Improve contrast and reduce eye strain */
+
+  /* Backgrounds */
+  --bg-body: #020617;
+  /* Very deep slate (almost black) for maximum contrast */
   --bg-sidebar: linear-gradient(180deg, #020617 0%, #0F172A 100%);
   --bg-card: #1E293B;
-  /* Slate 800 */
+  /* Slate 800 - Lighter than body to create elevation */
   --bg-card-hover: #334155;
   /* Slate 700 */
   --bg-input: #0F172A;
-  --bg-hover: #334155;
+  /* Slate 900 - Recessed feel */
+  --bg-hover: #1E293B;
+  /* Slate 800 */
 
-  /* Surfaces & Glassmorphism */
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --surface-1: #1E293B;
-  --surface-2: #334155;
-  --surface-3: #475569;
-
+  /* Text Colors - WCAG AAA Compliant */
   --text-primary: #F8FAFC;
-  /* Slate 50 */
+  /* Slate 50 - Maximum readability */
   --text-secondary: #CBD5E1;
-  /* Slate 300 */
-  --text-muted: #64748B;
-  /* Slate 500 */
+  /* Slate 300 - Distinct hierarchy */
+  --text-muted: #94A3B8;
+  /* Slate 400 */
   --text-light: #FFFFFF;
   --text-dark: #F8FAFC;
-  /* Map dark text to light for consistency */
 
-  --border-color: #334155;
-  /* Slate 700 */
-  --border-light: #1E293B;
-  /* Slate 800 */
+  /* Surfaces & Glassmorphism */
+  --glass-bg: rgba(30, 41, 59, 0.85);
+  /* More opaque for better legibility */
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --surface-1: #0F172A;
+  --surface-2: #1E293B;
+  --surface-3: #334155;
+
+  /* Borders - Subtle but defining */
+  --border-color: #1E293B;
+  /* Matches card bg to blend, or slightly lighter */
+  --border-light: #334155;
+  /* Slate 700 for separators */
   --border-dark: #475569;
-  /* Slate 600 */
 
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  /* Sophisticated Shadows for Dark Mode Depth */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  /* Sharper small shadow */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
 
-  --primary-50: rgba(16, 185, 129, 0.15);
-  --primary-100: rgba(16, 185, 129, 0.25);
+  /* Primary Colors - Adjusted for Dark Mode Emission */
+  --primary-color: #10B981;
+  /* Emerald 500 - Brighter than light mode's 600 */
+  --primary-dark: #059669;
+  /* Emerald 600 */
+  --primary-light: #34D399;
+  /* Emerald 400 */
+
+  --primary-50: rgba(16, 185, 129, 0.1);
+  --primary-100: rgba(16, 185, 129, 0.2);
+
+  --glow-primary: 0 0 20px rgba(16, 185, 129, 0.25);
 
   --input-bg: #0F172A;
-
-  --glow-primary: 0 0 20px rgba(16, 185, 129, 0.4);
 }
+
+
+
 
 
 /* ===== Base Styles ===== */

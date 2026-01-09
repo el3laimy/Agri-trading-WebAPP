@@ -13,7 +13,7 @@ function ContactDetails() {
     const [error, setError] = useState(null);
     const [startDate, setStartDate] = useState(() => {
         const date = new Date();
-        date.setMonth(0, 1); // أول السنة
+        date.setMonth(0, 1);
         return date;
     });
     const [endDate, setEndDate] = useState(new Date());
@@ -40,14 +40,14 @@ function ContactDetails() {
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP'
         }).format(amount || 0);
     };
 
     const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('ar-EG');
+        return new Date(dateStr).toLocaleDateString('en-US');
     };
 
     const getContactTypeLabel = (type) => {
@@ -61,20 +61,10 @@ function ContactDetails() {
 
     const getContactTypeBadge = (type) => {
         switch (type) {
-            case 'CUSTOMER': return 'bg-success';
-            case 'SUPPLIER': return 'bg-info';
-            case 'BOTH': return 'bg-warning text-dark';
-            default: return 'bg-secondary';
-        }
-    };
-
-    const getReferenceTypeLabel = (type) => {
-        switch (type) {
-            case 'SALE': return 'مبيعات';
-            case 'PURCHASE': return 'مشتريات';
-            case 'PAYMENT': return 'دفعة';
-            case 'OPENING': return 'رصيد افتتاحي';
-            default: return type;
+            case 'CUSTOMER': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+            case 'SUPPLIER': return 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400';
+            case 'BOTH': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
+            default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
         }
     };
 
@@ -84,23 +74,21 @@ function ContactDetails() {
 
     if (loading) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">جاري التحميل...</span>
-                </div>
+            <div className="flex justify-center items-center h-[50vh]">
+                <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="container-fluid">
-                <div className="alert alert-danger">
-                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            <div className="p-6">
+                <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 flex items-center gap-2 mb-4">
+                    <i className="bi bi-exclamation-triangle-fill"></i>
                     {error}
                 </div>
-                <button className="btn btn-secondary" onClick={() => navigate('/contacts')}>
-                    <i className="bi bi-arrow-right me-2"></i>
+                <button className="px-4 py-2 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors flex items-center gap-2" onClick={() => navigate('/contacts')}>
+                    <i className="bi bi-arrow-right"></i>
                     العودة
                 </button>
             </div>
@@ -109,232 +97,199 @@ function ContactDetails() {
 
     if (!statement) return null;
 
-    const { contact, summary, entries, opening_balance, closing_balance } = statement;
+    const { contact, summary, entries } = statement;
 
     return (
-        <div className="container-fluid">
+        <div className="p-6">
             {/* Header */}
-            <div className="row mb-4">
-                <div className="col-12 d-flex justify-content-between align-items-center">
-                    <div>
-                        <button
-                            className="btn btn-outline-secondary me-3"
-                            onClick={() => navigate('/contacts')}
-                        >
-                            <i className="bi bi-arrow-right me-1"></i>
-                            العودة
-                        </button>
-                        <span className="fs-4 fw-bold" style={{ color: 'var(--primary-dark)' }}>
-                            <i className="bi bi-person-circle me-2"></i>
-                            كشف حساب: {contact.name}
-                        </span>
-                        <span className={`badge ${getContactTypeBadge(summary.contact_type)} ms-2`}>
-                            {getContactTypeLabel(summary.contact_type)}
-                        </span>
-                    </div>
-                    <button className="btn btn-outline-primary" onClick={handlePrint}>
-                        <i className="bi bi-printer me-2"></i>
-                        طباعة
+            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                <div className="flex items-center gap-3">
+                    <button
+                        className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
+                        onClick={() => navigate('/contacts')}
+                    >
+                        <i className="bi bi-arrow-right"></i>
+                        العودة
                     </button>
+                    <span className="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <i className="bi bi-person-circle text-emerald-600"></i>
+                        كشف حساب: {contact.name}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getContactTypeBadge(summary.contact_type)}`}>
+                        {getContactTypeLabel(summary.contact_type)}
+                    </span>
                 </div>
+                <button className="px-4 py-2 border border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center gap-2" onClick={handlePrint}>
+                    <i className="bi bi-printer"></i>
+                    طباعة
+                </button>
             </div>
 
-            {/* Contact Info Card */}
-            <div className="row mb-4">
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body">
-                            <h6 className="fw-bold mb-3">
-                                <i className="bi bi-info-circle me-2 text-primary"></i>
-                                بيانات جهة التعامل
-                            </h6>
-                            <p className="mb-2">
-                                <strong>الاسم:</strong> {contact.name}
-                            </p>
-                            {contact.phone && (
-                                <p className="mb-2">
-                                    <strong>الهاتف:</strong> {contact.phone}
-                                </p>
-                            )}
-                            {contact.address && (
-                                <p className="mb-2">
-                                    <strong>العنوان:</strong> {contact.address}
-                                </p>
-                            )}
-                        </div>
-                    </div>
+            {/* Contact Info & Financial Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
+                    <h6 className="font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                        <i className="bi bi-info-circle text-emerald-600"></i>
+                        بيانات جهة التعامل
+                    </h6>
+                    <p className="mb-2 text-gray-700 dark:text-gray-300"><strong>الاسم:</strong> {contact.name}</p>
+                    {contact.phone && <p className="mb-2 text-gray-700 dark:text-gray-300"><strong>الهاتف:</strong> {contact.phone}</p>}
+                    {contact.address && <p className="mb-2 text-gray-700 dark:text-gray-300"><strong>العنوان:</strong> {contact.address}</p>}
                 </div>
 
-                {/* Financial Summary */}
-                <div className="col-md-8">
-                    <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body">
-                            <h6 className="fw-bold mb-3">
-                                <i className="bi bi-graph-up me-2 text-success"></i>
-                                الملخص المالي
-                            </h6>
-                            <div className="row">
-                                {summary.contact_type !== 'SUPPLIER' && (
-                                    <>
-                                        <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
-                                                <small className="text-muted d-block">إجمالي المبيعات</small>
-                                                <strong className="text-success">{formatCurrency(summary.total_sales)}</strong>
-                                            </div>
-                                        </div>
-                                        <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
-                                                <small className="text-muted d-block">المحصل</small>
-                                                <strong className="text-primary">{formatCurrency(summary.total_received)}</strong>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                                {summary.contact_type !== 'CUSTOMER' && (
-                                    <>
-                                        <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
-                                                <small className="text-muted d-block">إجمالي المشتريات</small>
-                                                <strong className="text-danger">{formatCurrency(summary.total_purchases)}</strong>
-                                            </div>
-                                        </div>
-                                        <div className="col-md-3 mb-3">
-                                            <div className="border rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-card)' }}>
-                                                <small className="text-muted d-block">المدفوع</small>
-                                                <strong className="text-warning">{formatCurrency(summary.total_paid)}</strong>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                                <div className="col-md-3 mb-3">
-                                    <div className={`border rounded p-3 text-center ${summary.balance_due >= 0 ? 'bg-success-subtle' : 'bg-danger-subtle'}`}>
-                                        <small className="text-muted d-block">الرصيد المستحق</small>
-                                        <strong className={summary.balance_due >= 0 ? 'text-success' : 'text-danger'}>
-                                            {formatCurrency(Math.abs(summary.balance_due))}
-                                            <small className="d-block">
-                                                {summary.balance_due >= 0 ? '(لنا)' : '(علينا)'}
-                                            </small>
-                                        </strong>
-                                    </div>
+                <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5">
+                    <h6 className="font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                        <i className="bi bi-graph-up text-green-600"></i>
+                        الملخص المالي
+                    </h6>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {summary.contact_type !== 'SUPPLIER' && (
+                            <>
+                                <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-3 text-center bg-gray-50 dark:bg-slate-700">
+                                    <small className="text-gray-500 dark:text-gray-400 block">إجمالي المبيعات</small>
+                                    <strong className="text-green-600 dark:text-green-400">{formatCurrency(summary.total_sales)}</strong>
                                 </div>
-                            </div>
+                                <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-3 text-center bg-gray-50 dark:bg-slate-700">
+                                    <small className="text-gray-500 dark:text-gray-400 block">المحصل</small>
+                                    <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(summary.total_received)}</strong>
+                                </div>
+                            </>
+                        )}
+                        {summary.contact_type !== 'CUSTOMER' && (
+                            <>
+                                <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-3 text-center bg-gray-50 dark:bg-slate-700">
+                                    <small className="text-gray-500 dark:text-gray-400 block">إجمالي المشتريات</small>
+                                    <strong className="text-red-500 dark:text-red-400">{formatCurrency(summary.total_purchases)}</strong>
+                                </div>
+                                <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-3 text-center bg-gray-50 dark:bg-slate-700">
+                                    <small className="text-gray-500 dark:text-gray-400 block">المدفوع</small>
+                                    <strong className="text-amber-600 dark:text-amber-400">{formatCurrency(summary.total_paid)}</strong>
+                                </div>
+                            </>
+                        )}
+                        <div
+                            className="rounded-lg p-4 text-center shadow-sm text-white"
+                            style={{
+                                background: summary.balance_due >= 0
+                                    ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)'
+                                    : 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)'
+                            }}
+                        >
+                            <i className={`bi ${summary.balance_due >= 0 ? 'bi-arrow-down-circle' : 'bi-arrow-up-circle'} text-3xl mb-2 block opacity-75`}></i>
+                            <small className="block opacity-75">الرصيد المستحق</small>
+                            <strong className="text-xl block">
+                                {formatCurrency(Math.abs(summary.balance_due))}
+                            </strong>
+                            <span className="inline-block mt-1 bg-white/90 text-gray-800 px-2 py-0.5 rounded text-xs font-medium">
+                                {summary.balance_due >= 0 ? '💰 لنا' : '⚠️ علينا'}
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Date Filter */}
-            <div className="card border-0 shadow-sm mb-4">
-                <div className="card-body">
-                    <div className="row align-items-center">
-                        <div className="col-md-4">
-                            <label className="form-label fw-bold">من تاريخ</label>
-                            <DatePicker
-                                selected={startDate}
-                                onChange={(date) => setStartDate(date)}
-                                className="form-control"
-                                dateFormat="yyyy-MM-dd"
-                            />
-                        </div>
-                        <div className="col-md-4">
-                            <label className="form-label fw-bold">إلى تاريخ</label>
-                            <DatePicker
-                                selected={endDate}
-                                onChange={(date) => setEndDate(date)}
-                                className="form-control"
-                                dateFormat="yyyy-MM-dd"
-                            />
-                        </div>
-                        <div className="col-md-4 d-flex align-items-end">
-                            <button
-                                className="btn btn-primary mt-4"
-                                onClick={fetchStatement}
-                            >
-                                <i className="bi bi-search me-2"></i>
-                                عرض الكشف
-                            </button>
-                        </div>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">من تاريخ</label>
+                        <DatePicker
+                            selected={startDate}
+                            onChange={(date) => setStartDate(date)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
+                            dateFormat="yyyy-MM-dd"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">إلى تاريخ</label>
+                        <DatePicker
+                            selected={endDate}
+                            onChange={(date) => setEndDate(date)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
+                            dateFormat="yyyy-MM-dd"
+                        />
+                    </div>
+                    <div>
+                        <button
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                            onClick={fetchStatement}
+                        >
+                            <i className="bi bi-search"></i>
+                            عرض الكشف
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Statement Table */}
-            <div className="card border-0 shadow-sm">
-                <div className="card-header bg-white py-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                        <h5 className="mb-0 fw-bold">
-                            <i className="bi bi-journal-text me-2"></i>
-                            كشف الحساب التفصيلي
-                        </h5>
-                        <span className="text-muted">
-                            من {formatDate(statement.start_date)} إلى {formatDate(statement.end_date)}
-                        </span>
-                    </div>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+                    <h5 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <i className="bi bi-journal-text"></i>
+                        كشف الحساب التفصيلي
+                    </h5>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">
+                        من {formatDate(statement.start_date)} إلى {formatDate(statement.end_date)}
+                    </span>
                 </div>
-                <div className="card-body p-0">
-                    <div className="table-responsive">
-                        <table className="table table-hover mb-0">
-                            <thead className="table-light">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <thead className="bg-gray-50 dark:bg-slate-700">
+                            <tr>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300" style={{ width: '100px' }}>المبلغ</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">السبب</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">النوع</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">الوزن</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">السعر</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">ملاحظات</th>
+                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">التاريخ</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                            {entries.length === 0 ? (
                                 <tr>
-                                    <th className="text-center" style={{ width: '100px' }}>المبلغ</th>
-                                    <th>السبب</th>
-                                    <th className="text-center">النوع</th>
-                                    <th className="text-center">الوزن</th>
-                                    <th className="text-center">السعر</th>
-                                    <th>ملاحظات</th>
-                                    <th className="text-center">التاريخ</th>
+                                    <td colSpan="7" className="text-center py-8 text-gray-500 dark:text-gray-400">
+                                        لا توجد حركات في هذه الفترة
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
+                            ) : (
+                                entries.map((entry, index) => {
+                                    const amount = entry.debit > 0 ? entry.debit : entry.credit;
+                                    const isDebit = entry.debit > 0;
 
-                                {entries.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="7" className="text-center py-4 text-muted">
-                                            لا توجد حركات في هذه الفترة
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    entries.map((entry, index) => {
-                                        const amount = entry.debit > 0 ? entry.debit : entry.credit;
-                                        const isDebit = entry.debit > 0;
-
-                                        return (
-                                            <React.Fragment key={index}>
-                                                {/* صف المعاملة */}
-                                                <tr style={{ color: 'var(--text-primary)' }}>
-                                                    <td className="text-center">
-                                                        <span className={`fw-bold ${isDebit ? 'text-danger' : 'text-success'}`} style={{ fontSize: '1.1rem' }}>
-                                                            {amount?.toLocaleString('ar-EG') || 0}
-                                                        </span>
-                                                    </td>
-                                                    <td>{entry.description}</td>
-                                                    <td className="text-center">{entry.crop_name || '-'}</td>
-                                                    <td className="text-center">{entry.quantity ? entry.quantity.toFixed(0) : '-'}</td>
-                                                    <td className="text-center">{entry.unit_price ? entry.unit_price.toLocaleString('ar-EG') : '-'}</td>
-                                                    <td className="text-muted">-</td>
-                                                    <td className="text-center">{formatDate(entry.date)}</td>
-                                                </tr>
-                                                {/* صف الباقي */}
-                                                <tr style={{ backgroundColor: 'var(--primary-50)' }}>
-                                                    <td className="text-center">
-                                                        <span className={`fw-bold ${entry.balance >= 0 ? 'text-danger' : 'text-success'}`} style={{ fontSize: '1.1rem' }}>
-                                                            {Math.abs(entry.balance)?.toLocaleString('ar-EG') || 0}
-                                                        </span>
-                                                    </td>
-                                                    <td colSpan="6" className="text-end pe-4">
-                                                        <strong className={entry.balance >= 0 ? 'text-danger' : 'text-success'}>
-                                                            {entry.balance >= 0 ? 'الباقي عليه' : 'الباقي له'}
-                                                        </strong>
-                                                    </td>
-                                                </tr>
-                                            </React.Fragment>
-                                        );
-                                    })
-                                )}
-
-                            </tbody>
-                        </table>
-                    </div>
+                                    return (
+                                        <React.Fragment key={index}>
+                                            <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className={`font-bold text-lg ${isDebit ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                                        {amount?.toLocaleString('en-US') || 0}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{entry.description}</td>
+                                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{entry.crop_name || '-'}</td>
+                                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{entry.quantity ? entry.quantity.toFixed(0) : '-'}</td>
+                                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{entry.unit_price ? entry.unit_price.toLocaleString('en-US') : '-'}</td>
+                                                <td className="px-4 py-3 text-gray-400">-</td>
+                                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{formatDate(entry.date)}</td>
+                                            </tr>
+                                            <tr className="bg-emerald-50 dark:bg-emerald-900/20">
+                                                <td className="px-4 py-2 text-center">
+                                                    <span className={`font-bold text-lg ${entry.balance >= 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                                        {Math.abs(entry.balance)?.toLocaleString('en-US') || 0}
+                                                    </span>
+                                                </td>
+                                                <td colSpan="6" className="px-4 py-2 text-left">
+                                                    <strong className={entry.balance >= 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
+                                                        {entry.balance >= 0 ? 'الباقي عليه' : 'الباقي له'}
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

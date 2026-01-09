@@ -13,110 +13,6 @@ const NotificationCenter = () => {
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Styling constants using app theme
-    const styles = {
-        container: {
-            position: 'relative',
-        },
-        button: {
-            position: 'relative',
-            padding: '10px',
-            borderRadius: '50%',
-            backgroundColor: isOpen ? 'rgba(var(--primary-color-rgb), 0.1)' : 'transparent',
-            border: 'none',
-            color: 'var(--text-primary)',
-            transition: 'all 0.3s ease',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
-        badge: {
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            minWidth: '18px',
-            height: '18px',
-            padding: '0 5px',
-            borderRadius: '10px',
-            backgroundColor: 'var(--danger-color)',
-            color: 'white',
-            fontSize: '10px',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 0 2px var(--bg-card)',
-            animation: unreadCount > 0 ? 'pulse 2s infinite' : 'none',
-        },
-        dropdown: {
-            position: 'absolute',
-            left: '0',
-            top: 'calc(100% + 15px)',
-            width: '360px',
-            backgroundColor: 'var(--bg-card)',
-            color: 'var(--text-primary)',
-            borderRadius: 'var(--border-radius)',
-            boxShadow: 'var(--shadow-xl)',
-            border: '1px solid var(--border-light)',
-            overflow: 'hidden',
-            zIndex: 1000,
-            animation: 'slideIn 0.2s ease-out forwards',
-            transformOrigin: 'top left',
-            display: 'flex',
-            flexDirection: 'column',
-        },
-        header: {
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--border-light)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: 'var(--bg-card-hover)',
-        },
-        list: {
-            maxHeight: '400px',
-            overflowY: 'auto',
-            padding: '0',
-            margin: '0',
-            listStyle: 'none',
-        },
-        item: {
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--border-light)',
-            display: 'flex',
-            gap: '15px',
-            alignItems: 'start',
-            transition: 'background-color 0.2s',
-            cursor: 'pointer',
-            textAlign: 'right',
-        },
-        footer: {
-            padding: '12px',
-            borderTop: '1px solid var(--border-light)',
-            textAlign: 'center',
-            backgroundColor: 'var(--bg-card-hover)',
-        },
-        empty: {
-            padding: '40px 20px',
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '10px',
-        },
-        iconWrapper: (bgColor, color) => ({
-            padding: '8px',
-            borderRadius: '50%',
-            backgroundColor: bgColor,
-            color: color,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-        })
-    };
-
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -127,6 +23,15 @@ const NotificationCenter = () => {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    const loadUnreadCount = React.useCallback(async () => {
+        try {
+            const data = await notifApi.getUnreadCount(token);
+            setUnreadCount(data.count);
+        } catch (err) {
+            console.error("Failed to load notification count", err);
+        }
+    }, [token]);
 
     // Initial load and periodic polling
     useEffect(() => {
@@ -139,16 +44,7 @@ const NotificationCenter = () => {
         }, 60000);
 
         return () => clearInterval(pollInterval);
-    }, [token]);
-
-    const loadUnreadCount = async () => {
-        try {
-            const data = await notifApi.getUnreadCount(token);
-            setUnreadCount(data.count);
-        } catch (err) {
-            console.error("Failed to load notification count", err);
-        }
-    };
+    }, [token, loadUnreadCount]);
 
     const loadNotifications = async () => {
         setLoading(true);
@@ -208,104 +104,115 @@ const NotificationCenter = () => {
 
     const getIcon = (type) => {
         switch (type) {
-            case 'LOW_STOCK': return <div style={styles.iconWrapper('var(--warning-light)', 'var(--warning-color)')}><FaExclamationTriangle size={14} /></div>;
-            case 'OVERDUE_DEBT': return <div style={styles.iconWrapper('var(--danger-light)', 'var(--danger-color)')}><FaExclamationCircle size={14} /></div>;
-            case 'SUCCESS': return <div style={styles.iconWrapper('var(--success-light)', 'var(--success-color)')}><FaCheckCircle size={14} /></div>;
-            default: return <div style={styles.iconWrapper('var(--info-light)', 'var(--info-color)')}><FaInfoCircle size={14} /></div>;
+            case 'LOW_STOCK':
+                return (
+                    <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                        <FaExclamationTriangle className="w-4 h-4" />
+                    </div>
+                );
+            case 'OVERDUE_DEBT':
+                return (
+                    <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                        <FaExclamationCircle className="w-4 h-4" />
+                    </div>
+                );
+            case 'SUCCESS':
+                return (
+                    <div className="p-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                        <FaCheckCircle className="w-4 h-4" />
+                    </div>
+                );
+            default:
+                return (
+                    <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                        <FaInfoCircle className="w-4 h-4" />
+                    </div>
+                );
         }
     };
 
     return (
-        <div style={styles.container} ref={dropdownRef}>
-            <style>
-                {`
-                    @keyframes pulse {
-                        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-                        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-                        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-                    }
-                    @keyframes slideIn {
-                        from { opacity: 0; transform: translateY(10px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                    .notif-item:hover { background-color: var(--bg-hover) !important; }
-                `}
-            </style>
-
+        <div className="relative" ref={dropdownRef}>
+            {/* Bell Button */}
             <button
                 onClick={toggleDropdown}
-                style={styles.button}
-                className="notification-bell-btn"
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-                onMouseLeave={e => !isOpen && (e.currentTarget.style.backgroundColor = 'transparent')}
+                className={`group relative p-2.5 rounded-full transition-all duration-300 hover:scale-110 active:scale-95 ${isOpen
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-inner'
+                    : 'bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md'
+                    }`}
                 title="التنبيهات"
             >
-                <FaBell size={20} style={{ color: 'var(--text-secondary)' }} />
+                <FaBell className={`w-5 h-5 transition-transform duration-500 ${unreadCount > 0 ? 'animate-bounce-subtle' : ''}`} />
+
                 {unreadCount > 0 && (
-                    <span style={styles.badge}>
+                    <span className="absolute top-0 right-0 flex h-5 min-w-[20px] px-1 translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white dark:border-slate-800 shadow-sm ring-2 ring-red-500/20">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
             </button>
 
+            {/* Dropdown Menu */}
             {isOpen && (
-                <div style={styles.dropdown}>
-                    <div style={styles.header}>
-                        <h6 style={{ margin: 0, fontWeight: 'bold' }}>التنبيهات</h6>
+                <div className="absolute left-0 mt-3 w-80 md:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden z-50 animate-fade-in-down origin-top-left transition-colors">
+                    {/* Header */}
+                    <div className="px-5 py-4 bg-gray-50/50 dark:bg-slate-900/50 backdrop-blur-sm border-bottom dark:border-slate-700 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 antialiased animate-pulse"></span>
+                            <h6 className="m-0 font-bold text-gray-800 dark:text-gray-100">التنبيهات</h6>
+                        </div>
                         {unreadCount > 0 && (
                             <button
                                 onClick={handleMarkAllRead}
-                                className="btn btn-sm btn-link text-decoration-none"
-                                style={{ fontSize: '0.8rem', color: 'var(--primary-color)' }}
+                                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
                             >
                                 تحديد الكل كمقروء
                             </button>
                         )}
                     </div>
 
-                    <div style={styles.list}>
+                    {/* Notification List */}
+                    <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
                         {loading ? (
-                            <div style={styles.empty}>
-                                <div className="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                                <span className="mt-2 text-muted text-sm">جاري التحميل...</span>
+                            <div className="flex flex-col items-center justify-center py-12 px-6 space-y-3">
+                                <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">جاري تحميل التنبيهات...</span>
                             </div>
                         ) : notifications.length === 0 ? (
-                            <div style={styles.empty}>
-                                <FaBell size={32} style={{ color: 'var(--text-muted)', opacity: 0.25, marginBottom: '0.5rem' }} />
-                                <span className="text-muted">لا توجد تنبيهات جديدة</span>
+                            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                                <div className="p-4 bg-gray-50 dark:bg-slate-900 rounded-full mb-4">
+                                    <FaBell className="w-8 h-8 text-gray-300 dark:text-gray-600 opacity-50" />
+                                </div>
+                                <span className="text-gray-500 dark:text-gray-400 font-medium">لا توجد تنبيهات جديدة حالياً</span>
+                                <p className="text-xs text-gray-400 mt-1">سنخطرك عند حدوث أي نشاط جديد</p>
                             </div>
                         ) : (
-                            <div className="d-flex flex-column">
+                            <div className="divide-y divide-gray-100 dark:divide-slate-700">
                                 {notifications.map((notif) => (
                                     <div
                                         key={notif.id}
                                         onClick={() => handleNotificationClick(notif)}
-                                        className="notif-item"
-                                        style={{
-                                            ...styles.item,
-                                            backgroundColor: !notif.is_read ? 'var(--primary-50)' : 'transparent',
-                                            borderRight: !notif.is_read ? '3px solid var(--primary-color)' : '3px solid transparent'
-                                        }}
+                                        className={`group flex gap-4 p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 dark:hover:bg-slate-700/50 ${!notif.is_read ? 'bg-emerald-50/30 dark:bg-emerald-900/10 border-r-4 border-emerald-500' : 'border-r-4 border-transparent'
+                                            }`}
                                     >
-                                        <div style={{ flexShrink: 0 }}>
+                                        <div className="flex-shrink-0 pt-1">
                                             {getIcon(notif.type)}
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="d-flex justify-content-between align-items-start mb-1">
-                                                <span style={{ fontWeight: !notif.is_read ? 'bold' : 'normal', fontSize: '0.9rem' }}>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start mb-1 gap-2">
+                                                <h6 className={`text-sm truncate leading-tight ${!notif.is_read ? 'font-bold text-gray-900 dark:text-gray-100' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
                                                     {notif.title}
-                                                </span>
-                                                <span className="text-muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                                                    {new Date(notif.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                                </h6>
+                                                <span className="text-[10px] whitespace-nowrap text-gray-400 font-medium bg-gray-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">
+                                                    {new Date(notif.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             </div>
-                                            <p className="mb-0 text-secondary" style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-0">
                                                 {notif.message}
                                             </p>
                                         </div>
                                         {!notif.is_read && (
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }}></span>
+                                            <div className="flex items-center">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 group-hover:scale-125 transition-transform duration-200"></div>
                                             </div>
                                         )}
                                     </div>
@@ -314,13 +221,13 @@ const NotificationCenter = () => {
                         )}
                     </div>
 
-                    <div style={styles.footer}>
+                    {/* Footer */}
+                    <div className="p-3 bg-gray-50/50 dark:bg-slate-900/50 backdrop-blur-sm border-t dark:border-slate-700">
                         <button
                             onClick={() => { setIsOpen(false); navigate('/notifications'); }}
-                            className="btn btn-sm w-100 text-muted"
-                            style={{ fontSize: '0.85rem' }}
+                            className="w-full py-2 px-4 rounded-xl text-xs font-bold text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-gray-200 dark:hover:border-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 hover:shadow-sm transition-all duration-200"
                         >
-                            عرض كل التنبيهات
+                            عرض السجل بالكامل
                         </button>
                     </div>
                 </div>

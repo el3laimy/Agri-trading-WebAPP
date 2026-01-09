@@ -8,7 +8,8 @@ from datetime import date
 from typing import Optional, List
 
 from app import models, schemas
-from app.core.bootstrap import CASH_ACCOUNT_ID
+from app.core.settings import get_setting
+from decimal import Decimal
 
 
 def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
@@ -36,7 +37,7 @@ def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
     # أ) المبيعات الآجلة
     total_sales = db.query(func.sum(models.Sale.total_sale_amount)).filter(
         models.Sale.customer_id == contact_id
-    ).scalar() or 0.0
+    ).scalar() or Decimal(0)
     
     # ب) الأموال التي دفعناها للطرف الآخر (Cash Out)
     # تشمل: دفعات لمورد (Purchase Payment) أو صرف نقدية لعميل (General Payment)
@@ -44,9 +45,9 @@ def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
     cash_paid_out = db.query(func.sum(models.Payment.amount)).filter(
         and_(
             models.Payment.contact_id == contact_id,
-            models.Payment.credit_account_id == CASH_ACCOUNT_ID
+            models.Payment.credit_account_id == int(get_setting(db, "CASH_ACCOUNT_ID"))
         )
-    ).scalar() or 0.0
+    ).scalar() or Decimal(0)
 
     total_debit = total_sales + cash_paid_out
 
@@ -57,7 +58,7 @@ def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
     # أ) المشتريات الآجلة
     total_purchases = db.query(func.sum(models.Purchase.total_cost)).filter(
         models.Purchase.supplier_id == contact_id
-    ).scalar() or 0.0
+    ).scalar() or Decimal(0)
 
     # ب) الأموال التي استلمناها من الطرف الآخر (Cash In)
     # تشمل: تحصيل من عميل (Sale Payment) أو استلام نقدية من مورد (General Receipt)
@@ -65,9 +66,9 @@ def get_contact_summary(db: Session, contact_id: int) -> schemas.ContactSummary:
     cash_received_in = db.query(func.sum(models.Payment.amount)).filter(
         and_(
             models.Payment.contact_id == contact_id,
-            models.Payment.debit_account_id == CASH_ACCOUNT_ID
+            models.Payment.debit_account_id == int(get_setting(db, "CASH_ACCOUNT_ID"))
         )
-    ).scalar() or 0.0
+    ).scalar() or Decimal(0)
 
     total_credit = total_purchases + cash_received_in
 
@@ -299,7 +300,7 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
     if not contact:
         return 0.0
     
-    balance = 0.0
+    balance = Decimal(0)
     
     # المبيعات قبل التاريخ (للعملاء)
     if contact.is_customer:
@@ -308,7 +309,7 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Sale.customer_id == contact_id,
                 models.Sale.sale_date < before_date
             )
-        ).scalar() or 0.0
+        ).scalar() or Decimal(0)
         balance += sales_total
         
         # التحصيلات قبل التاريخ
@@ -318,7 +319,7 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Payment.transaction_type == 'SALE',
                 models.Payment.payment_date < before_date
             )
-        ).scalar() or 0.0
+        ).scalar() or Decimal(0)
         balance -= received
     
     # المشتريات قبل التاريخ (للموردين)
@@ -328,7 +329,7 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Purchase.supplier_id == contact_id,
                 models.Purchase.purchase_date < before_date
             )
-        ).scalar() or 0.0
+        ).scalar() or Decimal(0)
         balance -= purchases_total  # سالب = علينا له
         
         # المدفوعات قبل التاريخ
@@ -338,7 +339,7 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Payment.transaction_type == 'PURCHASE',
                 models.Payment.payment_date < before_date
             )
-        ).scalar() or 0.0
+        ).scalar() or Decimal(0)
         balance += paid
     
     return balance

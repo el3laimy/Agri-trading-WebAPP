@@ -49,19 +49,29 @@ const SeasonForm = ({ season, onClose }) => {
     };
 
     return (
-        <div className="card mb-3">
-            <div className="card-header">
-                <h5>{season ? 'تعديل موسم' : 'إضافة موسم جديد'}</h5>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden mb-6 text-right transition-colors">
+            <div className="p-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/50">
+                <h5 className="font-bold text-gray-800 dark:text-gray-100 mb-0 flex items-center gap-2">
+                    <i className={`bi ${season ? 'bi-pencil' : 'bi-plus-lg'} text-emerald-600 dark:text-emerald-400`}></i>
+                    {season ? 'تعديل موسم' : 'إضافة موسم جديد'}
+                </h5>
             </div>
-            <div className="card-body">
-                {error && <div className="alert alert-danger">{error}</div>}
+            <div className="p-6">
+                {error && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border-s-4 border-red-500 p-4 mb-6 rounded shadow-sm flex items-center animate-fade-in text-right">
+                        <i className="bi bi-exclamation-triangle-fill text-red-500 text-xl me-3"></i>
+                        <div className="flex-1">
+                            <p className="text-red-800 dark:text-red-300 font-medium m-0">{error}</p>
+                        </div>
+                    </div>
+                )}
 
-                <form onSubmit={handleSubmit}>
-                    <div className="mb-3">
-                        <label className="form-label">اسم الموسم</label>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">اسم الموسم</label>
                         <input
                             type="text"
-                            className="form-control"
+                            className="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-gray-100 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5 transition-colors"
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
@@ -69,23 +79,23 @@ const SeasonForm = ({ season, onClose }) => {
                         />
                     </div>
 
-                    <div className="row">
-                        <div className="col-md-6 mb-3">
-                            <label className="form-label">تاريخ البداية</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ البداية</label>
                             <input
                                 type="date"
-                                className="form-control"
+                                className="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-gray-100 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5 transition-colors"
                                 name="start_date"
                                 value={formData.start_date}
                                 onChange={handleChange}
                                 required
                             />
                         </div>
-                        <div className="col-md-6 mb-3">
-                            <label className="form-label">تاريخ النهاية</label>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">تاريخ النهاية</label>
                             <input
                                 type="date"
-                                className="form-control"
+                                className="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-gray-100 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5 transition-colors"
                                 name="end_date"
                                 value={formData.end_date}
                                 onChange={handleChange}
@@ -94,10 +104,10 @@ const SeasonForm = ({ season, onClose }) => {
                         </div>
                     </div>
 
-                    <div className="mb-3">
-                        <label className="form-label">الحالة</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">الحالة</label>
                         <select
-                            className="form-select"
+                            className="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-gray-100 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5 transition-colors"
                             name="status"
                             value={formData.status}
                             onChange={handleChange}
@@ -109,16 +119,31 @@ const SeasonForm = ({ season, onClose }) => {
                         </select>
                     </div>
 
-                    <div className="d-flex gap-2">
-                        <button type="submit" className="btn btn-primary" disabled={loading}>
-                            {loading ? 'جاري الحفظ...' : 'حفظ'}
+                    <div className="flex gap-2 pt-2">
+                        <button
+                            type="submit"
+                            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    جاري الحفظ...
+                                </span>
+                            ) : (
+                                <>
+                                    <i className="bi bi-check-lg"></i>
+                                    حفظ الموسم
+                                </>
+                            )}
                         </button>
                         <button
                             type="button"
-                            className="btn btn-secondary"
+                            className="bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-slate-600 px-6 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 font-medium transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
                             onClick={() => onClose(false)}
                             disabled={loading}
                         >
+                            <i className="bi bi-x-lg"></i>
                             إلغاء
                         </button>
                     </div>

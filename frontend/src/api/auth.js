@@ -20,6 +20,19 @@ export const login = async (username, password) => {
 };
 
 /**
+ * تسجيل الخروج
+ */
+export const logout = async (token) => {
+    const response = await axios.post(`${API_URL}/logout`, {}, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Session-Token': token
+        }
+    });
+    return response.data;
+};
+
+/**
  * الحصول على بيانات المستخدم الحالي
  */
 export const getCurrentUser = async (token) => {

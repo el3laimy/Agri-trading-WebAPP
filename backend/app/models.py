@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, Float, Date, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Text, Float, Date, ForeignKey, DateTime, Numeric
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -11,6 +11,11 @@ class Crop(Base):
     allowed_pricing_units = Column(Text, nullable=False)
     conversion_factors = Column(Text, nullable=False)
     is_active = Column(Boolean, default=True)
+    
+    # New Fields for Complex Calculations
+    is_complex_unit = Column(Boolean, default=False)
+    default_tare_per_bag = Column(Numeric(18, 4), default=0.0)
+    standard_unit_weight = Column(Numeric(18, 4), nullable=True) # e.g. 157.5
 
 class Contact(Base):
     __tablename__ = "contacts"
@@ -29,7 +34,7 @@ class FinancialAccount(Base):
     account_id = Column(Integer, primary_key=True, index=True)
     account_name = Column(String, unique=True, nullable=False)
     account_type = Column(String, nullable=False)
-    current_balance = Column(Float, default=0.0)
+    current_balance = Column(Numeric(18, 4), default=0.0) # Changed to Numeric
     is_active = Column(Boolean, default=True)
 
 class Purchase(Base):
@@ -40,28 +45,46 @@ class Purchase(Base):
     supplier_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=False)
     season_id = Column(Integer, ForeignKey("seasons.season_id"), nullable=True)  # إضافة الموسم
     purchase_date = Column(Date, nullable=False)
-    quantity_kg = Column(Float, nullable=False)
-    unit_price = Column(Float, nullable=False)
-    total_cost = Column(Float, nullable=False)
-    amount_paid = Column(Float, default=0.0)
+    # Changed to Numeric
+    quantity_kg = Column(Numeric(18, 4), nullable=False)
+    unit_price = Column(Numeric(18, 4), nullable=False)
+    total_cost = Column(Numeric(18, 4), nullable=False)
+    amount_paid = Column(Numeric(18, 4), default=0.0)
     payment_status = Column(String, default='PENDING')
     notes = Column(Text, nullable=True)  # ملاحظات إضافية
 
     purchasing_pricing_unit = Column(String, nullable=False, default='kg')
-    conversion_factor = Column(Float, nullable=False, default=1.0)
+    conversion_factor = Column(Numeric(18, 4), nullable=False, default=1.0) # Changed to Numeric
+    
+    # New Fields for Complex Logic
+    bag_count = Column(Integer, default=0)
+    tare_weight = Column(Numeric(18, 4), default=0.0)
+    gross_quantity = Column(Numeric(18, 4), nullable=True) # Gross weight before tare
+    calculation_formula = Column(String, nullable=True) # 'qantar_baladi', 'qantar_government'
+    custom_conversion_factor = Column(Numeric(18, 4), nullable=True) # Manual override
+
+    # توثيق العمليات - من قام بتسجيل العملية
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     crop = relationship("Crop")
     supplier = relationship("Contact")
     season = relationship("Season")
+    creator = relationship("User", foreign_keys=[created_by])
 
 class Inventory(Base):
     __tablename__ = "inventory"
 
     inventory_id = Column(Integer, primary_key=True, index=True)
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False, unique=True)
-    current_stock_kg = Column(Float, default=0.0)
-    average_cost_per_kg = Column(Float, default=0.0)
-    low_stock_threshold = Column(Float, default=100.0)  # حد التنبيه للمخزون المنخفض
+    current_stock_kg = Column(Numeric(18, 4), default=0.0) # Changed to Numeric
+    average_cost_per_kg = Column(Numeric(18, 4), default=0.0) # Changed to Numeric
+    low_stock_threshold = Column(Numeric(18, 4), default=100.0)  # حد التنبيه للمخزون المنخفض
+
+    # New Fields for Notional Tare Logic
+    gross_stock_kg = Column(Numeric(18, 4), default=0.0) # Physical Weight
+    net_stock_kg = Column(Numeric(18, 4), default=0.0) # Financial Reference Weight
+    bag_count = Column(Integer, default=0)
 
     crop = relationship("Crop")
 
@@ -73,10 +96,14 @@ class InventoryBatch(Base):
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
     purchase_id = Column(Integer, ForeignKey("purchases.purchase_id"), nullable=True)  # اختياري، قد تكون رصيد افتتاحي
     
-    quantity_kg = Column(Float, nullable=False)  # الكمية المتبقية الحالية
-    original_quantity_kg = Column(Float, nullable=False)  # الكمية الأصلية
-    cost_per_kg = Column(Float, nullable=False)  # التكلفة لكل كجم لهذه الدفعة
+    quantity_kg = Column(Numeric(18, 4), nullable=False)  # الكمية المتبقية الحالية # Changed to Numeric
+    original_quantity_kg = Column(Numeric(18, 4), nullable=False)  # الكمية الأصلية # Changed to Numeric
+    cost_per_kg = Column(Numeric(18, 4), nullable=False)  # التكلفة لكل كجم لهذه الدفعة # Changed to Numeric
     
+    # New Fields
+    gross_quantity_kg = Column(Numeric(18, 4), default=0.0) # Physical
+    bag_count = Column(Integer, default=0)
+
     purchase_date = Column(Date, nullable=False)  # تاريخ الشراء/الإضافة
     expiry_date = Column(Date, nullable=True)  # تاريخ الصلاحية
     
@@ -97,18 +124,31 @@ class Sale(Base):
     customer_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=False)
     season_id = Column(Integer, ForeignKey("seasons.season_id"), nullable=True)  # إضافة الموسم
     sale_date = Column(Date, nullable=False)
-    quantity_sold_kg = Column(Float, nullable=False)
-    selling_unit_price = Column(Float, nullable=False)
+    # Changed to Numeric
+    quantity_sold_kg = Column(Numeric(18, 4), nullable=False)
+    selling_unit_price = Column(Numeric(18, 4), nullable=False)
     selling_pricing_unit = Column(String, nullable=False)
-    specific_selling_factor = Column(Float, nullable=False)
-    total_sale_amount = Column(Float, nullable=False)
-    amount_received = Column(Float, default=0.0)
+    specific_selling_factor = Column(Numeric(18, 4), nullable=False)
+    total_sale_amount = Column(Numeric(18, 4), nullable=False)
+    amount_received = Column(Numeric(18, 4), default=0.0)
     payment_status = Column(String, default='PENDING')
     notes = Column(Text, nullable=True)  # ملاحظات إضافية
+    
+    # New Fields for Complex Logic
+    bag_count = Column(Integer, default=0)
+    tare_weight = Column(Numeric(18, 4), default=0.0)
+    gross_quantity = Column(Numeric(18, 4), nullable=True) # Gross weight before tare
+    calculation_formula = Column(String, nullable=True) 
+    custom_conversion_factor = Column(Numeric(18, 4), nullable=True)
+
+    # توثيق العمليات - من قام بتسجيل العملية
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     crop = relationship("Crop")
     customer = relationship("Contact")
     season = relationship("Season")
+    creator = relationship("User", foreign_keys=[created_by])
 
 class GeneralLedger(Base):
     __tablename__ = "general_ledger"
@@ -116,14 +156,18 @@ class GeneralLedger(Base):
     entry_id = Column(Integer, primary_key=True, index=True)
     entry_date = Column(Date, nullable=False)
     account_id = Column(Integer, ForeignKey("financial_accounts.account_id"), nullable=False)
-    debit = Column(Float, default=0.0)
-    credit = Column(Float, default=0.0)
+    debit = Column(Numeric(18, 4), default=0.0) # Changed to Numeric
+    credit = Column(Numeric(18, 4), default=0.0) # Changed to Numeric
     description = Column(String)
     source_type = Column(String) # e.g., 'PURCHASE', 'SALE', 'CASH_RECEIPT', 'CASH_PAYMENT'
     source_id = Column(Integer) # e.g., purchase_id, sale_id
     created_at = Column(DateTime, default=datetime.utcnow)  # وقت الإنشاء
+    
+    # توثيق العمليات - من قام بإنشاء القيد
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
 
     account = relationship("FinancialAccount")
+    creator = relationship("User", foreign_keys=[created_by])
 
 class Expense(Base):
     __tablename__ = "expenses"
@@ -131,7 +175,7 @@ class Expense(Base):
     expense_id = Column(Integer, primary_key=True, index=True)
     expense_date = Column(Date, nullable=False)
     description = Column(String, nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     season_id = Column(Integer, ForeignKey("seasons.season_id"), nullable=True)  # إضافة الموسم
     category = Column(String, nullable=True)  # فئة المصروف
     
@@ -141,11 +185,16 @@ class Expense(Base):
     debit_account_id = Column(Integer, ForeignKey("financial_accounts.account_id"), nullable=False)
     
     supplier_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=True)
+    
+    # توثيق العمليات - من قام بتسجيل المصروف
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     credit_account = relationship("FinancialAccount", foreign_keys=[credit_account_id])
     debit_account = relationship("FinancialAccount", foreign_keys=[debit_account_id])
     supplier = relationship("Contact")
     season = relationship("Season")
+    creator = relationship("User", foreign_keys=[created_by])
 
 class Payment(Base):
     """نموذج المدفوعات المحسّن"""
@@ -153,7 +202,7 @@ class Payment(Base):
 
     payment_id = Column(Integer, primary_key=True, index=True)
     payment_date = Column(Date, nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     contact_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=False)
     payment_method = Column(String, nullable=False) # e.g., Cash, Bank Transfer, Check
     
@@ -170,10 +219,14 @@ class Payment(Base):
     # Polymorphic relationship to link to either a Sale or a Purchase
     transaction_type = Column(String) # 'SALE' or 'PURCHASE'
     transaction_id = Column(Integer)
+    
+    # توثيق العمليات - من قام بتسجيل الدفعة
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
 
     contact = relationship("Contact")
     credit_account = relationship("FinancialAccount", foreign_keys=[credit_account_id])
     debit_account = relationship("FinancialAccount", foreign_keys=[debit_account_id])
+    creator = relationship("User", foreign_keys=[created_by])
 
 
 class InventoryAdjustment(Base):
@@ -183,9 +236,9 @@ class InventoryAdjustment(Base):
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
     adjustment_date = Column(Date, nullable=False)
     adjustment_type = Column(String, nullable=False) # 'SPOILAGE', 'SHORTAGE', 'SURPLUS'
-    quantity_kg = Column(Float, nullable=False) # Negative for loss, Positive for gain
-    cost_per_kg = Column(Float, nullable=False)
-    total_value = Column(Float, nullable=False)
+    quantity_kg = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    cost_per_kg = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    total_value = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     notes = Column(String, nullable=True)
 
     crop = relationship("Crop")
@@ -207,9 +260,9 @@ class SaleReturn(Base):
     return_id = Column(Integer, primary_key=True, index=True)
     sale_id = Column(Integer, ForeignKey("sales.sale_id"), nullable=False)
     return_date = Column(Date, nullable=False)
-    quantity_kg = Column(Float, nullable=False)
+    quantity_kg = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     return_reason = Column(String, nullable=True)
-    refund_amount = Column(Float, nullable=False)
+    refund_amount = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
 
     sale = relationship("Sale")
 
@@ -219,9 +272,9 @@ class PurchaseReturn(Base):
     return_id = Column(Integer, primary_key=True, index=True)
     purchase_id = Column(Integer, ForeignKey("purchases.purchase_id"), nullable=False)
     return_date = Column(Date, nullable=False)
-    quantity_kg = Column(Float, nullable=False)
+    quantity_kg = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     return_reason = Column(String, nullable=True)
-    returned_cost = Column(Float, nullable=False)
+    returned_cost = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
 
     purchase = relationship("Purchase")
 
@@ -231,12 +284,12 @@ class DailyPrice(Base):
     price_id = Column(Integer, primary_key=True, index=True)
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
     price_date = Column(Date, nullable=False, index=True)
-    opening_price = Column(Float, nullable=False)
-    high_price = Column(Float, nullable=False)
-    low_price = Column(Float, nullable=False)
-    closing_price = Column(Float, nullable=False)
-    average_price = Column(Float, nullable=False)
-    trading_volume = Column(Float, default=0.0)
+    opening_price = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    high_price = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    low_price = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    closing_price = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    average_price = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    trading_volume = Column(Numeric(18, 4), default=0.0) # Changed to Numeric
     market_condition = Column(String, nullable=True) # 'مرتفع', 'منخفض', 'مستقر'
     notes = Column(String, nullable=True)
 
@@ -250,7 +303,7 @@ class CapitalAllocation(Base):
     allocation_id = Column(Integer, primary_key=True, index=True)
     allocation_date = Column(Date, nullable=False)
     allocation_type = Column(String, nullable=False)  # 'CONTRIBUTION' or 'WITHDRAWAL'
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     description = Column(Text, nullable=True)
     reference_number = Column(String, nullable=True)
     owner_name = Column(String, nullable=True)  # اسم المالك (للشركات المتعددة الملاك)
@@ -334,6 +387,27 @@ class User(Base):
 
     role = relationship("Role", back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user")
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+
+
+class Session(Base):
+    """نموذج الجلسات المحلية - بديل عن JWT للبيئة المحلية"""
+    __tablename__ = "sessions"
+
+    session_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    session_token = Column(String, unique=True, nullable=False, index=True)  # UUID token
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)  # تاريخ انتهاء الجلسة
+    last_activity = Column(DateTime, default=datetime.utcnow)  # آخر نشاط
+    
+    # معلومات إضافية للتتبع
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    user = relationship("User", back_populates="sessions")
 
 
 class SupplyContract(Base):
@@ -344,9 +418,9 @@ class SupplyContract(Base):
     crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
     contract_date = Column(Date, nullable=False)
     delivery_date = Column(Date, nullable=False)
-    quantity_kg = Column(Float, nullable=False)
-    price_per_kg = Column(Float, nullable=False)
-    total_amount = Column(Float, nullable=False)
+    quantity_kg = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    price_per_kg = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
+    total_amount = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
     status = Column(String, default='ACTIVE')  # ACTIVE, COMPLETED, CANCELLED
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -368,3 +442,12 @@ class SupplierRating(Base):
 
     supplier = relationship("Contact")
 
+
+class Settings(Base):
+    """نموذج الإعدادات - لتخزين قيم التكوين بدلاً من الثوابت"""
+    __tablename__ = "settings"
+
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

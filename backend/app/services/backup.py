@@ -81,8 +81,8 @@ def restore_backup(filename: str):
     try:
         current_backup = create_backup()
         print(f"Safety backup created before restore: {current_backup['filename']}")
-    except:
-        print("Warning: Could not create safety backup before restore")
+    except Exception as e:
+        print(f"Warning: Could not create safety backup before restore: {e}")
     
     try:
         # إغلاق أي اتصالات مفتوحة هو أمر صعب في تطبيق ويب،
@@ -111,3 +111,50 @@ def delete_backup(filename: str):
         
     os.remove(backup_path)
     return True
+
+
+def cleanup_old_backups(max_backups: int = 10):
+    """
+    Removes old backups, keeping only the most recent ones.
+    
+    Args:
+        max_backups: Maximum number of backups to keep (default: 10)
+    """
+    ensure_backup_dir()
+    
+    backups = list_backups()  # Already sorted by date (newest first)
+    
+    if len(backups) <= max_backups:
+        return 0  # No cleanup needed
+    
+    removed_count = 0
+    for backup in backups[max_backups:]:
+        try:
+            delete_backup(backup['filename'])
+            removed_count += 1
+            print(f"🗑️  Removed old backup: {backup['filename']}")
+        except Exception as e:
+            print(f"⚠️  Failed to remove backup {backup['filename']}: {e}")
+    
+    return removed_count
+
+
+def auto_backup_on_startup():
+    """
+    Creates an automatic backup when the application starts.
+    This ensures regular backups without user intervention.
+    """
+    try:
+        print("📦 Creating automatic startup backup...")
+        result = create_backup()
+        print(f"✅ Auto-backup created: {result['filename']}")
+        
+        # Cleanup old backups (keep last 10)
+        removed = cleanup_old_backups(max_backups=10)
+        if removed > 0:
+            print(f"🧹 Cleaned up {removed} old backup(s)")
+        
+        return result
+    except Exception as e:
+        print(f"⚠️  Auto-backup failed: {e}")
+        return None

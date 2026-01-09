@@ -2,17 +2,10 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app import crud, schemas
-from app.core.bootstrap import (
-    INVENTORY_ACCOUNT_ID, 
-    ACCOUNTS_RECEIVABLE_ID, 
-    SALES_REVENUE_ACCOUNT_ID,
-    SALES_REVENUE_ACCOUNT_ID,
-    COGS_ACCOUNT_ID,
-    CASH_ACCOUNT_ID
-)
+from app.core.settings import get_setting
 from app.services import payments as payment_service
 
-def create_new_sale(db: Session, sale: schemas.SaleCreate):
+def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
     """
     Creates a new sale record and handles all related business logic:
     1. Calculates total sale amount.
@@ -25,11 +18,11 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate):
     # Validate crop and customer
     crop = crud.get_crop(db, sale.crop_id)
     if not crop:
-        raise HTTPException(status_code=404, detail=f"Crop with id {sale.crop_id} not found.")
+        raise HTTPException(status_code=404, detail=f"المحصول رقم {sale.crop_id} غير موجود.")
     
     customer = crud.get_contact(db, sale.customer_id)
     if not customer or not customer.is_customer:
-        raise HTTPException(status_code=404, detail=f"Customer with id {sale.customer_id} not found.")
+        raise HTTPException(status_code=404, detail=f"العميل رقم {sale.customer_id} غير موجود.")
 
     # Remove manual inventory check as consume_stock handles it more robustly (or we check aggregate first)
     # But to be safe and efficient, we can check aggregate first if we want, but consume_stock does it too.
@@ -37,7 +30,7 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate):
     inventory = crud.get_or_create_inventory(db, crop_id=sale.crop_id)
     # Quick pre-check
     if inventory.current_stock_kg < sale.quantity_sold_kg:
-         raise HTTPException(status_code=400, detail=f"Not enough stock for crop '{crop.crop_name}'. Available: {inventory.current_stock_kg}kg")
+         raise HTTPException(status_code=400, detail=f"رصيد المخزون غير كافي للمحصول '{crop.crop_name}'. المتاح: {inventory.current_stock_kg} كجم")
 
     total_sale_amount = sale.quantity_sold_kg * sale.selling_unit_price
     
@@ -52,29 +45,36 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate):
         # 2. Create the Sale record
         sale_data = sale.model_dump()
         sale_data['total_sale_amount'] = total_sale_amount
+        sale_data['created_by'] = user_id
         db_sale = crud.create_sale_record(db, sale_data=sale_data)
         db.flush() # Get the sale_id for the ledger entries
 
         # 3. Create General Ledger entries
-        sale_description = f"Sale of {sale.quantity_sold_kg}kg of {crop.crop_name} to {customer.name}"
-        cogs_description = f"COGS for sale of {crop.crop_name} to {customer.name}"
+        sale_description = f"بيع {sale.quantity_sold_kg} كجم {crop.crop_name} للعميل {customer.name}"
+        cogs_description = f"تكلفة مبيعات - {crop.crop_name} - {customer.name}"
+
+        # Get Account IDs from Settings
+        accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
+        sales_revenue_id = int(get_setting(db, "SALES_REVENUE_ACCOUNT_ID"))
+        cogs_id = int(get_setting(db, "COGS_ACCOUNT_ID"))
+        inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
 
         # Entry 1: Debit Accounts Receivable, Credit Sales Revenue
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=ACCOUNTS_RECEIVABLE_ID, debit=total_sale_amount, description=sale_description), 'SALE', db_sale.sale_id)
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=SALES_REVENUE_ACCOUNT_ID, credit=total_sale_amount, description=sale_description), 'SALE', db_sale.sale_id)
+        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=accounts_receivable_id, debit=total_sale_amount, description=sale_description), 'SALE', db_sale.sale_id, created_by=user_id)
+        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=sales_revenue_id, credit=total_sale_amount, description=sale_description), 'SALE', db_sale.sale_id, created_by=user_id)
         
         # Entry 2: Debit COGS, Credit Inventory
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=COGS_ACCOUNT_ID, debit=cost_of_goods_sold, description=cogs_description), 'SALE', db_sale.sale_id)
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=INVENTORY_ACCOUNT_ID, credit=cost_of_goods_sold, description=cogs_description), 'SALE', db_sale.sale_id)
+        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=cogs_id, debit=cost_of_goods_sold, description=cogs_description), 'SALE', db_sale.sale_id, created_by=user_id)
+        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=inventory_id, credit=cost_of_goods_sold, description=cogs_description), 'SALE', db_sale.sale_id, created_by=user_id)
 
         # 4. Update account balances
-        crud.update_account_balance(db, account_id=ACCOUNTS_RECEIVABLE_ID, amount=total_sale_amount)
-        crud.update_account_balance(db, account_id=SALES_REVENUE_ACCOUNT_ID, amount=-total_sale_amount) # Revenue accounts have a credit balance
-        crud.update_account_balance(db, account_id=COGS_ACCOUNT_ID, amount=cost_of_goods_sold)
-        crud.update_account_balance(db, account_id=INVENTORY_ACCOUNT_ID, amount=-cost_of_goods_sold)
+        # 4. Update account balances - using smart helper
+        crud.update_balance_by_nature(db, accounts_receivable_id, total_sale_amount, 'debit')
+        crud.update_balance_by_nature(db, sales_revenue_id, total_sale_amount, 'credit')
+        crud.update_balance_by_nature(db, cogs_id, cost_of_goods_sold, 'debit')
+        crud.update_balance_by_nature(db, inventory_id, cost_of_goods_sold, 'credit')
 
         db.commit()
-        db.refresh(db_sale)
         db.refresh(db_sale)
 
         # 5. Handle immediate payment if provided
@@ -84,16 +84,16 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate):
                 amount=sale.amount_received,
                 contact_id=sale.customer_id,
                 payment_method='Cash', # Default to Cash for quick sales
-                credit_account_id=ACCOUNTS_RECEIVABLE_ID,
-                debit_account_id=CASH_ACCOUNT_ID,
+                credit_account_id=accounts_receivable_id,
+                debit_account_id=int(get_setting(db, "CASH_ACCOUNT_ID")),
                 transaction_type='SALE',
                 transaction_id=db_sale.sale_id
             )
-            payment_service.create_payment(db, payment_data)
+            payment_service.create_payment(db, payment_data, user_id=user_id)
             db.refresh(db_sale) # Refresh to get updated payment status
 
         return db_sale
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"An error occurred during the sale transaction: {e}")
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء تسجيل عملية البيع: {e}")

@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 from app import models
-from app.core.bootstrap import CASH_ACCOUNT_ID
+from app.core.settings import get_setting
 
 
 def get_cash_flow_report(db: Session, start_date: date, end_date: date):
@@ -19,10 +19,12 @@ def get_cash_flow_report(db: Session, start_date: date, end_date: date):
     """
     
     # 1. رصيد البداية
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+
     opening_balance = db.query(
         func.sum(models.GeneralLedger.debit - models.GeneralLedger.credit)
     ).filter(
-        models.GeneralLedger.account_id == CASH_ACCOUNT_ID,
+        models.GeneralLedger.account_id == cash_id,
         models.GeneralLedger.entry_date < start_date
     ).scalar() or 0.0
     
@@ -32,7 +34,7 @@ def get_cash_flow_report(db: Session, start_date: date, end_date: date):
     customer_collections = db.query(
         func.sum(models.GeneralLedger.debit)
     ).filter(
-        models.GeneralLedger.account_id == CASH_ACCOUNT_ID,
+        models.GeneralLedger.account_id == cash_id,
         models.GeneralLedger.entry_date.between(start_date, end_date),
         models.GeneralLedger.source_type.in_(['SALE', 'SALE_PAYMENT', 'CASH_RECEIPT'])
     ).scalar() or 0.0
@@ -41,7 +43,7 @@ def get_cash_flow_report(db: Session, start_date: date, end_date: date):
     supplier_payments = db.query(
         func.sum(models.GeneralLedger.credit)
     ).filter(
-        models.GeneralLedger.account_id == CASH_ACCOUNT_ID,
+        models.GeneralLedger.account_id == cash_id,
         models.GeneralLedger.entry_date.between(start_date, end_date),
         models.GeneralLedger.source_type.in_(['PURCHASE', 'PURCHASE_PAYMENT', 'CASH_PAYMENT'])
     ).scalar() or 0.0
@@ -50,7 +52,7 @@ def get_cash_flow_report(db: Session, start_date: date, end_date: date):
     operating_expenses = db.query(
         func.sum(models.GeneralLedger.credit)
     ).filter(
-        models.GeneralLedger.account_id == CASH_ACCOUNT_ID,
+        models.GeneralLedger.account_id == cash_id,
         models.GeneralLedger.entry_date.between(start_date, end_date),
         models.GeneralLedger.source_type.in_(['EXPENSE', 'QUICK_EXPENSE'])
     ).scalar() or 0.0
@@ -93,7 +95,7 @@ def get_cash_flow_report(db: Session, start_date: date, end_date: date):
     actual_balance = db.query(
         func.sum(models.GeneralLedger.debit - models.GeneralLedger.credit)
     ).filter(
-        models.GeneralLedger.account_id == CASH_ACCOUNT_ID,
+        models.GeneralLedger.account_id == cash_id,
         models.GeneralLedger.entry_date <= end_date
     ).scalar() or 0.0
     
@@ -132,10 +134,11 @@ def get_cash_flow_report(db: Session, start_date: date, end_date: date):
 
 def get_cash_flow_details(db: Session, start_date: date, end_date: date, category: str = None):
     """
-    الحصول على تفاصيل حركات النقدية
     """
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+
     query = db.query(models.GeneralLedger).filter(
-        models.GeneralLedger.account_id == CASH_ACCOUNT_ID,
+        models.GeneralLedger.account_id == cash_id,
         models.GeneralLedger.entry_date.between(start_date, end_date)
     )
     

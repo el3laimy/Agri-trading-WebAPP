@@ -7,14 +7,14 @@ export const PrintVoucher = ({ voucher, type = 'receipt' }) => {
     const isReceipt = type === 'receipt';
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP'
         }).format(amount || 0);
     };
 
     const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('ar-EG', {
+        return new Date(dateStr).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -100,14 +100,14 @@ export const PrintVoucher = ({ voucher, type = 'receipt' }) => {
  */
 export const PrintSaleInvoice = ({ sale, contact, crop, items = [] }) => {
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP'
         }).format(amount || 0);
     };
 
     const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('ar-EG');
+        return new Date(dateStr).toLocaleDateString('en-US');
     };
 
     return (
@@ -165,7 +165,7 @@ export const PrintSaleInvoice = ({ sale, contact, crop, items = [] }) => {
                 <tbody>
                     <tr style={{ borderBottom: '1px solid #DEE2E6' }}>
                         <td style={{ padding: '10px' }}>{crop?.crop_name || '-'}</td>
-                        <td style={{ padding: '10px', textAlign: 'center' }}>{sale.quantity_sold_kg?.toLocaleString('ar-EG')}</td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>{sale.quantity_sold_kg?.toLocaleString('en-US')}</td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>{formatCurrency(sale.sale_price_per_kg)}</td>
                         <td style={{ padding: '10px', textAlign: 'left' }}>{formatCurrency(sale.total_sale_amount)}</td>
                     </tr>
@@ -217,7 +217,7 @@ export const PrintSaleInvoice = ({ sale, contact, crop, items = [] }) => {
 
             {/* Print Date */}
             <div style={{ textAlign: 'center', marginTop: '20px', color: '#6C757D', fontSize: '11px' }}>
-                تاريخ الطباعة: {new Date().toLocaleString('ar-EG')}
+                تاريخ الطباعة: {new Date().toLocaleString('en-US')}
             </div>
         </div>
     );

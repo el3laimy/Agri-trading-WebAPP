@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/v1/reports';
+const API_URL = '/api/v1/reports';
 
 export const getGeneralLedger = async () => {
     const response = await axios.get(`${API_URL}/general-ledger`);
@@ -92,4 +92,24 @@ export const getDebtAnalysis = async () => {
     const response = await axios.get(`${API_URL}/debt-analysis`);
     return response.data;
 };
+
+// Dashboard Enhanced APIs
+
+
+export const getRecentActivities = async (limit = 10) => {
+    const response = await axios.get(`${API_URL}/dashboard/recent-activities`, { params: { limit } });
+    return response.data;
+};
+
+export const getSeasonSummary = async () => {
+    const response = await axios.get(`${API_URL}/dashboard/season-summary`);
+    return response.data;
+};
+
+export const getAdvancedChartData = async (params) => {
+    const response = await axios.get(`${API_URL}/dashboard/advanced-chart`, { params });
+    return response.data;
+};
+
+
 

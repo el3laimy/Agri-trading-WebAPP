@@ -8,7 +8,7 @@
  * @returns {string} Formatted currency string
  */
 export function formatCurrency(amount) {
-    return new Intl.NumberFormat('ar-EG', {
+    return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'EGP',
         minimumFractionDigits: 0,
@@ -23,7 +23,7 @@ export function formatCurrency(amount) {
  * @returns {string} Formatted number string
  */
 export function formatNumber(value, decimals = 0) {
-    return new Intl.NumberFormat('ar-EG', {
+    return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     }).format(value || 0);
@@ -42,7 +42,7 @@ export function formatDate(dateString, options = {}) {
         day: 'numeric',
         ...options
     };
-    return new Date(dateString).toLocaleDateString('ar-EG', defaultOptions);
+    return new Date(dateString).toLocaleDateString('en-GB', defaultOptions);
 }
 
 /**

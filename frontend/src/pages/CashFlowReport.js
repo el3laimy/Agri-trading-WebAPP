@@ -35,7 +35,7 @@ function CashFlowReport() {
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP',
             minimumFractionDigits: 0
@@ -48,47 +48,45 @@ function CashFlowReport() {
 
     if (loading) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">جاري التحميل...</span>
-                </div>
+            <div className="flex justify-center items-center h-[50vh]">
+                <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     return (
-        <div className="container-fluid">
+        <div className="p-6">
             {/* Header */}
-            <div className="row mb-4 align-items-center justify-content-between">
-                <div className="col-md-6">
-                    <h2 className="fw-bold mb-0" style={{ color: 'var(--primary-dark)' }}>
-                        <i className="bi bi-arrow-left-right me-2"></i>
+            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <i className="bi bi-arrow-left-right text-emerald-600"></i>
                         تقرير التدفقات النقدية
                     </h2>
-                    <p className="text-muted mb-0">مصادر واستخدامات النقدية</p>
+                    <p className="text-gray-500 dark:text-gray-400">مصادر واستخدامات النقدية</p>
                 </div>
-                <div className="col-md-6 d-flex justify-content-end gap-2 flex-wrap">
-                    <div className="d-flex align-items-center gap-2 bg-white p-2 rounded shadow-sm">
-                        <span className="text-muted small">من:</span>
+                <div className="flex flex-wrap gap-2 items-center">
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700">
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">من:</span>
                         <DatePicker
                             selected={startDate}
                             onChange={setStartDate}
-                            className="form-control form-control-sm border-0"
+                            className="px-2 py-1 text-sm border-0 bg-transparent text-gray-900 dark:text-gray-100 w-28"
                             dateFormat="yyyy-MM-dd"
                         />
-                        <span className="text-muted small">إلى:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">إلى:</span>
                         <DatePicker
                             selected={endDate}
                             onChange={setEndDate}
-                            className="form-control form-control-sm border-0"
+                            className="px-2 py-1 text-sm border-0 bg-transparent text-gray-900 dark:text-gray-100 w-28"
                             dateFormat="yyyy-MM-dd"
                         />
-                        <button className="btn btn-primary btn-sm" onClick={fetchReport}>
+                        <button className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors" onClick={fetchReport}>
                             <i className="bi bi-search"></i>
                         </button>
                     </div>
-                    <button className="btn btn-outline-secondary" onClick={handlePrint}>
-                        <i className="bi bi-printer me-1"></i>
+                    <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1" onClick={handlePrint}>
+                        <i className="bi bi-printer"></i>
                         طباعة
                     </button>
                 </div>
@@ -97,170 +95,93 @@ function CashFlowReport() {
             {report && (
                 <>
                     {/* Summary Cards */}
-                    <div className="row mb-4">
-                        <div className="col-md-3">
-                            <div className="card border-0 shadow-sm h-100">
-                                <div className="card-body text-center">
-                                    <small className="text-muted">رصيد البداية</small>
-                                    <h4 className="fw-bold text-secondary">{formatCurrency(report.opening_balance)}</h4>
-                                </div>
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 text-center">
+                            <small className="text-gray-500 dark:text-gray-400">رصيد البداية</small>
+                            <h4 className="text-xl font-bold text-gray-600 dark:text-gray-300">{formatCurrency(report.opening_balance)}</h4>
                         </div>
-                        <div className="col-md-3">
-                            <div className="card border-0 shadow-sm h-100" style={{ borderTop: '3px solid #28A745' }}>
-                                <div className="card-body text-center">
-                                    <small className="text-muted">صافي التدفق التشغيلي</small>
-                                    <h4 className={`fw-bold ${report.operating_activities.net_operating_cash_flow >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {formatCurrency(report.operating_activities.net_operating_cash_flow)}
-                                    </h4>
-                                </div>
-                            </div>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 text-center border-t-4 border-green-500">
+                            <small className="text-gray-500 dark:text-gray-400">صافي التدفق التشغيلي</small>
+                            <h4 className={`text-xl font-bold ${report.operating_activities.net_operating_cash_flow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                                {formatCurrency(report.operating_activities.net_operating_cash_flow)}
+                            </h4>
                         </div>
-                        <div className="col-md-3">
-                            <div className="card border-0 shadow-sm h-100" style={{ borderTop: '3px solid #17A2B8' }}>
-                                <div className="card-body text-center">
-                                    <small className="text-muted">صافي التغير</small>
-                                    <h4 className={`fw-bold ${report.net_cash_change >= 0 ? 'text-success' : 'text-danger'}`}>
-                                        {formatCurrency(report.net_cash_change)}
-                                    </h4>
-                                </div>
-                            </div>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 text-center border-t-4 border-cyan-500">
+                            <small className="text-gray-500 dark:text-gray-400">صافي التغير</small>
+                            <h4 className={`text-xl font-bold ${report.net_cash_change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                                {formatCurrency(report.net_cash_change)}
+                            </h4>
                         </div>
-                        <div className="col-md-3">
-                            <div className="card border-0 shadow-sm h-100 text-white" style={{ background: 'linear-gradient(135deg, #1E5631 0%, #3D8B4F 100%)' }}>
-                                <div className="card-body text-center">
-                                    <small className="text-white-50">رصيد الإغلاق</small>
-                                    <h4 className="fw-bold">{formatCurrency(report.closing_balance)}</h4>
-                                </div>
-                            </div>
+                        <div className="rounded-xl shadow-sm p-5 text-center text-white" style={{ background: 'linear-gradient(135deg, #1E5631 0%, #3D8B4F 100%)' }}>
+                            <small className="text-white/60">رصيد الإغلاق</small>
+                            <h4 className="text-xl font-bold">{formatCurrency(report.closing_balance)}</h4>
                         </div>
                     </div>
 
                     {/* Cash Flow Statement */}
-                    <div className="row">
-                        <div className="col-lg-8">
-                            <div className="card border-0 shadow-sm mb-4">
-                                <div className="card-header bg-white py-3">
-                                    <h5 className="mb-0 fw-bold">
-                                        <i className="bi bi-file-text me-2 text-primary"></i>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2">
+                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                                <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700">
+                                    <h5 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                        <i className="bi bi-file-text text-emerald-600"></i>
                                         قائمة التدفقات النقدية
                                     </h5>
                                 </div>
-                                <div className="card-body">
+                                <div className="p-5">
                                     {/* Operating Activities */}
-                                    <div className="mb-4">
-                                        <h6 className="fw-bold text-primary border-bottom pb-2 mb-3">
-                                            <i className="bi bi-gear me-2"></i>
+                                    <div className="mb-6">
+                                        <h6 className="font-bold text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-200 dark:border-emerald-800 pb-2 mb-4 flex items-center gap-2">
+                                            <i className="bi bi-gear"></i>
                                             التدفقات من الأنشطة التشغيلية
                                         </h6>
-                                        <table className="table table-sm mb-0">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="ps-4">تحصيلات من العملاء</td>
-                                                    <td className="text-end text-success">
-                                                        +{formatCurrency(report.operating_activities.customer_collections)}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="ps-4">مدفوعات للموردين</td>
-                                                    <td className="text-end text-danger">
-                                                        -{formatCurrency(report.operating_activities.supplier_payments)}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="ps-4">مصروفات تشغيلية</td>
-                                                    <td className="text-end text-danger">
-                                                        -{formatCurrency(report.operating_activities.operating_expenses)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="fw-bold" style={{ backgroundColor: '#f8f9fa' }}>
-                                                    <td>صافي التدفقات التشغيلية</td>
-                                                    <td className={`text-end ${report.operating_activities.net_operating_cash_flow >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                        {formatCurrency(report.operating_activities.net_operating_cash_flow)}
-                                                    </td>
-                                                </tr>
+                                        <table className="w-full text-sm">
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">تحصيلات من العملاء</td><td className="py-2 text-left text-green-600 dark:text-green-400">+{formatCurrency(report.operating_activities.customer_collections)}</td></tr>
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">مدفوعات للموردين</td><td className="py-2 text-left text-red-500 dark:text-red-400">-{formatCurrency(report.operating_activities.supplier_payments)}</td></tr>
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">مصروفات تشغيلية</td><td className="py-2 text-left text-red-500 dark:text-red-400">-{formatCurrency(report.operating_activities.operating_expenses)}</td></tr>
+                                                <tr className="font-bold bg-gray-50 dark:bg-slate-700"><td className="py-3 px-2 text-gray-800 dark:text-gray-200">صافي التدفقات التشغيلية</td><td className={`py-3 text-left ${report.operating_activities.net_operating_cash_flow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{formatCurrency(report.operating_activities.net_operating_cash_flow)}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
 
                                     {/* Investing Activities */}
-                                    <div className="mb-4">
-                                        <h6 className="fw-bold text-info border-bottom pb-2 mb-3">
-                                            <i className="bi bi-building me-2"></i>
+                                    <div className="mb-6">
+                                        <h6 className="font-bold text-cyan-600 dark:text-cyan-400 border-b-2 border-cyan-200 dark:border-cyan-800 pb-2 mb-4 flex items-center gap-2">
+                                            <i className="bi bi-building"></i>
                                             التدفقات من الأنشطة الاستثمارية
                                         </h6>
-                                        <table className="table table-sm mb-0">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="ps-4">إيرادات استثمارية</td>
-                                                    <td className="text-end text-success">
-                                                        +{formatCurrency(report.investing_activities.inflows)}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="ps-4">مصروفات رأسمالية</td>
-                                                    <td className="text-end text-danger">
-                                                        -{formatCurrency(report.investing_activities.outflows)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="fw-bold" style={{ backgroundColor: '#f8f9fa' }}>
-                                                    <td>صافي التدفقات الاستثمارية</td>
-                                                    <td className={`text-end ${report.investing_activities.net_investing_cash_flow >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                        {formatCurrency(report.investing_activities.net_investing_cash_flow)}
-                                                    </td>
-                                                </tr>
+                                        <table className="w-full text-sm">
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">إيرادات استثمارية</td><td className="py-2 text-left text-green-600 dark:text-green-400">+{formatCurrency(report.investing_activities.inflows)}</td></tr>
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">مصروفات رأسمالية</td><td className="py-2 text-left text-red-500 dark:text-red-400">-{formatCurrency(report.investing_activities.outflows)}</td></tr>
+                                                <tr className="font-bold bg-gray-50 dark:bg-slate-700"><td className="py-3 px-2 text-gray-800 dark:text-gray-200">صافي التدفقات الاستثمارية</td><td className={`py-3 text-left ${report.investing_activities.net_investing_cash_flow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{formatCurrency(report.investing_activities.net_investing_cash_flow)}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
 
                                     {/* Financing Activities */}
-                                    <div className="mb-4">
-                                        <h6 className="fw-bold text-warning border-bottom pb-2 mb-3">
-                                            <i className="bi bi-bank me-2"></i>
+                                    <div className="mb-6">
+                                        <h6 className="font-bold text-amber-600 dark:text-amber-400 border-b-2 border-amber-200 dark:border-amber-800 pb-2 mb-4 flex items-center gap-2">
+                                            <i className="bi bi-bank"></i>
                                             التدفقات من الأنشطة التمويلية
                                         </h6>
-                                        <table className="table table-sm mb-0">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="ps-4">مساهمات رأس المال</td>
-                                                    <td className="text-end text-success">
-                                                        +{formatCurrency(report.financing_activities.capital_contributions)}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="ps-4">سحوبات رأس المال</td>
-                                                    <td className="text-end text-danger">
-                                                        -{formatCurrency(report.financing_activities.capital_withdrawals)}
-                                                    </td>
-                                                </tr>
-                                                <tr className="fw-bold" style={{ backgroundColor: '#f8f9fa' }}>
-                                                    <td>صافي التدفقات التمويلية</td>
-                                                    <td className={`text-end ${report.financing_activities.net_financing_cash_flow >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                        {formatCurrency(report.financing_activities.net_financing_cash_flow)}
-                                                    </td>
-                                                </tr>
+                                        <table className="w-full text-sm">
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">مساهمات رأس المال</td><td className="py-2 text-left text-green-600 dark:text-green-400">+{formatCurrency(report.financing_activities.capital_contributions)}</td></tr>
+                                                <tr><td className="py-2 pr-6 text-gray-700 dark:text-gray-300">سحوبات رأس المال</td><td className="py-2 text-left text-red-500 dark:text-red-400">-{formatCurrency(report.financing_activities.capital_withdrawals)}</td></tr>
+                                                <tr className="font-bold bg-gray-50 dark:bg-slate-700"><td className="py-3 px-2 text-gray-800 dark:text-gray-200">صافي التدفقات التمويلية</td><td className={`py-3 text-left ${report.financing_activities.net_financing_cash_flow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{formatCurrency(report.financing_activities.net_financing_cash_flow)}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
 
                                     {/* Summary */}
-                                    <div className="border-top pt-3">
-                                        <table className="table table-sm mb-0">
-                                            <tbody>
-                                                <tr className="fw-bold fs-6">
-                                                    <td>صافي التغير في النقدية</td>
-                                                    <td className={`text-end ${report.net_cash_change >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                        {formatCurrency(report.net_cash_change)}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>رصيد البداية</td>
-                                                    <td className="text-end">{formatCurrency(report.opening_balance)}</td>
-                                                </tr>
-                                                <tr className="fw-bold fs-5 table-success">
-                                                    <td>رصيد الإغلاق</td>
-                                                    <td className="text-end">{formatCurrency(report.closing_balance)}</td>
-                                                </tr>
+                                    <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
+                                        <table className="w-full text-sm">
+                                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                                                <tr className="font-bold text-base"><td className="py-3 text-gray-800 dark:text-gray-200">صافي التغير في النقدية</td><td className={`py-3 text-left ${report.net_cash_change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{formatCurrency(report.net_cash_change)}</td></tr>
+                                                <tr><td className="py-2 text-gray-700 dark:text-gray-300">رصيد البداية</td><td className="py-2 text-left text-gray-800 dark:text-gray-200">{formatCurrency(report.opening_balance)}</td></tr>
+                                                <tr className="font-bold text-lg bg-green-50 dark:bg-green-900/20"><td className="py-4 px-2 text-green-700 dark:text-green-400">رصيد الإغلاق</td><td className="py-4 text-left text-green-700 dark:text-green-400">{formatCurrency(report.closing_balance)}</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -269,34 +190,34 @@ function CashFlowReport() {
                         </div>
 
                         {/* Recent Transactions */}
-                        <div className="col-lg-4">
-                            <div className="card border-0 shadow-sm">
-                                <div className="card-header bg-white py-3">
-                                    <h6 className="mb-0 fw-bold">
-                                        <i className="bi bi-list-ul me-2"></i>
+                        <div>
+                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                                <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700">
+                                    <h6 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                        <i className="bi bi-list-ul"></i>
                                         آخر الحركات
                                     </h6>
                                 </div>
-                                <div className="card-body p-0" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                                <div className="max-h-[500px] overflow-y-auto">
                                     {details.length > 0 ? (
-                                        <ul className="list-group list-group-flush">
+                                        <div className="divide-y divide-gray-100 dark:divide-slate-700">
                                             {details.slice(0, 20).map((item, index) => (
-                                                <li key={index} className="list-group-item d-flex justify-content-between align-items-center py-2">
+                                                <div key={index} className="flex justify-between items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                                                     <div>
-                                                        <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>
-                                                            {new Date(item.date).toLocaleDateString('ar-EG')}
+                                                        <small className="text-gray-400 dark:text-gray-500 block text-xs">
+                                                            {new Date(item.date).toLocaleDateString('en-US')}
                                                         </small>
-                                                        <span style={{ fontSize: '0.85rem' }}>{item.description}</span>
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300">{item.description}</span>
                                                     </div>
-                                                    <span className={`badge ${item.flow_type === 'IN' ? 'bg-success' : 'bg-danger'}`}>
+                                                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${item.flow_type === 'IN' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
                                                         {item.flow_type === 'IN' ? '+' : '-'}{formatCurrency(item.amount)}
                                                     </span>
-                                                </li>
+                                                </div>
                                             ))}
-                                        </ul>
+                                        </div>
                                     ) : (
-                                        <div className="text-center text-muted py-4">
-                                            <i className="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        <div className="text-center text-gray-400 dark:text-gray-500 py-8">
+                                            <i className="bi bi-inbox text-4xl block mb-2"></i>
                                             لا توجد حركات
                                         </div>
                                     )}

@@ -33,3 +33,39 @@ export const downloadInvoice = async (saleId) => {
         throw error;
     }
 };
+
+export const updateSale = async (saleId, saleData) => {
+    try {
+        const response = await axios.put(`${API_URL}${saleId}`, saleData);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating sale:", error);
+        throw error;
+    }
+};
+
+export const deleteSale = async (saleId) => {
+    try {
+        const response = await axios.delete(`${API_URL}${saleId}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting sale:", error);
+        throw error;
+    }
+};
+
+/**
+ * دالة للحصول على آخر سعر بيع لمحصول لعميل معين
+ * @param {number} cropId 
+ * @param {number} customerId 
+ * @returns {Promise<object>}
+ */
+export const getLastSalePrice = async (cropId, customerId) => {
+    try {
+        const response = await axios.get(`${API_URL}last-price/${cropId}/${customerId}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching last price:", error);
+        return { selling_unit_price: null, sale_date: null, quantity_sold_kg: null };
+    }
+};

@@ -38,12 +38,14 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const data = await apiLogin(username, password);
-            const newToken = data.access_token;
+            // In session auth, we get 'session_token' (and 'access_token' for compat)
+            const newToken = data.session_token || data.access_token;
+            const userData = data.user;
 
             localStorage.setItem('token', newToken);
-            setToken(newToken);
+            localStorage.setItem('user', JSON.stringify(userData)); // Store user data for offline/quick access
 
-            const userData = await getCurrentUser(newToken);
+            setToken(newToken);
             setUser(userData);
 
             return true;
@@ -71,8 +73,17 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        if (token) {
+            try {
+                // Call backend logout
+                await import('../api/auth').then(mod => mod.logout(token));
+            } catch (e) {
+                console.warn("Backend logout failed", e);
+            }
+        }
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setToken(null);
         setUser(null);
     };
@@ -80,8 +91,11 @@ export const AuthProvider = ({ children }) => {
     const hasPermission = (permission) => {
         if (!user) return false;
         if (user.is_superuser) return true;
-        // للمستقبل: التحقق من الصلاحيات
-        return true;
+
+        if (user.permissions && Array.isArray(user.permissions)) {
+            return user.permissions.includes(permission);
+        }
+        return false;
     };
 
     const updateConfig = async (newConfig) => {

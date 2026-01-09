@@ -69,27 +69,27 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
     const supplierContacts = contacts.filter(c => c.is_supplier);
 
     if (loading) return (
-        <div className="text-center py-5">
-            <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+        <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 dark:border-emerald-400" role="status">
+                <span className="sr-only">Loading...</span>
             </div>
         </div>
     );
 
     return (
-        <form onSubmit={handleSubmit} className="p-2">
-            <div className="row g-4">
+        <form onSubmit={handleSubmit} className="p-2 text-right">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left Column: Primary Info */}
-                <div className="col-md-7 border-end">
-                    <h6 className="text-muted fw-bold mb-3 text-uppercase small ls-1">تفاصيل المصروف الأساسية</h6>
+                <div className="border-e border-gray-100 dark:border-slate-700 pe-0 md:pe-6 transition-colors">
+                    <h6 className="text-gray-500 dark:text-gray-400 font-bold mb-4 text-xs uppercase tracking-wide">تفاصيل المصروف الأساسية</h6>
 
-                    <div className="mb-4">
-                        <label htmlFor="amount" className="form-label text-muted small">المبلغ</label>
-                        <div className="input-group input-group-lg">
+                    <div className="mb-6">
+                        <label htmlFor="amount" className="block text-gray-500 dark:text-gray-400 text-sm mb-2">المبلغ</label>
+                        <div className="relative rounded-lg shadow-sm">
                             <input
                                 type="number"
                                 step="0.01"
-                                className="form-control fw-bold text-success"
+                                className="block w-full pe-12 ps-4 py-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-xl font-bold text-emerald-600 dark:text-emerald-400 transition-colors"
                                 id="amount"
                                 name="amount"
                                 placeholder="0.00"
@@ -98,15 +98,17 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
                                 required
                                 autoFocus
                             />
-                            <span className="input-group-text bg-light text-muted fw-bold">ج.م</span>
+                            <div className="absolute inset-y-0 right-0 pe-3 flex items-center pointer-events-none">
+                                <span className="text-gray-500 dark:text-gray-400 font-bold sm:text-sm">ج.م</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mb-4">
-                        <label htmlFor="description" className="form-label text-muted small">الوصف</label>
+                    <div className="mb-6">
+                        <label htmlFor="description" className="block text-gray-500 dark:text-gray-400 text-sm mb-2">الوصف</label>
                         <input
                             type="text"
-                            className="form-control form-control-lg"
+                            className="block w-full px-4 py-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
                             id="description"
                             name="description"
                             placeholder="مثال: صيانة جرار، وقود، كهرباء..."
@@ -116,11 +118,11 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
                         />
                     </div>
 
-                    <div className="mb-3">
-                        <label htmlFor="expense_date" className="form-label text-muted small">تاريخ المصروف</label>
+                    <div className="mb-4">
+                        <label htmlFor="expense_date" className="block text-gray-500 dark:text-gray-400 text-sm mb-2">تاريخ المصروف</label>
                         <input
                             type="date"
-                            className="form-control"
+                            className="block w-full px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
                             id="expense_date"
                             name="expense_date"
                             value={formData.expense_date}
@@ -131,13 +133,13 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
                 </div>
 
                 {/* Right Column: Classification */}
-                <div className="col-md-5 bg-light p-4 rounded-3">
-                    <h6 className="text-muted fw-bold mb-3 text-uppercase small ls-1">التصنيف والحسابات</h6>
+                <div className="bg-gray-50 dark:bg-slate-900/40 p-6 rounded-xl transition-colors">
+                    <h6 className="text-gray-500 dark:text-gray-400 font-bold mb-4 text-xs uppercase tracking-wide">التصنيف والحسابات</h6>
 
-                    <div className="mb-3">
-                        <label htmlFor="debit_account_id" className="form-label small fw-bold">نوع المصروف (من)</label>
+                    <div className="mb-4">
+                        <label htmlFor="debit_account_id" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">نوع المصروف (من)</label>
                         <select
-                            className="form-select"
+                            className="block w-full px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
                             id="debit_account_id"
                             name="debit_account_id"
                             value={formData.debit_account_id}
@@ -151,10 +153,10 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
                         </select>
                     </div>
 
-                    <div className="mb-3">
-                        <label htmlFor="credit_account_id" className="form-label small fw-bold">طريقة الدفع (إلى)</label>
+                    <div className="mb-4">
+                        <label htmlFor="credit_account_id" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">طريقة الدفع (إلى)</label>
                         <select
-                            className="form-select"
+                            className="block w-full px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
                             id="credit_account_id"
                             name="credit_account_id"
                             value={formData.credit_account_id}
@@ -168,10 +170,10 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
                         </select>
                     </div>
 
-                    <div className="mb-3">
-                        <label htmlFor="supplier_id" className="form-label small fw-bold">المورد (اختياري)</label>
+                    <div className="mb-4">
+                        <label htmlFor="supplier_id" className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">المورد (اختياري)</label>
                         <select
-                            className="form-select"
+                            className="block w-full px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition-colors"
                             id="supplier_id"
                             name="supplier_id"
                             value={formData.supplier_id}
@@ -186,9 +188,18 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
                 </div>
             </div>
 
-            <div className="d-flex justify-content-end mt-4 pt-3 border-top">
-                <button type="button" className="btn btn-outline-secondary me-2 px-4" onClick={onCancel}>إلغاء</button>
-                <button type="submit" className="btn btn-primary px-5 fw-bold shadow-sm">
+            <div className="flex justify-end mt-8 pt-4 border-t border-gray-100 dark:border-slate-700 transition-colors">
+                <button
+                    type="button"
+                    className="px-6 py-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 font-medium me-3 transition-all shadow-sm"
+                    onClick={onCancel}
+                >
+                    إلغاء
+                </button>
+                <button
+                    type="submit"
+                    className="px-8 py-2.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 font-bold shadow-sm transition-all transform hover:scale-105"
+                >
                     {expense ? 'حفظ التعديلات' : 'تسجيل المصروف'}
                 </button>
             </div>

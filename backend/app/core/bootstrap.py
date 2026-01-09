@@ -3,7 +3,10 @@ from app import models, crud
 import json
 from app.auth.jwt import get_password_hash
 
+from app.core.settings import initialize_default_settings, get_setting
+
 # تعريف أرقام الحسابات الأساسية كمتغيرات ثابتة لسهولة الوصول إليها
+# DEPRECATED: Use settings service instead
 INVENTORY_ACCOUNT_ID = 10103
 ACCOUNTS_PAYABLE_ID = 20101
 CASH_ACCOUNT_ID = 10101
@@ -14,20 +17,47 @@ INVENTORY_LOSS_ACCOUNT_ID = 50102
 INVENTORY_GAIN_ACCOUNT_ID = 40102
 OWNER_EQUITY_ID = 30101  # رأس المال
 
+def bootstrap_system(db: Session):
+    """
+    تهيئة النظام بالكامل: الإعدادات، الحسابات، المستخدمين
+    """
+    # 1. Initialize Settings
+    initialize_default_settings(db)
+    
+    # 2. Bootstrap Financial Accounts
+    bootstrap_financial_accounts(db)
+    
+    # 3. Bootstrap Roles & Users
+    bootstrap_roles_and_users(db)
+
+
 def bootstrap_financial_accounts(db: Session):
     """
     Checks for and creates the default financial accounts if they don't exist.
     """
+    # Get IDs from settings
+    inventory_id = get_setting(db, "INVENTORY_ACCOUNT_ID", INVENTORY_ACCOUNT_ID)
+    accounts_payable_id = get_setting(db, "ACCOUNTS_PAYABLE_ID", ACCOUNTS_PAYABLE_ID)
+    cash_id = get_setting(db, "CASH_ACCOUNT_ID", CASH_ACCOUNT_ID)
+    sales_revenue_id = get_setting(db, "SALES_REVENUE_ACCOUNT_ID", SALES_REVENUE_ACCOUNT_ID)
+    cogs_id = get_setting(db, "COGS_ACCOUNT_ID", COGS_ACCOUNT_ID)
+    accounts_receivable_id = get_setting(db, "ACCOUNTS_RECEIVABLE_ID", ACCOUNTS_RECEIVABLE_ID)
+    
+    # These might not be in default settings yet, so we use constants as fallback
+    inventory_loss_id = 50102
+    inventory_gain_id = 40102
+    owner_equity_id = 30101
+
     accounts_to_create = [
-        {'account_id': INVENTORY_ACCOUNT_ID, 'account_name': 'المخزون', 'account_type': 'ASSET'},
-        {'account_id': ACCOUNTS_PAYABLE_ID, 'account_name': 'الذمم الدائنة (الموردين)', 'account_type': 'LIABILITY'},
-        {'account_id': CASH_ACCOUNT_ID, 'account_name': 'الخزنة الرئيسية', 'account_type': 'ASSET'},
-        {'account_id': SALES_REVENUE_ACCOUNT_ID, 'account_name': 'إيرادات المبيعات', 'account_type': 'REVENUE'},
-        {'account_id': COGS_ACCOUNT_ID, 'account_name': 'تكلفة البضاعة المباعة', 'account_type': 'EXPENSE'},
-        {'account_id': ACCOUNTS_RECEIVABLE_ID, 'account_name': 'الذمم المدينة (العملاء)', 'account_type': 'ASSET'},
-        {'account_id': INVENTORY_LOSS_ACCOUNT_ID, 'account_name': 'خسائر المخزون (تالف/عجز)', 'account_type': 'EXPENSE'},
-        {'account_id': INVENTORY_GAIN_ACCOUNT_ID, 'account_name': 'أرباح فروقات المخزون', 'account_type': 'REVENUE'},
-        {'account_id': OWNER_EQUITY_ID, 'account_name': 'رأس المال', 'account_type': 'EQUITY'},
+        {'account_id': inventory_id, 'account_name': 'المخزون', 'account_type': 'ASSET'},
+        {'account_id': accounts_payable_id, 'account_name': 'الذمم الدائنة (الموردين)', 'account_type': 'LIABILITY'},
+        {'account_id': cash_id, 'account_name': 'الخزنة الرئيسية', 'account_type': 'ASSET'},
+        {'account_id': sales_revenue_id, 'account_name': 'إيرادات المبيعات', 'account_type': 'REVENUE'},
+        {'account_id': cogs_id, 'account_name': 'تكلفة البضاعة المباعة', 'account_type': 'EXPENSE'},
+        {'account_id': accounts_receivable_id, 'account_name': 'الذمم المدينة (العملاء)', 'account_type': 'ASSET'},
+        {'account_id': inventory_loss_id, 'account_name': 'خسائر المخزون (تالف/عجز)', 'account_type': 'EXPENSE'},
+        {'account_id': inventory_gain_id, 'account_name': 'أرباح فروقات المخزون', 'account_type': 'REVENUE'},
+        {'account_id': owner_equity_id, 'account_name': 'رأس المال', 'account_type': 'EQUITY'},
     ]
 
     for acc_data in accounts_to_create:

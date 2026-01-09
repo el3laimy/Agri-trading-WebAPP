@@ -33,7 +33,7 @@ function DebtorsView() {
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP',
             minimumFractionDigits: 0,
@@ -71,7 +71,7 @@ function DebtorsView() {
 
         message += `━━━━━━━━━━━━━━━━━\n`;
         message += `📊 الإجمالي: ${formatCurrency(totalAmount)}\n`;
-        message += `📅 التاريخ: ${new Date().toLocaleDateString('ar-EG')}`;
+        message += `📅 التاريخ: ${new Date().toLocaleDateString('en-US')}`;
 
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
@@ -117,260 +117,248 @@ function DebtorsView() {
 
     if (loading) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-                <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">جاري التحميل...</span>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-gray-500 dark:text-gray-400 font-medium animate-pulse">جاري تحميل كشوف المديونيات...</span>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="container-fluid">
-                <div className="alert alert-danger">
-                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                    {error}
+            <div className="p-6 max-w-2xl mx-auto">
+                <div className="bg-red-50 dark:bg-red-900/20 border-s-4 border-red-400 p-4 mb-6 rounded-lg shadow-sm">
+                    <div className="flex items-center">
+                        <i className="bi bi-exclamation-triangle-fill text-red-400 me-3 text-xl"></i>
+                        <p className="text-sm text-red-700 dark:text-red-400 font-medium m-0">{error}</p>
+                    </div>
                 </div>
-                <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
+                <button
+                    className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors"
+                    onClick={() => navigate('/dashboard')}
+                >
                     <i className="bi bi-arrow-right me-2"></i>
-                    العودة
+                    العودة للرئيسية
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="container-fluid">
-            {/* Header */}
-            <div className="row mb-4">
-                <div className="col-12 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <div className="d-flex align-items-center">
+        <div className="p-6 max-w-6xl mx-auto space-y-6" dir="rtl">
+            {/* Header Area */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6 transition-colors no-print">
+                <div className="flex items-center gap-4">
+                    <button
+                        className="p-2 bg-gray-50 dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition-all border border-gray-100 dark:border-slate-700"
+                        onClick={() => navigate('/dashboard')}
+                        title="رجوع"
+                    >
+                        <i className="bi bi-arrow-right text-lg"></i>
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-800 dark:text-gray-100 flex items-center gap-2 m-0">
+                            <i className="bi bi-cash-coin text-emerald-600 dark:text-emerald-400"></i>
+                            إدارة المديونيات
+                        </h2>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">تتبع مستحقات العملاء والتزامات الموردين بدقة</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-all font-bold text-sm shadow-sm"
+                        onClick={handlePrint}
+                    >
+                        <i className="bi bi-printer"></i>
+                        طباعة
+                    </button>
+                    <div className="relative group">
+                        <button className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-bold text-sm shadow-md shadow-emerald-500/20">
+                            <i className="bi bi-whatsapp"></i>
+                            مشاركة
+                            <i className="bi bi-chevron-down text-[10px] opacity-70"></i>
+                        </button>
+                        <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 p-2 hidden group-hover:block z-50 animate-fade-in">
+                            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 rounded-lg transition-colors" onClick={handleShareText}>
+                                <i className="bi bi-chat-text"></i>
+                                إرسال كنص
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 rounded-lg transition-colors" onClick={handleShareImage}>
+                                <i className="bi bi-image"></i>
+                                إرسال كصورة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabs & Search Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end no-print">
+                <div className="lg:col-span-7">
+                    <div className="bg-gray-100/50 dark:bg-slate-900/50 p-1 rounded-2xl border border-gray-100 dark:border-slate-700 flex gap-1">
                         <button
-                            className="btn btn-outline-secondary me-3"
-                            onClick={() => navigate('/dashboard')}
+                            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'receivables'
+                                ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm border border-gray-100 dark:border-slate-700'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                                }`}
+                            onClick={() => setActiveTab('receivables')}
                         >
-                            <i className="bi bi-arrow-right me-1"></i>
-                            العودة
+                            <i className="bi bi-person-check"></i>
+                            مستحقات من العملاء
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'receivables' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700' : 'bg-gray-200 dark:bg-slate-800 text-gray-500'}`}>
+                                {debtData.receivables?.length || 0}
+                            </span>
                         </button>
-                        <div>
-                            <h2 className="fw-bold mb-0" style={{ color: 'var(--primary-dark)' }}>
-                                <i className="bi bi-cash-coin me-2"></i>
-                                إدارة المديونيات
-                            </h2>
-                            <p className="text-muted mb-0">عرض وإدارة مستحقات العملاء والموردين</p>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="d-flex gap-2 flex-wrap">
-                        <button className="btn btn-outline-secondary" onClick={handlePrint}>
-                            <i className="bi bi-printer me-2"></i>
-                            طباعة
+                        <button
+                            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'payables'
+                                ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-sm border border-gray-100 dark:border-slate-700'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                                }`}
+                            onClick={() => setActiveTab('payables')}
+                        >
+                            <i className="bi bi-truck"></i>
+                            مستحقات للموردين
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'payables' ? 'bg-red-100 dark:bg-red-900/40 text-red-700' : 'bg-gray-200 dark:bg-slate-800 text-gray-500'}`}>
+                                {debtData.payables?.length || 0}
+                            </span>
                         </button>
-                        <div className="btn-group">
-                            <button
-                                className="btn btn-success dropdown-toggle"
-                                data-bs-toggle="dropdown"
-                                aria-expanded="false"
-                            >
-                                <i className="bi bi-whatsapp me-2"></i>
-                                مشاركة واتساب
-                            </button>
-                            <ul className="dropdown-menu">
-                                <li>
-                                    <button className="dropdown-item" onClick={handleShareText}>
-                                        <i className="bi bi-chat-text me-2"></i>
-                                        إرسال كنص
-                                    </button>
-                                </li>
-                                <li>
-                                    <button className="dropdown-item" onClick={handleShareImage}>
-                                        <i className="bi bi-image me-2"></i>
-                                        إرسال كصورة
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Tabs */}
-            <div className="row mb-4">
-                <div className="col-12">
-                    <ul className="nav nav-tabs nav-justified" style={{ fontSize: '1.1rem' }}>
-                        <li className="nav-item">
-                            <button
-                                className={`nav-link ${activeTab === 'receivables' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('receivables')}
-                                style={{ fontWeight: activeTab === 'receivables' ? 'bold' : 'normal' }}
-                            >
-                                <i className="bi bi-person-check me-2"></i>
-                                مستحقات من العملاء
-                                <span className="badge bg-warning text-dark ms-2">
-                                    {debtData.receivables?.length || 0}
-                                </span>
-                            </button>
-                        </li>
-                        <li className="nav-item">
-                            <button
-                                className={`nav-link ${activeTab === 'payables' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('payables')}
-                                style={{ fontWeight: activeTab === 'payables' ? 'bold' : 'normal' }}
-                            >
-                                <i className="bi bi-truck me-2"></i>
-                                مستحقات للموردين
-                                <span className="badge bg-danger ms-2">
-                                    {debtData.payables?.length || 0}
-                                </span>
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            {/* Search Bar */}
-            <div className="row mb-3">
-                <div className="col-md-6">
-                    <div className="input-group">
-                        <span className="input-group-text bg-white border-end-0">
-                            <i className="bi bi-search"></i>
-                        </span>
+                <div className="lg:col-span-5">
+                    <div className="relative group">
+                        <i className="bi bi-search absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors"></i>
                         <input
                             type="text"
-                            className="form-control border-start-0"
+                            className="w-full pr-12 pl-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none text-sm dark:text-gray-100"
                             placeholder="بحث بالاسم أو الهاتف..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
-                <div className="col-md-6 text-md-end">
-                    <div className="d-inline-block p-2 rounded" style={{ backgroundColor: activeTab === 'receivables' ? '#fff3cd' : '#f8d7da' }}>
-                        <strong>الإجمالي: </strong>
-                        <span className={`fs-5 fw-bold ${activeTab === 'receivables' ? 'text-warning' : 'text-danger'}`}>
-                            {formatCurrency(totalAmount)}
-                        </span>
+            </div>
+
+            {/* Total Summary Card */}
+            <div className={`p-4 rounded-2xl border flex items-center justify-between no-print transition-colors ${activeTab === 'receivables'
+                ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30'
+                : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30'
+                }`}>
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${activeTab === 'receivables' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' : 'bg-red-100 dark:bg-red-900/40 text-red-600'}`}>
+                        <i className="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <div>
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 block uppercase tracking-wider">إجمالي المديونية في هذه القائمة</span>
+                        <h4 className={`text-xl font-black m-0 ${activeTab === 'receivables' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>{formatCurrency(totalAmount)}</h4>
                     </div>
                 </div>
+                <div className="text-[10px] font-bold text-gray-400 bg-white/50 dark:bg-slate-800 p-2 rounded-lg border border-gray-100 dark:border-slate-700">
+                    آخر تحديث: {new Date().toLocaleTimeString('en-US')}
+                </div>
             </div>
 
-            {/* Data Table */}
-            <div className="card border-0 shadow-sm" ref={tableRef}>
-                <div className="card-header bg-white py-3">
-                    <h5 className="mb-0 fw-bold">
-                        <i className={`bi ${activeTab === 'receivables' ? 'bi-person-check' : 'bi-truck'} me-2`}></i>
+            {/* Main Content Table */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-colors" ref={tableRef}>
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50/30 dark:bg-slate-900/30">
+                    <h5 className="mb-0 font-black text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <i className={`bi ${activeTab === 'receivables' ? 'bi-person-lines-fill' : 'bi-truck'} text-emerald-600 dark:text-emerald-400`}></i>
                         {activeTab === 'receivables' ? 'قائمة العملاء المدينين' : 'قائمة الموردين الدائنين'}
-                        <small className="text-muted ms-2">({filteredData.length} سجل)</small>
+                        <span className="text-xs font-medium text-gray-400">( {filteredData.length} سجل )</span>
                     </h5>
                 </div>
-                <div className="card-body p-0">
-                    {filteredData.length === 0 ? (
-                        <div className="text-center py-5">
-                            <i className="bi bi-emoji-smile fs-1 text-success d-block mb-3"></i>
-                            <p className="text-muted fs-5">
-                                {searchTerm
-                                    ? 'لا توجد نتائج للبحث'
-                                    : activeTab === 'receivables'
-                                        ? 'لا يوجد عملاء مدينين 🎉'
-                                        : 'لا يوجد موردين دائنين 🎉'
-                                }
-                            </p>
+
+                {filteredData.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                        <div className="p-6 bg-emerald-50 dark:bg-slate-900 rounded-full mb-4">
+                            <i className="bi bi-check2-circle text-5xl text-emerald-400"></i>
                         </div>
-                    ) : (
-                        <div className="table-responsive">
-                            <table className="table table-hover table-striped mb-0">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th style={{ width: '50px' }}>#</th>
-                                        <th>الاسم</th>
-                                        <th>الهاتف</th>
-                                        <th className="text-center">إجمالي العمليات</th>
-                                        <th className="text-center">المدفوع/المستلم</th>
-                                        <th className="text-center">المبلغ المستحق</th>
-                                        <th style={{ width: '150px' }}>إجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredData.map((item, index) => (
-                                        <tr key={index}>
-                                            <td className="fw-bold text-muted">{index + 1}</td>
-                                            <td>
-                                                <i className={`bi ${activeTab === 'receivables' ? 'bi-person' : 'bi-truck'} me-2 text-primary`}></i>
-                                                <strong>{item.name}</strong>
-                                            </td>
-                                            <td>
-                                                {item.phone ? (
-                                                    <a href={`tel:${item.phone}`} className="text-decoration-none">
-                                                        <i className="bi bi-telephone me-1"></i>
-                                                        {item.phone}
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-muted">-</span>
-                                                )}
-                                            </td>
-                                            <td className="text-center">
-                                                {formatCurrency(item.total_amount || item.total_sales || item.total_purchases)}
-                                            </td>
-                                            <td className="text-center text-success">
-                                                {formatCurrency(item.paid_amount || item.total_received || item.total_paid)}
-                                            </td>
-                                            <td className="text-center">
-                                                <span className={`badge ${activeTab === 'receivables' ? 'bg-warning text-dark' : 'bg-danger'} fs-6 px-3 py-2`}>
-                                                    {formatCurrency(item.balance_due)}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="btn-group btn-group-sm">
-                                                    <button
-                                                        className="btn btn-outline-primary"
-                                                        onClick={() => navigate(`/contacts/${item.contact_id || index}`)}
-                                                        title="كشف الحساب"
-                                                    >
-                                                        <i className="bi bi-file-text"></i>
-                                                    </button>
-                                                    {item.phone && (
-                                                        <a
-                                                            href={`https://wa.me/${item.phone.replace(/\D/g, '').startsWith('01') ? '2' + item.phone.replace(/\D/g, '') : item.phone.replace(/\D/g, '')}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="btn btn-outline-success"
-                                                            title="تواصل عبر واتساب"
-                                                        >
-                                                            <i className="bi bi-whatsapp"></i>
-                                                        </a>
-                                                    )}
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 m-0">
+                            {searchTerm ? 'لا توجد نتائج بحث تطابق مدخلاتك' : 'تهانينا! لا توجد مديونيات معلقة حالياً'}
+                        </h3>
+                        <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">
+                            {searchTerm ? 'حاول استخدام كلمات بحث أخرى أو التأكد من الاسم' : 'جميع الحسابات في هذه القائمة متزنة ومصفاة بالكامل.'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right" dir="rtl">
+                            <thead>
+                                <tr className="bg-gray-50/50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                    <th className="px-6 py-4 text-center" style={{ width: '60px' }}>#</th>
+                                    <th className="px-6 py-4">الطرف الثاني</th>
+                                    <th className="px-6 py-4 text-center">إجمالي المعاملات</th>
+                                    <th className="px-6 py-4 text-center">التحصيلات/السداد</th>
+                                    <th className="px-6 py-4 text-center">المبلغ المستحق</th>
+                                    <th className="px-6 py-4 text-center no-print" style={{ width: '120px' }}>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700 transition-colors">
+                                {filteredData.map((item, index) => (
+                                    <tr key={index} className="group hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                                        <td className="px-6 py-4 text-center text-xs font-mono text-gray-400">{index + 1}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold group-hover:scale-110 transition-transform">
+                                                    {item.name?.charAt(0) || '?'}
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot className="table-dark">
-                                    <tr>
-                                        <td colSpan="5" className="text-end fw-bold">الإجمالي:</td>
-                                        <td className="text-center">
-                                            <span className="badge bg-light text-dark fs-6 px-3 py-2">
-                                                {formatCurrency(totalAmount)}
+                                                <div>
+                                                    <div className="font-bold text-gray-800 dark:text-gray-100">{item.name}</div>
+                                                    <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                                                        <i className="bi bi-telephone text-[10px]"></i>
+                                                        {item.phone || 'بدون هاتف'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                                {formatCurrency(item.total_amount || item.total_sales || item.total_purchases)}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                                {formatCurrency(item.paid_amount || item.total_received || item.total_paid)}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-black shadow-sm ring-1 ring-inset ${activeTab === 'receivables'
+                                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 ring-amber-500/10'
+                                                : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 ring-red-500/10'
+                                                }`}>
+                                                {formatCurrency(item.balance_due)}
                                             </span>
                                         </td>
-                                        <td></td>
+                                        <td className="px-6 py-4 text-center no-print">
+                                            <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => navigate(`/contacts/${item.contact_id || index}`)}
+                                                    className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 shadow-sm transition-all"
+                                                    title="التفاصيل"
+                                                >
+                                                    <i className="bi bi-eye-fill"></i>
+                                                </button>
+                                                {item.phone && (
+                                                    <a
+                                                        href={`https://wa.me/${item.phone.replace(/\D/g, '').startsWith('01') ? '2' + item.phone.replace(/\D/g, '') : item.phone.replace(/\D/g, '')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all"
+                                                        title="واتساب"
+                                                    >
+                                                        <i className="bi bi-whatsapp"></i>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </td>
                                     </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
-
-            {/* Print Styles */}
-            <style>{`
-                @media print {
-                    .btn, .nav-tabs, .input-group, .dropdown { display: none !important; }
-                    .card { box-shadow: none !important; }
-                    .table { font-size: 12px; }
-                }
-            `}</style>
         </div>
     );
 }

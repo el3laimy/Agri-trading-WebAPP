@@ -2,6 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 
+// Pages configuration
+const pages = [
+    { title: 'لوحة التحكم', path: '/dashboard', icon: 'bi-speedometer2' },
+    { title: 'المبيعات', path: '/sales', icon: 'bi-cart-check' },
+    { title: 'المشتريات', path: '/purchases', icon: 'bi-bag-check' },
+    { title: 'المخزون', path: '/inventory', icon: 'bi-box-seam' },
+    { title: 'الخزينة', path: '/treasury', icon: 'bi-wallet2' },
+    { title: 'المصروفات', path: '/expenses', icon: 'bi-cash-coin' },
+    { title: 'التقارير', path: '/reports/advanced', icon: 'bi-graph-up' },
+    { title: 'النسخ الاحتياطي', path: '/backups', icon: 'bi-cloud-download' }
+];
+
 const GlobalSearch = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -10,18 +22,6 @@ const GlobalSearch = () => {
     const searchInputRef = useRef(null);
     const navigate = useNavigate();
     const { customers, crops } = useData();
-
-    // Pages configuration
-    const pages = [
-        { title: 'لوحة التحكم', path: '/dashboard', icon: 'bi-speedometer2' },
-        { title: 'المبيعات', path: '/sales', icon: 'bi-cart-check' },
-        { title: 'المشتريات', path: '/purchases', icon: 'bi-bag-check' },
-        { title: 'المخزون', path: '/inventory', icon: 'bi-box-seam' },
-        { title: 'الخزينة', path: '/treasury', icon: 'bi-wallet2' },
-        { title: 'المصروفات', path: '/expenses', icon: 'bi-cash-coin' },
-        { title: 'التقارير', path: '/reports/advanced', icon: 'bi-graph-up' },
-        { title: 'النسخ الاحتياطي', path: '/backups', icon: 'bi-cloud-download' }
-    ];
 
     useEffect(() => {
         const handleKeyDown = (e) => {

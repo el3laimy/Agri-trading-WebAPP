@@ -115,7 +115,7 @@ def require_permissions(required_permissions: List[str]):
         
         try:
             user_permissions = json.loads(role.permissions)
-        except:
+        except (json.JSONDecodeError, TypeError):
             user_permissions = []
         
         # التحقق من الصلاحيات المطلوبة
@@ -141,3 +141,11 @@ def require_admin(
             detail="هذا الإجراء يتطلب صلاحيات المدير"
         )
     return current_user
+
+
+def require_write_permission(resource: str):
+    """
+    اختصار للتحقق من صلاحية الكتابة على مورد معين
+    مثال: require_write_permission('purchases') يتحقق من 'purchases:write'
+    """
+    return require_permissions([f"{resource}:write"])

@@ -10,3 +10,8 @@ pytest
 httpx
 slowapi
 fastapi-mail
+passlib[bcrypt]
+PyJWT
+python-multipart
+bcrypt
+python-jose[cryptography]

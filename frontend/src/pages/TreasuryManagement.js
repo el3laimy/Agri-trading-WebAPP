@@ -239,77 +239,73 @@ function TreasuryManagement() {
         }
     };
 
-    // --- Modern Components Internal Definition for Split View ---
+    // --- Tailwind Components Internal Definition ---
 
     const StatCard = ({ title, value, icon, gradient, textColor = 'text-white' }) => (
-        <div className="col-md-3 col-sm-6">
-            <div className="card border-0 shadow-sm h-100 overflow-hidden position-relative" style={{ background: gradient }}>
-                <div className={`card-body p-3 position-relative z-1 ${textColor}`}>
-                    <div className="d-flex align-items-center mb-2">
-                        <div className="bg-white bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center me-2">
-                            <i className={`bi ${icon} fs-5`}></i>
-                        </div>
-                        <span className="opacity-75 small fw-bold">{title}</span>
+        <div className="relative overflow-hidden rounded-xl shadow-sm h-full" style={{ background: gradient }}>
+            <div className={`p-6 relative z-10 ${textColor}`}>
+                <div className="flex items-center mb-4">
+                    <div className="bg-white/20 rounded-full p-2 flex items-center justify-center me-3 w-10 h-10">
+                        <i className={`bi ${icon} text-xl`}></i>
                     </div>
-                    <h4 className="fw-bold mb-0">{formatCurrency(value)}</h4>
+                    <span className="opacity-90 text-sm font-bold">{title}</span>
                 </div>
-                <div className="position-absolute bottom-0 opacity-10" style={{ left: '0', marginBottom: '-10px', marginLeft: '-15px' }}>
-                    <i className={`bi ${icon} display-1 text-white`}></i>
-                </div>
+                <h4 className="text-3xl font-bold">{formatCurrency(value)}</h4>
+            </div>
+            <div className="absolute -bottom-4 -left-4 opacity-10">
+                <i className={`bi ${icon} text-9xl text-white`}></i>
             </div>
         </div>
     );
 
     const TransactionCard = ({ transaction, type }) => {
         const isReceipt = type === 'receipt';
-        const colorClass = isReceipt ? 'success' : 'danger';
-        const bgLight = isReceipt ? 'bg-success-subtle' : 'bg-danger-subtle';
+        const colorClass = isReceipt ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
+        const bgIcon = isReceipt ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30';
+        const iconColor = isReceipt ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
 
         return (
-            <div className="card mb-2 border-0 shadow-sm hover-shadow transition-all" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
-                <div className="card-body p-3">
-                    <div className="d-flex justify-content-between align-items-start">
-                        <div className="d-flex gap-3 align-items-center">
-                            <div className={`rounded-circle p-2 d-flex align-items-center justify-content-center ${bgLight}`}
-                                style={{ width: '45px', height: '45px', minWidth: '45px' }}>
-                                <i className={`bi ${isReceipt ? 'bi-arrow-down-left' : 'bi-arrow-up-right'} text-${colorClass} fs-5`}></i>
-                            </div>
-                            <div>
-                                <h6 className="fw-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-                                    {isReceipt
-                                        ? (transaction.contact_name ? `استلام من ${transaction.contact_name}` : 'قبض نقدية')
-                                        : (transaction.contact_name
-                                            ? `صرف لـ ${transaction.contact_name}`
-                                            : (transaction.source === 'QUICK_EXPENSE' ? (transaction.description || 'مصروف سريع') : 'صرف نقدية'))}
-                                </h6>
-                                <p className="text-muted small mb-0">
-                                    {transaction.source === 'QUICK_EXPENSE' ? 'مصروف سريع' : transaction.description}
-                                </p>
-                            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-4 mb-3 border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow text-right">
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                        <div className={`${bgIcon} w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-colors`}>
+                            <i className={`bi ${isReceipt ? 'bi-arrow-down-left' : 'bi-arrow-up-right'} ${iconColor} text-xl`}></i>
                         </div>
-                        <div className="text-end">
-                            <h6 className={`fw-bold mb-1 text-${colorClass}`}>
-                                {isReceipt ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        <div className="text-right">
+                            <h6 className="font-bold text-gray-800 dark:text-gray-100 mb-1">
+                                {isReceipt
+                                    ? (transaction.contact_name ? `استلام من ${transaction.contact_name}` : 'قبض نقدية')
+                                    : (transaction.contact_name
+                                        ? `صرف لـ ${transaction.contact_name}`
+                                        : (transaction.source === 'QUICK_EXPENSE' ? (transaction.description || 'مصروف سريع') : 'صرف نقدية'))}
                             </h6>
-                            <div className="d-flex align-items-center justify-content-end gap-2">
-                                <span className="badge bg-light text-muted border fw-normal small">
-                                    {formatDate(transaction.date)}
-                                </span>
-                                <button
-                                    className="btn btn-sm btn-outline-primary border-0 p-0 px-2"
-                                    onClick={() => handleEditTransaction(transaction, type)}
-                                    title="تعديل المعاملة"
-                                >
-                                    <i className="bi bi-pencil"></i>
-                                </button>
-                                <button
-                                    className="btn btn-sm btn-outline-danger border-0 p-0 px-2"
-                                    onClick={() => handleDeleteTransaction(transaction.transaction_id)}
-                                    title="حذف المعاملة"
-                                >
-                                    <i className="bi bi-trash"></i>
-                                </button>
-                            </div>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-0">
+                                {transaction.source === 'QUICK_EXPENSE' ? 'مصروف سريع' : transaction.description}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-end">
+                        <h6 className={`font-bold text-lg mb-1 ${colorClass} dir-ltr`}>
+                            {isReceipt ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </h6>
+                        <div className="flex items-center justify-end gap-2">
+                            <span className="bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded text-xs font-medium border border-gray-200 dark:border-slate-600 transition-colors">
+                                {formatDate(transaction.date)}
+                            </span>
+                            <button
+                                className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                onClick={() => handleEditTransaction(transaction, type)}
+                                title="تعديل المعاملة"
+                            >
+                                <i className="bi bi-pencil"></i>
+                            </button>
+                            <button
+                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                                onClick={() => handleDeleteTransaction(transaction.transaction_id)}
+                                title="حذف المعاملة"
+                            >
+                                <i className="bi bi-trash"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -333,32 +329,16 @@ function TreasuryManagement() {
 
     const handleEditTransaction = (transaction, type) => {
         setEditingTransaction(transaction);
-
-        // This relies on 'description' containing logic or assuming 'source_type' from API if available.
-        // But our API returns flat Transaction object: {transaction_id, amount, date, description, type(IN/OUT), source}
-        // It doesn't give us contact_id directly unless we enrich fetching.
-        // HACK: For now, we pre-fill what we have. Editing might require re-selecting contact if not available.
-        // TO FIX THIS properly: getTreasuryTransactions should return full details or we fetch details.
-        // For Quick Win: user re-selects contact.
-
         if (type === 'receipt') {
             setReceiptForm({
                 receipt_date: transaction.date,
                 amount: transaction.amount,
-                contact_id: '', // User must re-select or we need to update API to return contact_id
+                contact_id: transaction.contact_id || '',
                 description: transaction.description,
                 reference_number: ''
             });
             setShowReceiptModal(true);
         } else if (type === 'payment') {
-            // Check if it looks like an expense?
-            // "source" field usually has "QUICK_EXPENSE" or Supplier Name.
-            // If we can't distinguish, we might open the wrong modal.
-            // But 'payment' type here corresponds to 'OUT'.
-            // Simple heuristic: If source matches 'QUICK_EXPENSE' or similar?
-            // Our backend `get_treasury_transactions` returns `source` as `source_type` string like "CASH_RECEIPT", "QUICK_EXPENSE" etc?
-            // checking `treasury.py`: `source=t.source_type`.
-
             if (transaction.source === 'QUICK_EXPENSE' || transaction.source === 'EXPENSE') {
                 setExpenseForm({
                     expense_date: transaction.date,
@@ -371,7 +351,7 @@ function TreasuryManagement() {
                 setPaymentForm({
                     payment_date: transaction.date,
                     amount: transaction.amount,
-                    contact_id: '', // User must re-select
+                    contact_id: transaction.contact_id || '',
                     description: transaction.description,
                     reference_number: ''
                 });
@@ -389,42 +369,43 @@ function TreasuryManagement() {
     }
 
     return (
-        <div className="container-fluid py-4" style={{ fontFamily: 'Cairo, sans-serif' }}>
+        <div className="p-6 max-w-7xl mx-auto font-sans">
             {/* Success/Error Messages */}
             {successMessage && (
-                <div className="alert alert-success alert-dismissible fade show" role="alert">
-                    <i className="bi bi-check-circle-fill me-2"></i>
-                    {successMessage}
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 border-s-4 border-emerald-500 p-4 mb-6 rounded shadow-sm flex items-center animate-fade-in text-right">
+                    <i className="bi bi-check-circle-fill text-emerald-500 text-xl me-3"></i>
+                    <p className="text-emerald-800 dark:text-emerald-300 font-medium m-0">{successMessage}</p>
                 </div>
             )}
             {errorMessage && (
-                <div className="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                    {errorMessage}
+                <div className="bg-red-50 dark:bg-red-900/20 border-s-4 border-red-500 p-4 mb-6 rounded shadow-sm flex items-center animate-fade-in text-right">
+                    <i className="bi bi-exclamation-triangle-fill text-red-500 text-xl me-3"></i>
+                    <p className="text-red-800 dark:text-red-300 font-medium m-0">{errorMessage}</p>
                 </div>
             )}
 
             {/* Header */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 text-right">
                 <div>
-                    <h2 className="fw-bold mb-1" style={{ color: 'var(--text-dark)' }}>دفتر الخزينة اليومي</h2>
-                    <p className="text-muted mb-0 small">متابعة حركة النقدية الصادرة والواردة</p>
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">دفتر الخزينة اليومي</h2>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">متابعة حركة النقدية الصادرة والواردة</p>
                 </div>
-                <div className="p-2 rounded-3 shadow-sm d-flex align-items-center border" style={{ backgroundColor: 'var(--bg-card)' }}>
-                    <span className="text-muted small px-2 border-end fw-bold">التاريخ:</span>
-                    <DatePicker
-                        selected={selectedDate}
-                        onChange={(date) => setSelectedDate(date)}
-                        className="form-control border-0 bg-transparent text-center fw-bold p-0 mx-2"
-                        style={{ color: 'var(--primary-color)' }}
-                        dateFormat="dd/MM/yyyy"
-                    />
-                    <i className="bi bi-calendar-event text-primary"></i>
+                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 flex items-center transition-colors">
+                    <span className="text-gray-500 dark:text-gray-400 text-xs px-2 border-l border-gray-200 dark:border-slate-700 font-bold">التاريخ:</span>
+                    <div className="flex items-center px-2">
+                        <DatePicker
+                            selected={selectedDate}
+                            onChange={(date) => setSelectedDate(date)}
+                            className="bg-transparent border-none text-center font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none w-24 cursor-pointer"
+                            dateFormat="dd/MM/yyyy"
+                        />
+                        <i className="bi bi-calendar-event text-emerald-500 dark:text-emerald-400"></i>
+                    </div>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="row g-3 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-right">
                 <StatCard
                     title="رصيد افتتاحي"
                     value={summary?.opening_balance || 0}
@@ -452,66 +433,72 @@ function TreasuryManagement() {
             </div>
 
             {/* Action Buttons */}
-            <div className="row mb-4">
-                <div className="col-12 d-flex gap-2 justify-content-center flex-wrap">
-                    <button className="btn btn-success btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowReceiptModal(true)}>
-                        <i className="bi bi-plus-circle me-2"></i> استلام نقدية (قبض)
-                    </button>
-                    <button className="btn btn-danger btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowPaymentModal(true)}>
-                        <i className="bi bi-dash-circle me-2"></i> صرف نقدية
-                    </button>
-                    <button className="btn btn-warning text-dark btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowExpenseModal(true)}>
-                        <i className="bi bi-lightning me-2"></i> تسجيل مصروف
-                    </button>
-                    <button className="btn btn-outline-primary btn-lg px-4 shadow-sm fw-bold" onClick={() => setShowCapitalModal(true)}>
-                        <i className="bi bi-bank me-2"></i> رأس المال
-                    </button>
-                </div>
+            <div className="flex flex-wrap justify-center gap-4 mb-8 text-right">
+                <button
+                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                    onClick={() => setShowReceiptModal(true)}
+                >
+                    <i className="bi bi-plus-circle me-2 text-xl"></i> استلام نقدية (قبض)
+                </button>
+                <button
+                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5 dark:bg-red-500 dark:hover:bg-red-600"
+                    onClick={() => setShowPaymentModal(true)}
+                >
+                    <i className="bi bi-dash-circle me-2 text-xl"></i> صرف نقدية
+                </button>
+                <button
+                    className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5 dark:bg-amber-400 dark:hover:bg-amber-500"
+                    onClick={() => setShowExpenseModal(true)}
+                >
+                    <i className="bi bi-lightning me-2 text-xl"></i> تسجيل مصروف
+                </button>
+                <button
+                    className="px-6 py-3 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5"
+                    onClick={() => setShowCapitalModal(true)}
+                >
+                    <i className="bi bi-bank me-2 text-xl"></i> رأس المال
+                </button>
             </div>
 
             {/* Split Operations View */}
-            <div className="row g-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-right">
                 {/* Receipts Column */}
-                <div className="col-lg-6">
-                    <div className="card h-100 border-0 shadow-sm rounded-4" style={{ backgroundColor: 'var(--bg-card)' }}>
-                        <div className="card-header bg-success text-white py-3 rounded-top-4 border-0">
-                            <div className="d-flex justify-content-between align-items-center">
-                                <h5 className="mb-0 fw-bold"><i className="bi bi-download me-2"></i> حركة الوارد (المقبوضات)</h5>
-                                <span className="badge bg-white text-success fw-bold">{receipts.length} حركة</span>
-                            </div>
-                        </div>
-                        <div className="card-body p-3 rounded-bottom-4" style={{ backgroundColor: 'var(--bg-card)' }}>
-                            {receipts.length > 0 ? (
-                                receipts.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="receipt" />)
-                            ) : (
-                                <div className="text-center py-5 text-muted">
-                                    <i className="bi bi-inbox fs-1 opacity-25 d-block mb-3"></i>
-                                    لا توجد مقبوضات اليوم
+                <div className="bg-gray-50/50 dark:bg-slate-900/20 rounded-2xl p-1 border border-gray-100 dark:border-slate-700 h-full flex flex-col transition-colors">
+                    <div className="bg-emerald-600 dark:bg-emerald-900/50 text-white p-4 rounded-xl flex justify-between items-center mb-4 shadow-sm">
+                        <h5 className="mb-0 font-bold flex items-center"><i className="bi bi-download me-2"></i> حركة الوارد (المقبوضات)</h5>
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold border border-white/30">{receipts.length} حركة</span>
+                    </div>
+                    <div className="px-2 flex-grow overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                        {receipts.length > 0 ? (
+                            receipts.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="receipt" />)
+                        ) : (
+                            <div className="text-center py-12 text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center h-full">
+                                <div className="bg-gray-100 dark:bg-slate-800 p-4 rounded-full mb-3 transition-colors">
+                                    <i className="bi bi-inbox text-4xl opacity-50"></i>
                                 </div>
-                            )}
-                        </div>
+                                <p>لا توجد مقبوضات اليوم</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* Payments Column */}
-                <div className="col-lg-6">
-                    <div className="card h-100 border-0 shadow-sm rounded-4" style={{ backgroundColor: 'var(--bg-card)' }}>
-                        <div className="card-header bg-danger text-white py-3 rounded-top-4 border-0">
-                            <div className="d-flex justify-content-between align-items-center">
-                                <h5 className="mb-0 fw-bold"><i className="bi bi-upload me-2"></i> حركة الصادر (المدفوعات)</h5>
-                                <span className="badge bg-white text-danger fw-bold">{payments.length} حركة</span>
-                            </div>
-                        </div>
-                        <div className="card-body p-3 rounded-bottom-4" style={{ backgroundColor: 'var(--bg-card)' }}>
-                            {payments.length > 0 ? (
-                                payments.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="payment" />)
-                            ) : (
-                                <div className="text-center py-5 text-muted">
-                                    <i className="bi bi-inbox fs-1 opacity-25 d-block mb-3"></i>
-                                    لا توجد مدفوعات اليوم
+                <div className="bg-gray-50/50 dark:bg-slate-900/20 rounded-2xl p-1 border border-gray-100 dark:border-slate-700 h-full flex flex-col transition-colors">
+                    <div className="bg-red-600 dark:bg-red-900/50 text-white p-4 rounded-xl flex justify-between items-center mb-4 shadow-sm">
+                        <h5 className="mb-0 font-bold flex items-center"><i className="bi bi-upload me-2"></i> حركة الصادر (المدفوعات)</h5>
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold border border-white/30">{payments.length} حركة</span>
+                    </div>
+                    <div className="px-2 flex-grow overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                        {payments.length > 0 ? (
+                            payments.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="payment" />)
+                        ) : (
+                            <div className="text-center py-12 text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center h-full">
+                                <div className="bg-gray-100 dark:bg-slate-800 p-4 rounded-full mb-3 transition-colors">
+                                    <i className="bi bi-inbox text-4xl opacity-50"></i>
                                 </div>
-                            )}
-                        </div>
+                                <p>لا توجد مدفوعات اليوم</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

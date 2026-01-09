@@ -28,101 +28,92 @@ function Login() {
     };
 
     return (
-        <div className="min-vh-100 d-flex align-items-center justify-content-center"
-            style={{
-                background: 'linear-gradient(135deg, #1E5631 0%, #3D8B4F 50%, #C4A35A 100%)'
-            }}>
-            <div className="card border-0 shadow-lg" style={{ width: '400px', borderRadius: '20px' }}>
-                <div className="card-body p-5">
-                    {/* Logo */}
-                    <div className="text-center mb-4">
-                        <div className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-                            style={{
-                                width: '80px',
-                                height: '80px',
-                                background: 'linear-gradient(135deg, #1E5631 0%, #3D8B4F 100%)',
-                                boxShadow: '0 4px 15px rgba(30, 86, 49, 0.3)'
-                            }}>
-                            <i className="bi bi-bar-chart-line-fill text-white" style={{ fontSize: '2.5rem' }}></i>
-                        </div>
-                        <h3 className="fw-bold mb-1" style={{ color: '#1E5631' }}>نظام المحاسبة الزراعية</h3>
-                        <p className="text-muted">مرحباً بك، سجّل دخولك للمتابعة</p>
-                    </div>
-
-                    {/* Error Alert */}
-                    {error && (
-                        <div className="alert alert-danger d-flex align-items-center" role="alert">
-                            <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                            {error}
-                        </div>
-                    )}
-
-                    {/* Login Form */}
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-3">
-                            <label className="form-label fw-bold">اسم المستخدم</label>
-                            <div className="input-group">
-                                <span className="input-group-text bg-light border-end-0">
-                                    <i className="bi bi-person text-muted"></i>
-                                </span>
-                                <input
-                                    type="text"
-                                    className="form-control border-start-0 ps-0"
-                                    placeholder="أدخل اسم المستخدم"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    required
-                                    autoFocus
-                                />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-800 via-emerald-600 to-amber-500">
+            <div className="w-full max-w-md mx-4">
+                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                    <div className="p-8">
+                        {/* Logo */}
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-700 to-emerald-500 flex items-center justify-center shadow-lg">
+                                <i className="bi bi-bar-chart-line-fill text-white text-4xl"></i>
                             </div>
+                            <h3 className="text-2xl font-bold text-emerald-800 mb-1">نظام المحاسبة الزراعية</h3>
+                            <p className="text-gray-500">مرحباً بك، سجّل دخولك للمتابعة</p>
                         </div>
 
-                        <div className="mb-4">
-                            <label className="form-label fw-bold">كلمة المرور</label>
-                            <div className="input-group">
-                                <span className="input-group-text bg-light border-end-0">
-                                    <i className="bi bi-lock text-muted"></i>
-                                </span>
-                                <input
-                                    type="password"
-                                    className="form-control border-start-0 ps-0"
-                                    placeholder="أدخل كلمة المرور"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
+                        {/* Error Alert */}
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700">
+                                <i className="bi bi-exclamation-triangle-fill ml-2"></i>
+                                {error}
                             </div>
+                        )}
+
+                        {/* Login Form */}
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">اسم المستخدم</label>
+                                <div className="relative">
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <i className="bi bi-person"></i>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
+                                        placeholder="أدخل اسم المستخدم"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">كلمة المرور</label>
+                                <div className="relative">
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <i className="bi bi-lock"></i>
+                                    </span>
+                                    <input
+                                        type="password"
+                                        className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
+                                        placeholder="أدخل كلمة المرور"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-800 hover:to-emerald-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>جاري تسجيل الدخول...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="bi bi-box-arrow-in-right"></i>
+                                        <span>تسجيل الدخول</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        {/* Footer */}
+                        <div className="text-center mt-6">
+                            <small className="text-gray-400 text-xs">
+                                © 2024 نظام المحاسبة الزراعية - جميع الحقوق محفوظة
+                            </small>
                         </div>
-
-                        <button
-                            type="submit"
-                            className="btn btn-lg w-100 text-white fw-bold"
-                            style={{
-                                background: 'linear-gradient(135deg, #1E5631 0%, #3D8B4F 100%)',
-                                borderRadius: '10px',
-                                padding: '12px'
-                            }}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    جاري تسجيل الدخول...
-                                </>
-                            ) : (
-                                <>
-                                    <i className="bi bi-box-arrow-in-right me-2"></i>
-                                    تسجيل الدخول
-                                </>
-                            )}
-                        </button>
-                    </form>
-
-                    {/* Footer */}
-                    <div className="text-center mt-4">
-                        <small className="text-muted">
-                            © 2024 نظام المحاسبة الزراعية - جميع الحقوق محفوظة
-                        </small>
                     </div>
                 </div>
             </div>
@@ -131,3 +122,4 @@ function Login() {
 }
 
 export default Login;
+

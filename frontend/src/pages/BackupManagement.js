@@ -115,7 +115,7 @@ const BackupManagement = () => {
     };
 
     const formatDate = (isoString) => {
-        return new Date(isoString).toLocaleString('ar-EG');
+        return new Date(isoString).toLocaleString('en-US');
     };
 
     return (
@@ -275,8 +275,8 @@ const BackupManagement = () => {
                                         : handleDelete(confirmAction.filename)
                                     }
                                     className={`px-4 py-2 text-white rounded-lg transition-colors ${confirmAction.type === 'restore'
-                                            ? 'bg-yellow-600 hover:bg-yellow-700'
-                                            : 'bg-red-600 hover:bg-red-700'
+                                        ? 'bg-yellow-600 hover:bg-yellow-700'
+                                        : 'bg-red-600 hover:bg-red-700'
                                         }`}
                                 >
                                     {confirmAction.type === 'restore' ? 'تأكيد الاستعادة' : 'تأكيد الحذف'}

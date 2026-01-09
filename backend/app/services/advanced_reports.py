@@ -67,7 +67,7 @@ def get_crop_profitability(db: Session, season_id: int):
 
 def get_top_customers(db: Session, limit: int = 10):
     """تحليل أفضل العملاء من حيث حجم المبيعات"""
-    return db.query(
+    results = db.query(
         Contact.name,
         func.count(Sale.sale_id).label('transaction_count'),
         func.sum(Sale.total_sale_amount).label('total_sales')
@@ -75,6 +75,8 @@ def get_top_customers(db: Session, limit: int = 10):
      .group_by(Contact.name)\
      .order_by(desc('total_sales'))\
      .limit(limit).all()
+     
+    return [{"name": r.name, "transaction_count": r.transaction_count, "total_sales": float(r.total_sales or 0)} for r in results]
 
 def get_season_comparison(db: Session):
     """مقارنة أداء المواسم"""

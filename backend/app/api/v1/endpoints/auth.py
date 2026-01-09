@@ -137,7 +137,7 @@ async def login(
     if role:
         try:
             permissions = json.loads(role.permissions)
-        except:
+        except (json.JSONDecodeError, TypeError):
             permissions = []
         role_name = role.name
     
@@ -421,7 +421,7 @@ async def get_roles(
     for role in roles:
         try:
             permissions = json.loads(role.permissions)
-        except:
+        except (json.JSONDecodeError, TypeError):
             permissions = []
         
         result.append(RoleResponse(

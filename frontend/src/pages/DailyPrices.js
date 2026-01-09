@@ -219,7 +219,7 @@ const DailyPrices = () => {
                                 ) : (
                                     prices.map(price => (
                                         <tr key={price.price_id}>
-                                            <td>{new Date(price.price_date).toLocaleDateString('ar-EG')}</td>
+                                            <td>{new Date(price.price_date).toLocaleDateString('en-US')}</td>
                                             <td>{price.crop?.crop_name}</td>
                                             <td>{price.opening_price.toFixed(2)}</td>
                                             <td>{price.high_price.toFixed(2)}</td>

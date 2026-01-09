@@ -9,3 +9,5 @@ export {
     TableSkeleton
 } from './LoadingSpinner';
 export { PageHeader, SearchInput, AddButton, Card, StatusBadge } from './UIComponents';
+export { default as Toast, ToastContainer, useToast } from './Toast';
+export { default as QuickSearch, useKeyboardShortcuts } from './QuickSearch';
