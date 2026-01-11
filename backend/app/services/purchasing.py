@@ -72,6 +72,8 @@ def create_new_purchase(db: Session, purchase: schemas.PurchaseCreate, user_id: 
         purchase_data['created_by'] = user_id
         purchase_data['gross_quantity'] = gross_qty
         purchase_data['tare_weight'] = total_tare
+        # Initialize amount_paid to 0 so we can add the payment via create_payment without double counting
+        purchase_data['amount_paid'] = 0
         db_purchase = crud.create_purchase_record(db, purchase_data=purchase_data)
         db.flush() # Flush to get the purchase_id
 

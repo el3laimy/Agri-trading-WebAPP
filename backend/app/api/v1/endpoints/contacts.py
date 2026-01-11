@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 
-from app import crud, schemas
+from app import crud, schemas, models
 from app.api.v1.endpoints.crops import get_db
 from app.services import account_statement
 
@@ -81,15 +81,34 @@ def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     if db_contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
     
-    # Check if contact is used in any sales or purchases
-    if db_contact.sales or db_contact.purchases:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete contact that has associated sales or purchases"
-        )
-    
+    # Check for related records to ensure data integrity
+    # 1. Sales
+    has_sales = db.query(models.Sale).filter(models.Sale.customer_id == contact_id).first()
+    if has_sales:
+        raise HTTPException(status_code=400, detail="لا يمكن حذف العميل لوجود عمليات بيع مرتبطة به.")
+
+    # 2. Purchases
+    has_purchases = db.query(models.Purchase).filter(models.Purchase.supplier_id == contact_id).first()
+    if has_purchases:
+        raise HTTPException(status_code=400, detail="لا يمكن حذف المورد لوجود عمليات شراء مرتبطة به.")
+
+    # 3. Payments
+    has_payments = db.query(models.Payment).filter(models.Payment.contact_id == contact_id).first()
+    if has_payments:
+        raise HTTPException(status_code=400, detail="لا يمكن حذف جهة التعامل لوجود مدفوعات مرتبطة بها.")
+
+    # 4. Expenses
+    has_expenses = db.query(models.Expense).filter(models.Expense.supplier_id == contact_id).first()
+    if has_expenses:
+        raise HTTPException(status_code=400, detail="لا يمكن حذف المورد لوجود مصروفات مرتبطة به.")
+
+    # 5. Inventory Batches (Supplied by)
+    has_batches = db.query(models.InventoryBatch).filter(models.InventoryBatch.supplier_id == contact_id).first()
+    if has_batches:
+        raise HTTPException(status_code=400, detail="لا يمكن حذف المورد لوجود دفعات مخزون مرتبطة به.")
+
     db.delete(db_contact)
     db.commit()
     
-    return {"message": "Contact deleted successfully"}
+    return {"message": "تم حذف جهة التعامل بنجاح"}
 

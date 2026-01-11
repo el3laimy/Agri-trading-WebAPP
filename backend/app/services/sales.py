@@ -46,6 +46,8 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
         sale_data = sale.model_dump()
         sale_data['total_sale_amount'] = total_sale_amount
         sale_data['created_by'] = user_id
+        # Initialize amount_received to 0 so we can add the payment via create_payment without double counting
+        sale_data['amount_received'] = 0
         db_sale = crud.create_sale_record(db, sale_data=sale_data)
         db.flush() # Get the sale_id for the ledger entries
 
