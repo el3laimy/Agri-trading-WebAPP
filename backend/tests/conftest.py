@@ -21,7 +21,8 @@ def db_session():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     # Import inside to avoid circular import issues
-    from app.core.bootstrap import bootstrap_financial_accounts
+    from app.core.bootstrap import bootstrap_financial_accounts, initialize_default_settings
+    initialize_default_settings(db)
     bootstrap_financial_accounts(db)
     try:
         yield db
