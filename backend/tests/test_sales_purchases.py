@@ -4,6 +4,7 @@ Sales and Purchases Tests
 """
 import pytest
 from datetime import date
+from fastapi import HTTPException
 from app import models, schemas
 from app.services import sales, purchasing
 
@@ -114,5 +115,7 @@ class TestSales:
             amount_received=0.0
         )
         
-        with pytest.raises(ValueError):
+        with pytest.raises(HTTPException) as excinfo:
             sales.create_new_sale(db_session, sale_data)
+
+        assert excinfo.value.status_code == 400
