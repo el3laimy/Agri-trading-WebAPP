@@ -451,3 +451,20 @@ class Settings(Base):
     value = Column(String, nullable=False)
     description = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+from sqlalchemy import Column, Integer, String, Boolean, Text, Date, ForeignKey, Numeric
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from app.database import Base
+
+class FixedAsset(Base):
+    __tablename__ = "fixed_assets"
+
+    asset_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    purchase_date = Column(Date, nullable=False)
+    cost = Column(Numeric(18, 4), nullable=False)
+    depreciation_rate = Column(Numeric(5, 2), nullable=False) # Percentage per year
+    current_value = Column(Numeric(18, 4), nullable=False)
+    status = Column(String, default="ACTIVE") # ACTIVE, SOLD, WRITTEN_OFF
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
