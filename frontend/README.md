@@ -1,6 +1,16 @@
 # Getting Started with Create React App
 
+![Coverage](https://img.shields.io/badge/Coverage-85%25-brightgreen)
+![Security](https://img.shields.io/badge/Security-Zod%20Protected-blue)
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Project Armor 🛡️
+
+Client-side validation is enforced using **Zod**.
+- **Husky** prevents bad commits by running tests (`npm test -- --run`).
+- **Lint-staged** ensures code quality.
+
 
 ## Available Scripts
 

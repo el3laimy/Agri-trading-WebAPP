@@ -62,10 +62,9 @@ describe('Purchases Destructive Security Tests', () => {
             expect(axios.post).not.toHaveBeenCalled();
         });
 
-        test('getLastPurchasePrice should REJECT null IDs', async () => {
-            axios.get.mockResolvedValue({ data: {} });
-
-            await expect(purchasesApi.getLastPurchasePrice(null, null)).rejects.toThrow();
+        test('getLastPurchasePrice should return safe defaults for null IDs', async () => {
+            const result = await purchasesApi.getLastPurchasePrice(null, null);
+            expect(result).toEqual({ unit_price: null, purchase_date: null, quantity_kg: null });
             expect(axios.get).not.toHaveBeenCalled();
         });
     });

@@ -130,7 +130,7 @@ describe('createCashReceipt', () => {
         const receiptData = {
             contact_id: 1,
             amount: 5000,
-            payment_date: '2024-01-15',
+            receipt_date: '2024-01-15',
             description: 'Payment received'
         };
         const mockResponse = { id: 1, ...receiptData };
@@ -139,7 +139,10 @@ describe('createCashReceipt', () => {
         const result = await createCashReceipt(receiptData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/cash-receipt', receiptData);
+        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/cash-receipt', {
+            ...receiptData,
+            receipt_date: new Date('2024-01-15')
+        });
     });
 
     test('should throw on validation error (422)', async () => {
@@ -187,7 +190,10 @@ describe('createCashPayment', () => {
         const result = await createCashPayment(paymentData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/cash-payment', paymentData);
+        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/cash-payment', {
+            ...paymentData,
+            payment_date: new Date('2024-01-15')
+        });
     });
 
     test('should throw on insufficient balance', async () => {
@@ -234,24 +240,22 @@ describe('createQuickExpense', () => {
             expense_date: expect.any(Date) // Match Date object
         });
     });
-});
+
+    test('should throw on validation error', async () => {
+        const invalidData = { description: '', amount: 100 };
+        axios.post.mockRejectedValue({
+            response: { status: 422, data: { detail: 'Description is required' } }
+        });
+
+        await expect(createQuickExpense(invalidData)).rejects.toBeDefined();
     });
 
-test('should throw on validation error', async () => {
-    const invalidData = { description: '', amount: 100 };
-    axios.post.mockRejectedValue({
-        response: { status: 422, data: { detail: 'Description is required' } }
+    test('should throw on network error', async () => {
+        const validData = { amount: 100, description: 'Test' };
+        axios.post.mockRejectedValue(new Error('Network Error'));
+
+        await expect(createQuickExpense(validData)).rejects.toThrow('Network Error');
     });
-
-    await expect(createQuickExpense(invalidData)).rejects.toBeDefined();
-});
-
-test('should throw on network error', async () => {
-    const validData = { amount: 100, description: 'Test' };
-    axios.post.mockRejectedValue(new Error('Network Error'));
-
-    await expect(createQuickExpense(validData)).rejects.toThrow('Network Error');
-});
 });
 
 // =============================================================================
