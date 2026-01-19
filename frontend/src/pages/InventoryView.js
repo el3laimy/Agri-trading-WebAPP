@@ -1,226 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import { getInventory, getCropBatches } from '../api/inventory';
-import { useAuth } from '../context/AuthContext';
-import { usePageState } from '../hooks';
-import { PageHeader, PageLoading, AlertToast, Card } from '../components/common';
-import { formatCurrency } from '../utils';
+import React, { useState, useMemo } from 'react';
+import { useData } from '../context/DataContext';
+import { useToast } from '../components/common';
+
+// Import shared components
+import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+
+// Import CSS animations
+import '../styles/dashboardAnimations.css';
 
 function InventoryView() {
-    const { token } = useAuth();
+    const { inventory, crops } = useData();
+    const { showSuccess, showError } = useToast();
 
-    // Shared Hooks
-    const {
-        isLoading,
-        startLoading,
-        stopLoading,
-        error,
-        showError,
-        clearMessages
-    } = usePageState();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedFilter, setSelectedFilter] = useState('all');
 
-    const [inventory, setInventory] = useState([]);
-    const [expandedCropId, setExpandedCropId] = useState(null);
-    const [batches, setBatches] = useState({});
-    const [loadingBatches, setLoadingBatches] = useState({});
+    // Stats
+    const stats = useMemo(() => {
+        const totalItems = inventory?.length || 0;
+        const totalQuantity = inventory?.reduce((sum, item) => sum + (item.quantity_kg || 0), 0) || 0;
+        const inStock = inventory?.filter(i => i.quantity_kg > 0).length || 0;
+        const outOfStock = inventory?.filter(i => i.quantity_kg <= 0).length || 0;
+        return { totalItems, totalQuantity, inStock, outOfStock };
+    }, [inventory]);
 
-    useEffect(() => {
-        if (token) {
-            fetchInventory();
-        }
-    }, [token]);
-
-    const fetchInventory = async () => {
-        startLoading();
-        try {
-            const data = await getInventory(token);
-            setInventory(data);
-        } catch (error) {
-            console.error("Failed to fetch inventory:", error);
-            showError("فشل تحميل بيانات المخزون");
-        } finally {
-            stopLoading();
-        }
+    const formatQuantity = (value) => {
+        if (value >= 1000) return (value / 1000).toFixed(1) + ' طن';
+        return value?.toFixed(0) + ' كجم';
     };
 
-    const toggleRow = async (cropId) => {
-        if (expandedCropId === cropId) {
-            setExpandedCropId(null);
-        } else {
-            setExpandedCropId(cropId);
-            if (!batches[cropId]) {
-                setLoadingBatches(prev => ({ ...prev, [cropId]: true }));
-                try {
-                    const data = await getCropBatches(token, cropId);
-                    setBatches(prev => ({ ...prev, [cropId]: data }));
-                } catch (err) {
-                    console.error("Failed to fetch batches", err);
-                    showError("فشل تحميل تفاصيل الدفعات");
-                } finally {
-                    setLoadingBatches(prev => ({ ...prev, [cropId]: false }));
-                }
-            }
-        }
-    };
+    // Filter inventory
+    const filteredInventory = useMemo(() => {
+        return (inventory || []).filter(item => {
+            const matchesSearch = item.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesFilter = selectedFilter === 'all' ? true :
+                selectedFilter === 'inStock' ? item.quantity_kg > 0 :
+                    selectedFilter === 'outOfStock' ? item.quantity_kg <= 0 : true;
+            return matchesSearch && matchesFilter;
+        });
+    }, [inventory, searchTerm, selectedFilter]);
 
     return (
-        <div className="container-fluid">
+        <div className="p-6 max-w-full mx-auto">
+            {/* Page Header */}
             <PageHeader
                 title="عرض المخزون"
-                subtitle="مراقبة أرصدة المحاصيل وتفاصيل الدفعات (FIFO) وتواريخ الصلاحية"
+                subtitle="تتبع الكميات المتاحة من جميع المحاصيل"
                 icon="bi-box-seam"
-            />
-
-            {error && <AlertToast message={error} type="error" onClose={clearMessages} />}
-
-            {isLoading && !inventory.length ? (
-                <PageLoading text="جاري جرد المخزون..." />
-            ) : (
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-colors">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-right" dir="rtl">
-                            <thead>
-                                <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700">
-                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200">المحصول</th>
-                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center">الكمية الحالية</th>
-                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center">متوسط التكلفة</th>
-                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center">القيمة الإجمالية</th>
-                                    <th className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-200 text-center" style={{ width: '50px' }}></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                                {inventory.map(item => (
-                                    <React.Fragment key={item.crop.crop_id}>
-                                        <tr
-                                            onClick={() => toggleRow(item.crop.crop_id)}
-                                            className={`group cursor-pointer transition-colors hover:bg-emerald-50/50 dark:hover:bg-slate-700/50 ${expandedCropId === item.crop.crop_id ? 'bg-emerald-50/30 dark:bg-slate-700/30' : ''}`}
-                                        >
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-                                                        <i className="bi bi-flower1"></i>
-                                                    </div>
-                                                    <span className="mr-3 font-bold text-gray-800 dark:text-gray-100">{item.crop.crop_name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {item.crop.is_complex_unit ? (
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.gross_stock_kg <= (item.low_stock_threshold || 100) ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`} title="الوزن القائم (Physical Gross)">
-                                                            {Number(item.gross_stock_kg).toLocaleString('en-US')} كجم (قائم)
-                                                        </span>
-                                                        <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                                            <i className="bi bi-bag-fill"></i>
-                                                            {item.bag_count} عبوة
-                                                        </div>
-                                                        <div className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 pt-1 border-t border-gray-100 dark:border-slate-700 w-full" title="صافي الوزن المرجعي (Financial Net)">
-                                                            <i className="bi bi-calculator me-1"></i>
-                                                            صافي: {Number(item.net_stock_kg).toLocaleString('en-US')} كجم
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${item.current_stock_kg <= (item.low_stock_threshold || 100) ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'}`}>
-                                                        {Number(item.current_stock_kg).toLocaleString('en-US')} كجم
-                                                    </span>
-                                                )}
-
-                                                {(item.current_stock_kg <= (item.low_stock_threshold || 100) || (item.crop.is_complex_unit && item.gross_stock_kg <= (item.low_stock_threshold || 100))) && (
-                                                    <div className="text-amber-500 dark:text-amber-400 text-[10px] font-bold mt-1 animate-pulse">
-                                                        <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                                                        مخزون منخفض
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    {formatCurrency(item.average_cost_per_kg)} <small className="opacity-75">/كجم</small>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                                    {formatCurrency(item.current_stock_kg * item.average_cost_per_kg)}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center text-gray-400 dark:text-gray-500">
-                                                <i className={`bi bi-chevron-${expandedCropId === item.crop.crop_id ? 'up' : 'down'} transition-transform duration-300`}></i>
-                                            </td>
-                                        </tr>
-                                        {expandedCropId === item.crop.crop_id && (
-                                            <tr>
-                                                <td colSpan="5" className="p-0 border-t border-emerald-100 dark:border-slate-700">
-                                                    <div className="bg-emerald-50/20 dark:bg-slate-900/40 p-6 animate-fade-in">
-                                                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-emerald-100 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
-                                                            <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-900/30 border-b border-emerald-100 dark:border-slate-700 flex items-center gap-2">
-                                                                <i className="bi bi-layers text-emerald-600 dark:text-emerald-400"></i>
-                                                                <h6 className="m-0 text-sm font-bold text-emerald-800 dark:text-emerald-200">تفاصيل الدفعات (نظام FIFO)</h6>
-                                                            </div>
-
-                                                            <div className="p-4">
-                                                                {loadingBatches[item.crop.crop_id] ? (
-                                                                    <div className="flex flex-col items-center py-6 text-emerald-600 dark:text-emerald-400">
-                                                                        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin mb-2"></div>
-                                                                        <span className="text-xs font-medium">جاري التحميل...</span>
-                                                                    </div>
-                                                                ) : batches[item.crop.crop_id] && batches[item.crop.crop_id].length > 0 ? (
-                                                                    <div className="overflow-x-auto">
-                                                                        <table className="w-full text-xs text-right" dir="rtl">
-                                                                            <thead>
-                                                                                <tr className="text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                                                                                    <th className="pb-3 pr-2">الدفعة #</th>
-                                                                                    <th className="pb-3">تاريخ الشراء</th>
-                                                                                    <th className="pb-3 text-center">الكمية</th>
-                                                                                    <th className="pb-3 text-center">التكلفة (كجم)</th>
-                                                                                    <th className="pb-3 text-center">الصلاحية</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-                                                                                {batches[item.crop.crop_id].map(batch => (
-                                                                                    <tr key={batch.batch_id} className="text-gray-600 dark:text-gray-300">
-                                                                                        <td className="py-2.5 pr-2 font-mono opacity-60">#{batch.batch_id}</td>
-                                                                                        <td className="py-2.5">{batch.purchase_date}</td>
-                                                                                        <td className="py-2.5 text-center font-bold">{batch.quantity_kg.toLocaleString('en-US')} كجم</td>
-                                                                                        <td className="py-2.5 text-center">{formatCurrency(batch.cost_per_kg)}</td>
-                                                                                        <td className="py-2.5 text-center">
-                                                                                            {batch.expiry_date ? (
-                                                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded ${new Date(batch.expiry_date) < new Date() ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'}`}>
-                                                                                                    {batch.expiry_date}
-                                                                                                    {new Date(batch.expiry_date) < new Date() && <i className="bi bi-exclamation-circle-fill ms-1"></i>}
-                                                                                                </span>
-                                                                                            ) : (
-                                                                                                <span className="text-gray-300 dark:text-gray-600">-</span>
-                                                                                            )}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                ))}
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col items-center py-6 text-gray-400 dark:text-gray-500">
-                                                                        <i className="bi bi-info-circle text-2xl mb-2"></i>
-                                                                        <p className="text-xs">لا توجد تفاصيل دفعات متاحة (رصيد افتتاحي)</p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                                {inventory.length === 0 && (
-                                    <tr>
-                                        <td colSpan="5" className="text-center py-5">
-                                            <i className="bi bi-box2 text-muted mb-3 d-block" style={{ fontSize: '3rem' }}></i>
-                                            <p className="text-muted">لا يوجد مخزون مسجل حالياً</p>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                gradient="from-indigo-500 to-violet-500"
+                actions={
+                    <ActionButton
+                        label="تسوية مخزون"
+                        icon="bi-arrow-repeat"
+                        onClick={() => window.location.href = '/inventory-adjustments'}
+                        variant="primary"
+                    />
+                }
+            >
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                                <i className="bi bi-box-seam text-lg" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-white/70">عدد الأصناف</p>
+                                <p className="text-lg font-bold">{stats.totalItems}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/30 flex items-center justify-center animate-float">
+                                <i className="bi bi-bar-chart text-lg text-indigo-300" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-white/70">إجمالي الكمية</p>
+                                <p className="text-lg font-bold">{formatQuantity(stats.totalQuantity)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center animate-float">
+                                <i className="bi bi-check-circle text-lg text-green-300" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-white/70">متوفر</p>
+                                <p className="text-lg font-bold">{stats.inStock}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center animate-float">
+                                <i className="bi bi-exclamation-circle text-lg text-red-300" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-white/70">نفذ</p>
+                                <p className="text-lg font-bold">{stats.outOfStock}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            )}
+            </PageHeader>
+
+            {/* Search and Filter */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <SearchBox
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="بحث بالمحصول..."
+                    className="w-full md:w-96"
+                />
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex flex-wrap gap-2 mb-6">
+                <FilterChip
+                    label="الكل"
+                    count={inventory?.length || 0}
+                    icon="bi-grid"
+                    active={selectedFilter === 'all'}
+                    onClick={() => setSelectedFilter('all')}
+                    color="emerald"
+                />
+                <FilterChip
+                    label="متوفر"
+                    count={stats.inStock}
+                    icon="bi-check-circle"
+                    active={selectedFilter === 'inStock'}
+                    onClick={() => setSelectedFilter('inStock')}
+                    color="emerald"
+                />
+                <FilterChip
+                    label="نفذ"
+                    count={stats.outOfStock}
+                    icon="bi-exclamation-circle"
+                    active={selectedFilter === 'outOfStock'}
+                    onClick={() => setSelectedFilter('outOfStock')}
+                    color="amber"
+                />
+            </div>
+
+            {/* Inventory Cards */}
+            <div className="neumorphic overflow-hidden animate-fade-in">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+                        <i className="bi bi-box-seam text-indigo-500" />
+                        قائمة المخزون
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+                            {filteredInventory.length}
+                        </span>
+                    </h5>
+                </div>
+                <div className="p-6">
+                    {filteredInventory.length === 0 ? (
+                        <div className="text-center py-16 animate-fade-in">
+                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex items-center justify-center animate-float">
+                                <i className="bi bi-box-seam text-5xl text-indigo-400 dark:text-indigo-500" />
+                            </div>
+                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا يوجد مخزون</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">ابدأ بتسجيل عمليات الشراء لتظهر هنا</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredInventory.map((item, idx) => (
+                                <div key={item.inventory_id || idx} className={`neumorphic p-4 rounded-xl hover-lift transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/50 dark:to-violet-900/50 flex items-center justify-center">
+                                            <i className="bi bi-flower1 text-2xl text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h5 className="font-bold text-gray-800 dark:text-gray-200">{item.crop?.crop_name || 'غير محدد'}</h5>
+                                            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                                                {formatQuantity(item.quantity_kg)}
+                                            </p>
+                                        </div>
+                                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${item.quantity_kg > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
+                                            {item.quantity_kg > 0 ? 'متوفر' : 'نفذ'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

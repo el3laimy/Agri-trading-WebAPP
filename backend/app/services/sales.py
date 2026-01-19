@@ -49,7 +49,10 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
         db_sale = crud.create_sale_record(db, sale_data=sale_data)
         db.flush() # Get the sale_id for the ledger entries
 
-        # 3. Create General Ledger entries
+        # 3. Create General Ledger entries using AccountingEngine
+        from decimal import Decimal
+        from app.services.accounting_engine import get_engine, LedgerEntry
+        
         sale_description = f"بيع {sale.quantity_sold_kg} كجم {crop.crop_name} للعميل {customer.name}"
         cogs_description = f"تكلفة مبيعات - {crop.crop_name} - {customer.name}"
 
@@ -59,20 +62,32 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
         cogs_id = int(get_setting(db, "COGS_ACCOUNT_ID"))
         inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
 
-        # Entry 1: Debit Accounts Receivable, Credit Sales Revenue
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=accounts_receivable_id, debit=total_sale_amount, description=sale_description), 'SALE', db_sale.sale_id, created_by=user_id)
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=sales_revenue_id, credit=total_sale_amount, description=sale_description), 'SALE', db_sale.sale_id, created_by=user_id)
+        # Use AccountingEngine for balanced entries
+        engine = get_engine(db)
         
-        # Entry 2: Debit COGS, Credit Inventory
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=cogs_id, debit=cost_of_goods_sold, description=cogs_description), 'SALE', db_sale.sale_id, created_by=user_id)
-        crud.create_ledger_entry(db, schemas.GeneralLedgerCreate(entry_date=sale.sale_date, account_id=inventory_id, credit=cost_of_goods_sold, description=cogs_description), 'SALE', db_sale.sale_id, created_by=user_id)
-
-        # 4. Update account balances
-        # 4. Update account balances - using smart helper
-        crud.update_balance_by_nature(db, accounts_receivable_id, total_sale_amount, 'debit')
-        crud.update_balance_by_nature(db, sales_revenue_id, total_sale_amount, 'credit')
-        crud.update_balance_by_nature(db, cogs_id, cost_of_goods_sold, 'debit')
-        crud.update_balance_by_nature(db, inventory_id, cost_of_goods_sold, 'credit')
+        # Entry 1: Sales Revenue (Debit AR, Credit Revenue)
+        engine.create_balanced_entry(
+            entries=[
+                LedgerEntry(account_id=accounts_receivable_id, debit=Decimal(str(total_sale_amount)), credit=Decimal(0), description=sale_description),
+                LedgerEntry(account_id=sales_revenue_id, debit=Decimal(0), credit=Decimal(str(total_sale_amount)), description=sale_description)
+            ],
+            entry_date=sale.sale_date,
+            source_type='SALE',
+            source_id=db_sale.sale_id,
+            created_by=user_id
+        )
+        
+        # Entry 2: COGS (Debit COGS, Credit Inventory)
+        engine.create_balanced_entry(
+            entries=[
+                LedgerEntry(account_id=cogs_id, debit=Decimal(str(cost_of_goods_sold)), credit=Decimal(0), description=cogs_description),
+                LedgerEntry(account_id=inventory_id, debit=Decimal(0), credit=Decimal(str(cost_of_goods_sold)), description=cogs_description)
+            ],
+            entry_date=sale.sale_date,
+            source_type='SALE_COGS',
+            source_id=db_sale.sale_id,
+            created_by=user_id
+        )
 
         db.commit()
         db.refresh(db_sale)

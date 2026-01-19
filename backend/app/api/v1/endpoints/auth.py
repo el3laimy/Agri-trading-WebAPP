@@ -159,6 +159,20 @@ async def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.post("/logout")
+async def logout(current_user: models.User = Depends(get_current_user)):
+    """
+    تسجيل الخروج
+    
+    ملاحظة: بما أن JWT هو stateless، فإن الـ logout الحقيقي يتم على الفرونت إند
+    بحذف الـ token من localStorage. هذا الـ endpoint يستخدم للتتبع والتوثيق.
+    """
+    return {
+        "message": "تم تسجيل الخروج بنجاح",
+        "username": current_user.username
+    }
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: models.User = Depends(get_current_user),

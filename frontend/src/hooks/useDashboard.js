@@ -5,7 +5,8 @@ import {
     getSalesByCrop,
     getTopCustomers,
     getRecentActivities,
-    getSeasonSummary
+    getSeasonSummary,
+    getBalanceCheck
 } from '../api/reports';
 
 /**
@@ -17,9 +18,9 @@ export const dashboardKeys = {
     alerts: () => [...dashboardKeys.all, 'alerts'],
     salesByCrop: () => [...dashboardKeys.all, 'salesByCrop'],
     topCustomers: (limit) => [...dashboardKeys.all, 'topCustomers', limit],
-
     recentActivities: (limit) => [...dashboardKeys.all, 'activities', limit],
     seasonSummary: () => [...dashboardKeys.all, 'season'],
+    balanceCheck: () => [...dashboardKeys.all, 'balanceCheck'],
 };
 
 /**
@@ -60,6 +61,11 @@ export const useDashboard = (topCustomersLimit = 5, activitiesLimit = 10) => {
                 queryFn: () => getSeasonSummary().catch(() => null),
                 staleTime: 10 * 60 * 1000, // 10 minutes for season
             },
+            {
+                queryKey: dashboardKeys.balanceCheck(),
+                queryFn: () => getBalanceCheck().catch(() => ({ is_balanced: null, status: 'غير متاح' })),
+                staleTime: 5 * 60 * 1000, // 5 minutes
+            },
         ],
     });
 
@@ -69,7 +75,8 @@ export const useDashboard = (topCustomersLimit = 5, activitiesLimit = 10) => {
         salesByCropQuery,
         topCustomersQuery,
         activitiesQuery,
-        seasonQuery
+        seasonQuery,
+        balanceCheckQuery
     ] = results;
 
     return {
@@ -80,6 +87,7 @@ export const useDashboard = (topCustomersLimit = 5, activitiesLimit = 10) => {
         topCustomers: topCustomersQuery.data || [],
         recentActivities: activitiesQuery.data || [],
         seasonSummary: seasonQuery.data,
+        balanceCheck: balanceCheckQuery.data,
 
         // Loading states
         isLoading: results.some(r => r.isLoading),

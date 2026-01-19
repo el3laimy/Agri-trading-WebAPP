@@ -59,6 +59,9 @@ class Contact(ContactBase):
     contact_id: int
     model_config = ConfigDict(from_attributes=True)
 
+class ContactMigrationRequest(BaseModel):
+    target_contact_id: int
+
 # --- Financial Account Schemas ---
 class FinancialAccountBase(BaseModel):
     account_name: str

@@ -13,6 +13,13 @@ import { useToast } from '../components/common';
 import { usePageState } from '../hooks';
 import { formatPhoneForWhatsApp } from '../utils';
 
+// Import new components
+import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+import { SalesTrendChart, SalesByStatusChart, TopCropsChart, SalesStatsCards } from '../components/sales/charts/SalesCharts';
+
+// Import CSS animations
+import '../styles/dashboardAnimations.css';
+
 // Initial form state
 const getInitialFormState = () => ({
     crop_id: '',
@@ -23,7 +30,6 @@ const getInitialFormState = () => ({
     selling_pricing_unit: 'kg',
     specific_selling_factor: 1.0,
     amount_received: '',
-    // New Fields for Complex Crops
     gross_quantity: '',
     bag_count: '',
     tare_weight: '',
@@ -48,6 +54,9 @@ function SaleManagement() {
     const [validationErrors, setValidationErrors] = useState({});
     const [lastPriceHint, setLastPriceHint] = useState(null);
 
+    // Charts visibility toggle
+    const [showCharts, setShowCharts] = useState(true);
+
     // Use shared page state hook
     const { error, showError, clearError } = usePageState();
 
@@ -70,9 +79,7 @@ function SaleManagement() {
                         date: new Date(lastData.sale_date).toLocaleDateString('en-US')
                     });
 
-                    // Auto-fill only if price field is empty
                     if (!formState.price_input) {
-                        // Adjust price based on current unit
                         const factor = formState.specific_selling_factor || 1;
                         const pricePerUnit = lastData.selling_unit_price * factor;
                         setFormState(prev => ({ ...prev, price_input: pricePerUnit.toString() }));
@@ -89,7 +96,6 @@ function SaleManagement() {
     const handleInputChange = useCallback((event) => {
         const { name, value } = event.target;
 
-        // Clear error when user types
         if (validationErrors[name]) {
             setValidationErrors(prev => ({ ...prev, [name]: null }));
         }
@@ -111,7 +117,6 @@ function SaleManagement() {
                 [name]: value,
                 selling_pricing_unit: defaultUnit,
                 specific_selling_factor: defaultFactor,
-                // Reset complex fields
                 gross_quantity: '',
                 bag_count: '',
                 tare_weight: '',
@@ -125,7 +130,6 @@ function SaleManagement() {
                 specific_selling_factor: factor
             }));
         } else {
-            // Complex Calculation Logic
             let updates = { [name]: value };
 
             if (currentCrop?.is_complex_unit) {
@@ -133,17 +137,14 @@ function SaleManagement() {
                 let newBags = name === 'bag_count' ? parseFloat(value) || 0 : parseFloat(formState.bag_count) || 0;
                 let newTare = name === 'tare_weight' ? parseFloat(value) || 0 : parseFloat(formState.tare_weight) || 0;
 
-                // Auto-calculate Tare from Bags if bag_count changed and default tare exists
                 if (name === 'bag_count' && currentCrop.default_tare_per_bag) {
                     newTare = newBags * currentCrop.default_tare_per_bag;
                     updates.tare_weight = newTare;
                 }
 
-                // Calculate Net (quantity_input)
-                // Gross - Tare = Net
                 if (name === 'gross_quantity' || name === 'bag_count' || name === 'tare_weight') {
                     const netWeight = Math.max(0, newGross - newTare);
-                    updates.quantity_input = netWeight; // This updates the Net Weight field automatically
+                    updates.quantity_input = netWeight;
                 }
             }
 
@@ -155,7 +156,6 @@ function SaleManagement() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validate Form
         const validation = validateSaleForm(formState, currentCrop);
         if (!validation.isValid) {
             setValidationErrors(validation.errors);
@@ -164,7 +164,6 @@ function SaleManagement() {
         }
 
         try {
-            // quantity_input is now in KG (like purchases)
             const quantity_sold_kg = parseFloat(formState.quantity_input);
             const selling_unit_price_per_kg = parseFloat(formState.price_input) / parseFloat(formState.specific_selling_factor);
             const calculatedQtyUnit = quantity_sold_kg / parseFloat(formState.specific_selling_factor);
@@ -178,12 +177,10 @@ function SaleManagement() {
                 selling_pricing_unit: formState.selling_pricing_unit,
                 specific_selling_factor: parseFloat(formState.specific_selling_factor),
                 amount_received: parseFloat(formState.amount_received) || 0,
-                // Complex Fields
                 gross_quantity: formState.gross_quantity ? parseFloat(formState.gross_quantity) : null,
                 bag_count: formState.bag_count ? parseInt(formState.bag_count) : 0,
                 tare_weight: formState.tare_weight ? parseFloat(formState.tare_weight) : 0,
                 calculation_formula: currentCrop?.is_complex_unit ? 'standard_diff' : null,
-
                 notes: `الوزن الأصلي: ${quantity_sold_kg} كجم | الكمية بالوحدة: ${calculatedQtyUnit.toFixed(2)} ${formState.selling_pricing_unit}`
             };
 
@@ -195,7 +192,6 @@ function SaleManagement() {
                 await createMutation.mutateAsync(submissionData);
                 showSuccess("تم تسجيل عملية البيع بنجاح");
             }
-            // No need to manually refetch - TanStack Query handles invalidation
             setFormState(getInitialFormState());
             setCurrentCrop(null);
             setShowAddForm(false);
@@ -228,14 +224,14 @@ function SaleManagement() {
             });
             if (!response.ok) throw new Error('Failed to save payment.');
             handleCancelPayment();
-            fetchSales();
+            refetchSales();
         } catch (err) {
             console.error("Payment error:", err);
             showError(err.message);
         }
     };
 
-    // Share handlers - using formatPhoneForWhatsApp utility
+    // Share handlers
     const handleShareWhatsApp = (sale) => {
         const phone = sale.customer?.phone;
         const message = `مرحبا ${sale.customer?.name}، \nمرفق فاتورة عملية البيع رقم ${sale.sale_id} بتاريخ ${new Date(sale.sale_date).toLocaleDateString('en-US')}.\nالمبلغ: ${sale.total_sale_amount.toLocaleString('en-US')} ج.م\nشكراً لتعاملك معنا.`;
@@ -294,7 +290,6 @@ function SaleManagement() {
         }
         try {
             await deleteMutation.mutateAsync(sale.sale_id);
-            // No need to manually refetch - TanStack Query handles invalidation
         } catch (err) {
             console.error("Failed to delete sale:", err);
             showError(err.response?.data?.detail || "فشل في حذف عملية البيع");
@@ -303,12 +298,27 @@ function SaleManagement() {
 
     // Status badge
     const getStatusBadge = (status) => {
-        switch (status) {
-            case 'PAID': return <span className="badge bg-success">مدفوع</span>;
-            case 'PARTIAL': return <span className="badge bg-warning text-dark">جزئي</span>;
-            case 'PENDING':
-            default: return <span className="badge bg-danger">معلق</span>;
-        }
+        const badges = {
+            PAID: (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+                    <i className="bi bi-check-circle-fill text-[10px]" />
+                    مدفوع
+                </span>
+            ),
+            PARTIAL: (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                    <i className="bi bi-clock-fill text-[10px]" />
+                    جزئي
+                </span>
+            ),
+            PENDING: (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-red-100 to-rose-100 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                    <i className="bi bi-exclamation-circle-fill text-[10px]" />
+                    معلق
+                </span>
+            )
+        };
+        return badges[status] || badges.PENDING;
     };
 
     // Get unique crops for filter
@@ -327,7 +337,7 @@ function SaleManagement() {
     // Set default filter
     useEffect(() => {
         if (uniqueCrops.length > 0 && selectedCropFilter === null && sales.length > 0) {
-            setSelectedCropFilter(uniqueCrops[0].crop.crop_id);
+            setSelectedCropFilter('all');
         }
     }, [uniqueCrops, sales.length, selectedCropFilter]);
 
@@ -346,10 +356,24 @@ function SaleManagement() {
         });
     }, [sales, searchTerm, selectedCropFilter]);
 
-    // Calculate totals - quantity_input is now in KG
+    // Calculate totals
     const calculatedQtyKg = parseFloat(formState.quantity_input || 0);
     const calculatedQtyUnit = calculatedQtyKg / parseFloat(formState.specific_selling_factor || 1);
     const calculatedTotal = calculatedQtyUnit * parseFloat(formState.price_input || 0);
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="p-6 max-w-full mx-auto">
+                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                    <div className="h-40 bg-gradient-to-br from-emerald-200 to-teal-200 dark:from-emerald-800/30 dark:to-teal-800/30" />
+                </div>
+                <div className="neumorphic p-6">
+                    <LoadingCard rows={6} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 max-w-full mx-auto">
@@ -357,9 +381,9 @@ function SaleManagement() {
             {showPaymentForm && payingSale && (
                 <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500/75 dark:bg-slate-900/80 transition-opacity" aria-hidden="true" onClick={handleCancelPayment}></div>
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={handleCancelPayment}></div>
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-lg text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-transparent dark:border-slate-700">
+                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-200 dark:border-slate-700 animate-fade-in-scale">
                             <SalePaymentForm
                                 sale={payingSale}
                                 onSave={handleSavePayment}
@@ -370,114 +394,148 @@ function SaleManagement() {
                 </div>
             )}
 
-            {/* Header */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 transition-colors">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center mb-1">
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg text-emerald-600 dark:text-emerald-400 me-3">
-                            <i className="bi bi-cart-check text-xl"></i>
-                        </div>
-                        إدارة المبيعات
-                    </h2>
-                    <p className="text-gray-500 dark:text-gray-400 ms-14">إدارة وتتبع جميع عمليات البيع</p>
-                </div>
-
-                <div className="flex gap-3">
-                    {hasPermission('sales:write') && (
+            {/* Page Header with Stats */}
+            <PageHeader
+                title="إدارة المبيعات"
+                subtitle="إدارة وتتبع جميع عمليات البيع والتحصيلات"
+                icon="bi-cart-check"
+                gradient="from-emerald-500 to-teal-500"
+                actions={
+                    <>
                         <button
-                            className={`inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all ${showAddForm
-                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                                : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500'
-                                } focus:outline-none focus:ring-2 focus:ring-offset-2`}
-                            onClick={() => setShowAddForm(!showAddForm)}
+                            onClick={() => setShowCharts(!showCharts)}
+                            className={`p-3 rounded-xl transition-all ${showCharts ? 'bg-white/30 text-white' : 'bg-white/10 text-white/70'}`}
+                            title="إظهار/إخفاء الرسوم البيانية"
                         >
-                            <i className={`bi ${showAddForm ? 'bi-x-lg' : 'bi-plus-lg'} me-2`}></i>
-                            {showAddForm ? 'إلغاء' : 'إضافة عملية بيع جديدة'}
+                            <i className="bi bi-graph-up" />
                         </button>
-                    )}
-                </div>
-            </div>
+                        {hasPermission('sales:write') && (
+                            <ActionButton
+                                label={showAddForm ? 'إلغاء' : 'إضافة عملية بيع'}
+                                icon={showAddForm ? 'bi-x-lg' : 'bi-plus-lg'}
+                                onClick={() => setShowAddForm(!showAddForm)}
+                                variant={showAddForm ? 'danger' : 'primary'}
+                            />
+                        )}
+                    </>
+                }
+            >
+                {/* Stats Cards */}
+                <SalesStatsCards sales={sales} />
+            </PageHeader>
 
             {/* Error Alert */}
             {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border-s-4 border-red-400 dark:border-red-800 p-4 mb-6 rounded-md shadow-sm animate-fade-in relative" role="alert">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <i className="bi bi-exclamation-triangle-fill text-red-400 dark:text-red-500 text-xl"></i>
+                <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-fade-in">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                            <i className="bi bi-exclamation-triangle-fill text-red-500" />
                         </div>
-                        <div className="ms-3">
-                            <p className="text-sm text-red-700 dark:text-red-400 font-medium">خطأ في النظام</p>
-                            <p className="text-sm text-red-600 dark:text-red-300 mt-1">{error}</p>
+                        <div className="flex-1">
+                            <p className="font-bold text-red-700 dark:text-red-400">خطأ في النظام</p>
+                            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
                         </div>
-                        <div className="ms-auto ps-3">
-                            <div className="-mx-1.5 -my-1.5">
-                                <button
-                                    onClick={clearError}
-                                    type="button"
-                                    className="inline-flex bg-red-50 dark:bg-transparent rounded-md p-1.5 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                >
-                                    <span className="sr-only">إغلاق</span>
-                                    <i className="bi bi-x-lg"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <button onClick={clearError} className="text-red-400 hover:text-red-600 p-1">
+                            <i className="bi bi-x-lg" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Charts Section */}
+            {showCharts && sales.length > 0 && !showAddForm && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 animate-fade-in">
+                    {/* Trend Chart */}
+                    <div className="lg:col-span-2 neumorphic p-6">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <i className="bi bi-graph-up text-emerald-500" />
+                            اتجاه المبيعات
+                        </h3>
+                        <SalesTrendChart sales={sales} />
+                    </div>
+
+                    {/* Status Chart */}
+                    <div className="neumorphic p-6">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <i className="bi bi-pie-chart text-blue-500" />
+                            حالة الدفع
+                        </h3>
+                        <SalesByStatusChart sales={sales} />
                     </div>
                 </div>
             )}
 
             {/* Search and Filter */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="w-full md:w-96 relative">
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
-                        <i className="bi bi-search"></i>
-                    </div>
-                    <input
-                        type="text"
-                        className="block w-full pr-10 pl-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-lg leading-5 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:placeholder-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm shadow-sm transition-all hover:shadow-md"
-                        placeholder="بحث بالعميل، المحصول أو رقم العملية..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+                <SearchBox
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="بحث بالعميل، المحصول أو رقم العملية..."
+                    className="w-full md:w-96"
+                />
             </div>
 
-            {/* Crop Filter Tabs */}
+            {/* Crop Filter Chips */}
             {!showAddForm && uniqueCrops.length > 0 && (
-                <div className="mb-6">
-                    <CropFilterTabs
-                        uniqueCrops={uniqueCrops}
-                        selectedCropFilter={selectedCropFilter}
-                        onFilterChange={setSelectedCropFilter}
-                        totalCount={sales.length}
+                <div className="flex flex-wrap gap-2 mb-6">
+                    <FilterChip
+                        label="الكل"
+                        count={sales.length}
+                        icon="bi-grid"
+                        active={selectedCropFilter === 'all'}
+                        onClick={() => setSelectedCropFilter('all')}
                     />
+                    {uniqueCrops.map(({ crop, count }) => (
+                        <FilterChip
+                            key={crop.crop_id}
+                            label={crop.crop_name}
+                            count={count}
+                            icon="bi-flower1"
+                            active={selectedCropFilter === crop.crop_id}
+                            onClick={() => setSelectedCropFilter(crop.crop_id)}
+                            color="emerald"
+                        />
+                    ))}
                 </div>
             )}
 
             {/* Add Sale Form */}
             {showAddForm && (
-                <SaleForm
-                    formState={formState}
-                    onInputChange={handleInputChange}
-                    onSubmit={handleSubmit}
-                    onCancel={() => setShowAddForm(false)}
-                    crops={crops}
-                    customers={customers}
-                    currentCrop={currentCrop}
-                    calculatedTotal={calculatedTotal}
-                    calculatedQtyKg={calculatedQtyKg}
-                    calculatedQtyUnit={calculatedQtyUnit}
-                    validationErrors={validationErrors}
-                    lastPriceHint={lastPriceHint}
-                />
+                <div className="mb-6 animate-fade-in">
+                    <SaleForm
+                        formState={formState}
+                        onInputChange={handleInputChange}
+                        onSubmit={handleSubmit}
+                        onCancel={() => { setShowAddForm(false); setEditingSale(null); }}
+                        crops={crops}
+                        customers={customers}
+                        currentCrop={currentCrop}
+                        calculatedTotal={calculatedTotal}
+                        calculatedQtyKg={calculatedQtyKg}
+                        calculatedQtyUnit={calculatedQtyUnit}
+                        validationErrors={validationErrors}
+                        lastPriceHint={lastPriceHint}
+                    />
+                </div>
             )}
 
             {/* Sales Table */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-colors">
+            <div className="neumorphic overflow-hidden animate-fade-in">
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center">
-                        <i className="bi bi-list-ul me-2 text-emerald-600 dark:text-emerald-400"></i>
-                        سجل المبيعات ({filteredSales.length})
+                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+                        <i className="bi bi-list-ul text-emerald-500" />
+                        سجل المبيعات
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                            {filteredSales.length}
+                        </span>
                     </h5>
+
+                    {/* Top Crops Mini Chart (Desktop only) */}
+                    {sales.length > 0 && (
+                        <div className="hidden lg:block w-64">
+                            <TopCropsChart sales={sales} />
+                        </div>
+                    )}
                 </div>
                 <div>
                     {filteredSales.length === 0 ? (

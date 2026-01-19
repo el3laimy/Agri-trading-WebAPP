@@ -4,7 +4,7 @@ Shared Test Fixtures - conftest.py
 """
 import pytest
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app import models
@@ -71,3 +71,59 @@ def test_supplier(db_session):
     db_session.commit()
     db_session.refresh(supplier)
     return supplier
+
+
+@pytest.fixture
+def test_season(db_session):
+    """إنشاء موسم اختباري"""
+    season = models.Season(
+        name=get_unique_name("موسم"),
+        start_date=date.today(),
+        end_date=date.today() + timedelta(days=90),
+        status="ACTIVE",
+        description="موسم اختباري"
+    )
+    db_session.add(season)
+    db_session.commit()
+    db_session.refresh(season)
+    return season
+
+
+@pytest.fixture
+def test_financial_accounts(db_session):
+    """التأكد من وجود الحسابات المالية الأساسية"""
+    from app.core.bootstrap import bootstrap_financial_accounts
+    bootstrap_financial_accounts(db_session)
+    accounts = {
+        "cash": db_session.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_name == "الخزينة الرئيسية"
+        ).first(),
+        "inventory": db_session.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_name == "المخزون"
+        ).first(),
+        "receivables": db_session.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_name == "العملاء"
+        ).first(),
+        "payables": db_session.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_name == "الموردين"
+        ).first(),
+    }
+    return accounts
+
+
+@pytest.fixture
+def test_inventory(db_session, test_crop):
+    """إنشاء سجل مخزون اختباري"""
+    inventory = db_session.query(models.Inventory).filter(
+        models.Inventory.crop_id == test_crop.crop_id
+    ).first()
+    if not inventory:
+        inventory = models.Inventory(
+            crop_id=test_crop.crop_id,
+            current_stock_kg=0.0,
+            low_stock_threshold=100.0
+        )
+        db_session.add(inventory)
+        db_session.commit()
+        db_session.refresh(inventory)
+    return inventory

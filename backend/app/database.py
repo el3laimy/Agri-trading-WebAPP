@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine, event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from .core.config import settings
 
 engine = create_engine(
@@ -19,7 +18,9 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+# ✅ Modern SQLAlchemy 2.0+ style
+class Base(DeclarativeBase):
+    pass
 
 # Dependency to get DB session
 def get_db():

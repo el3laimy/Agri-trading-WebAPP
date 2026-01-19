@@ -55,12 +55,20 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # CORS (Cross-Origin Resource Sharing) Middleware
+# تحديد الـ origins المسموح لها بالوصول للـ API
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",      # Vite dev server
+    "http://localhost:3000",      # React dev server
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # ✅ محدد بدلاً من "*"
+    allow_credentials=True,          # ✅ مفعّل للـ cookies
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 from app.core.error_handling import setup_exception_handlers

@@ -23,6 +23,10 @@ from .contacts import (
     get_contact,
     get_contacts,
     create_contact,
+    delete_contact,
+    get_contact_dependencies,
+    migrate_contact_data,
+    delete_contact_with_dependencies,
 )
 
 # Finance CRUD
@@ -79,7 +83,8 @@ __all__ = [
     'get_crop', 'get_crop_by_name', 'get_crops', 'create_crop', 'delete_crop',
     'get_crop_dependencies', 'migrate_crop_data', 'delete_crop_with_dependencies',
     # Contacts
-    'get_contact', 'get_contacts', 'create_contact',
+    'get_contact', 'get_contacts', 'create_contact', 'delete_contact',
+    'get_contact_dependencies', 'migrate_contact_data', 'delete_contact_with_dependencies',
     # Finance
     'get_financial_account', 'get_financial_accounts', 'create_financial_account',
     'update_financial_account', 'delete_financial_account',

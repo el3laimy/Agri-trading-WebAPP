@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -32,7 +33,7 @@ def get_suppliers_balances(db: Session = Depends(get_db)):
 def read_contact(contact_id: int, db: Session = Depends(get_db)):
     db_contact = crud.get_contact(db, contact_id=contact_id)
     if db_contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        raise HTTPException(status_code=404, detail="جهة التعامل غير موجودة")
     return db_contact
 
 @router.get("/{contact_id}/summary", response_model=schemas.ContactSummary)
@@ -60,7 +61,7 @@ def get_contact_statement(
 def update_contact(contact_id: int, contact: schemas.ContactCreate, db: Session = Depends(get_db)):
     db_contact = crud.get_contact(db, contact_id=contact_id)
     if db_contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        raise HTTPException(status_code=404, detail="جهة التعامل غير موجودة")
     
     # Update contact fields
     db_contact.name = contact.name
@@ -79,17 +80,63 @@ def update_contact(contact_id: int, contact: schemas.ContactCreate, db: Session 
 def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     db_contact = crud.get_contact(db, contact_id=contact_id)
     if db_contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
+        raise HTTPException(status_code=404, detail="جهة التعامل غير موجودة")
     
-    # Check if contact is used in any sales or purchases
-    if db_contact.sales or db_contact.purchases:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete contact that has associated sales or purchases"
+    # فحص التبعيات
+    dependencies = crud.get_contact_dependencies(db, contact_id)
+    
+    total_conflicts = sum(dependencies.values())
+    
+    if total_conflicts > 0:
+        # إرجاع خطأ 409 Conflict مع تفاصيل التعارضات
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "لا يمكن حذف جهة التعامل لأنها مرتبطة بعمليات أخرى",
+                "conflicts": dependencies
+            }
         )
     
     db.delete(db_contact)
     db.commit()
     
-    return {"message": "Contact deleted successfully"}
+    return {"message": "تم حذف جهة التعامل بنجاح"}
+
+@router.post("/{contact_id}/migrate-and-delete")
+def migrate_and_delete_contact(
+    contact_id: int, 
+    migration_request: schemas.ContactMigrationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    نقل البيانات من جهة التعامل المراد حذفها إلى جهة تعامل أخرى ثم حذف الأصلية
+    """
+    source_contact = crud.get_contact(db, contact_id)
+    if not source_contact:
+        raise HTTPException(status_code=404, detail="جهة التعامل المراد حذفها غير موجودة")
+        
+    target_contact = crud.get_contact(db, migration_request.target_contact_id)
+    if not target_contact:
+        raise HTTPException(status_code=404, detail="جهة التعامل الهدف غير موجودة")
+        
+    if contact_id == migration_request.target_contact_id:
+        raise HTTPException(status_code=400, detail="لا يمكن النقل لنفس جهة التعامل")
+        
+    crud.migrate_contact_data(db, contact_id, migration_request.target_contact_id)
+    
+    return {"message": f"تم نقل البيانات إلى {target_contact.name} وحذف جهة التعامل القديمة بنجاح"}
+
+@router.delete("/{contact_id}/force")
+def force_delete_contact(contact_id: int, db: Session = Depends(get_db)):
+    """
+    حذف إجباري: حذف جهة التعامل وجميع السجلات المرتبطة
+    """
+    db_contact = crud.get_contact(db, contact_id=contact_id)
+    if db_contact is None:
+        raise HTTPException(status_code=404, detail="جهة التعامل غير موجودة")
+        
+    crud.delete_contact_with_dependencies(db, contact_id)
+    
+    return {"message": "تم حذف جهة التعامل وجميع السجلات المرتبطة بها بنجاح"}
+
 

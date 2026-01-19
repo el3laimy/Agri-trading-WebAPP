@@ -65,20 +65,31 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
         .limit(limit)\
         .all()
     
+    # ✅ Fix N+1: Batch load all payments at once
+    payment_source_ids = [
+        t.source_id for t in transactions 
+        if t.source_type in ['CASH_RECEIPT', 'CASH_PAYMENT'] and t.source_id
+    ]
+    
+    payments_map = {}
+    if payment_source_ids:
+        from sqlalchemy.orm import joinedload
+        payments = db.query(models.Payment)\
+            .options(joinedload(models.Payment.contact))\
+            .filter(models.Payment.payment_id.in_(payment_source_ids))\
+            .all()
+        payments_map = {p.payment_id: p for p in payments}
+    
     result = []
     for t in transactions:
-        # Determine type based on debit/credit
-        # Debit to Asset = IN (Increase)
-        # Credit to Asset = OUT (Decrease)
-        
         t_type = "IN" if t.debit > 0 else "OUT"
         amount = t.debit if t.debit > 0 else t.credit
         
         contact_name = None
         if t.source_type in ['CASH_RECEIPT', 'CASH_PAYMENT'] and t.source_id:
-             payment = db.query(models.Payment).get(t.source_id)
-             if payment and payment.contact:
-                 contact_name = payment.contact.name
+            payment = payments_map.get(t.source_id)
+            if payment and payment.contact:
+                contact_name = payment.contact.name
 
         result.append(schemas.TreasuryTransaction(
             transaction_id=t.entry_id,
@@ -100,6 +111,9 @@ def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate, user_id
     
     التحسين: إنشاء سجل Payment ليظهر في كشف حساب العميل
     """
+    from decimal import Decimal
+    from app.services.accounting_engine import get_engine, LedgerEntry
+    
     # Get Account IDs
     cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
     accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
@@ -115,52 +129,57 @@ def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate, user_id
             notes=receipt.description,
             credit_account_id=accounts_receivable_id,
             debit_account_id=cash_id,
-            transaction_type='GENERAL',  # قبض عام على الحساب
-            transaction_id=None,  # ليس مربوط بفاتورة محددة
+            transaction_type='GENERAL',
+            transaction_id=None,
             created_by=user_id
         )
         db.add(db_payment)
-        db.flush()  # للحصول على payment_id
+        db.flush()
         payment_id = db_payment.payment_id
     
-    # 2. قيد النقدية (مدين - دخول)
-    cash_entry = models.GeneralLedger(
-        entry_date=receipt.receipt_date,
-        account_id=cash_id,
-        debit=receipt.amount,
-        credit=0.0,
-        description=receipt.description,
-        source_type="CASH_RECEIPT",
-        source_id=payment_id or 0,
-        created_by=user_id
-    )
-    db.add(cash_entry)
+    # 2. Create balanced entries using AccountingEngine
+    engine = get_engine(db)
+    amount = Decimal(str(receipt.amount))
     
-    # 3. قيد الذمم المدينة (دائن - تخفيض دين العميل)
+    entries = [
+        LedgerEntry(account_id=cash_id, debit=amount, credit=Decimal(0), description=receipt.description)
+    ]
     if receipt.contact_id:
-        receivable_entry = models.GeneralLedger(
+        entries.append(
+            LedgerEntry(account_id=accounts_receivable_id, debit=Decimal(0), credit=amount, description=receipt.description)
+        )
+    
+    # Only create entry if we have both sides
+    if len(entries) == 2:
+        engine.create_balanced_entry(
+            entries=entries,
             entry_date=receipt.receipt_date,
-            account_id=accounts_receivable_id,
-            debit=0.0,
-            credit=receipt.amount,
+            source_type="CASH_RECEIPT",
+            source_id=payment_id or 0,
+            created_by=user_id
+        )
+    else:
+        # Single sided entry (no contact) - just cash increase
+        # This is a special case, we still need to add cash entry
+        cash_entry = models.GeneralLedger(
+            entry_date=receipt.receipt_date,
+            account_id=cash_id,
+            debit=amount,
+            credit=Decimal(0),
             description=receipt.description,
             source_type="CASH_RECEIPT",
             source_id=payment_id or 0,
             created_by=user_id
         )
-        db.add(receivable_entry)
-    
-    # 4. تحديث أرصدة الحسابات
-    crud.update_account_balance(db, cash_id, receipt.amount)
-    if receipt.contact_id:
-        crud.update_account_balance(db, accounts_receivable_id, -receipt.amount)
+        db.add(cash_entry)
+        engine._update_account_balance(cash_id, amount, Decimal(0))
     
     db.commit()
     
     return {
         "success": True,
         "message": f"تم تسجيل قبض نقدي بمبلغ {receipt.amount}",
-        "voucher_id": cash_entry.entry_id,
+        "voucher_id": 0,
         "payment_id": payment_id
     }
 

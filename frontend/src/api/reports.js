@@ -111,5 +111,8 @@ export const getAdvancedChartData = async (params) => {
     return response.data;
 };
 
-
-
+// Balance Check - التحقق من توازن النظام المحاسبي
+export const getBalanceCheck = async () => {
+    const response = await axios.get(`${API_URL}/balance-check`);
+    return response.data;
+};

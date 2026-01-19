@@ -5,6 +5,7 @@ from datetime import date
 
 from app.services import reporting, dashboard
 from app.services import capital_distribution
+from app.services.accounting_engine import get_engine
 from app.api.v1.endpoints.crops import get_db
 from app.schemas import GeneralLedger, FinancialAccount, BaseModel, CapitalDistributionReport
 
@@ -118,6 +119,31 @@ def get_capital_distribution(
 def get_capital_breakdown(db: Session = Depends(get_db)):
     """تفصيل توزيع رأس المال حسب الفئات للرسم البياني"""
     return capital_distribution.get_capital_breakdown_by_category(db)
+
+
+@router.get("/balance-check")
+def check_system_balance(db: Session = Depends(get_db)):
+    """
+    التحقق من توازن النظام المحاسبي
+    
+    Returns:
+        is_balanced: هل النظام متوازن
+        difference: الفرق بين الأصول والخصوم
+        total_assets: إجمالي الأصول
+        total_liabilities_and_equity: إجمالي الخصوم وحقوق الملكية
+        details: تفاصيل كل عنصر
+    """
+    engine = get_engine(db)
+    report = engine.validate_system_balance()
+    return {
+        "is_balanced": report.is_balanced,
+        "difference": float(report.difference),
+        "total_assets": float(report.total_assets),
+        "total_liabilities_and_equity": float(report.total_liabilities_and_equity),
+        "checked_at": report.checked_at.isoformat(),
+        "details": report.details,
+        "status": "متوازن ✅" if report.is_balanced else f"غير متوازن ❌ (الفرق: {report.difference} ج.م)"
+    }
 
 
 # --- تقرير التدفقات النقدية ---

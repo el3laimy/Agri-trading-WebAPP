@@ -1,0 +1,760 @@
+/* =====================================================
+   Dashboard Animations & Effects
+   Premium Animation Library for Agri-Trading Dashboard
+   ===================================================== */
+
+/* ===== Keyframe Animations ===== */
+
+/* Fade In Up - For element entry */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fade In Scale - For cards */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Slide In Right - For RTL elements */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Pulse Glow - For important indicators */
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
+    }
+}
+
+/* Float Animation - For floating elements */
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Gradient Flow - For animated backgrounds */
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Shimmer Effect - For loading states */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Rotate - For icons and loaders */
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Count Up - For number animations */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Wave Animation - For hero background */
+@keyframes wave {
+    0% {
+        transform: translateX(0) translateY(0);
+    }
+
+    50% {
+        transform: translateX(-25px) translateY(5px);
+    }
+
+    100% {
+        transform: translateX(0) translateY(0);
+    }
+}
+
+/* Blob Animation - For organic shapes */
+@keyframes blob {
+
+    0%,
+    100% {
+        border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    }
+
+    50% {
+        border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    }
+}
+
+/* Sparkle - For highlight effects */
+@keyframes sparkle {
+
+    0%,
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Bounce In - For attention elements */
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    70% {
+        transform: scale(0.9);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Ripple Effect - For click feedback */
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* ===== Utility Classes ===== */
+
+.animate-fade-in {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-fade-in-scale {
+    animation: fadeInScale 0.4s ease-out forwards;
+}
+
+.animate-slide-in {
+    animation: slideInRight 0.5s ease-out forwards;
+}
+
+.animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+.animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientFlow 5s ease infinite;
+}
+
+.animate-shimmer {
+    background: linear-gradient(90deg,
+            var(--bg-card) 25%,
+            var(--bg-hover) 50%,
+            var(--bg-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+.animate-spin {
+    animation: rotate 1s linear infinite;
+}
+
+.animate-count-up {
+    animation: countUp 0.4s ease-out forwards;
+}
+
+.animate-wave {
+    animation: wave 8s ease-in-out infinite;
+}
+
+.animate-blob {
+    animation: blob 8s ease-in-out infinite;
+}
+
+.animate-bounce-in {
+    animation: bounceIn 0.6s ease-out forwards;
+}
+
+/* ===== Staggered Animations ===== */
+.stagger-1 {
+    animation-delay: 0.1s;
+}
+
+.stagger-2 {
+    animation-delay: 0.2s;
+}
+
+.stagger-3 {
+    animation-delay: 0.3s;
+}
+
+.stagger-4 {
+    animation-delay: 0.4s;
+}
+
+.stagger-5 {
+    animation-delay: 0.5s;
+}
+
+.stagger-6 {
+    animation-delay: 0.6s;
+}
+
+.stagger-7 {
+    animation-delay: 0.7s;
+}
+
+.stagger-8 {
+    animation-delay: 0.8s;
+}
+
+/* ===== Hover Effects ===== */
+
+/* Lift on Hover */
+.hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Scale on Hover */
+.hover-scale {
+    transition: transform 0.3s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.05);
+}
+
+/* Glow on Hover */
+.hover-glow {
+    transition: box-shadow 0.3s ease;
+}
+
+.hover-glow:hover {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+}
+
+/* Shine on Hover */
+.hover-shine {
+    position: relative;
+    overflow: hidden;
+}
+
+.hover-shine::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent);
+    transition: left 0.5s ease;
+}
+
+.hover-shine:hover::before {
+    left: 100%;
+}
+
+/* ===== Neumorphic Styles ===== */
+
+.neumorphic {
+    background: var(--bg-card);
+    border-radius: 20px;
+    box-shadow:
+        8px 8px 16px rgba(0, 0, 0, 0.1),
+        -8px -8px 16px rgba(255, 255, 255, 0.7);
+}
+
+.neumorphic-inset {
+    background: var(--bg-card);
+    border-radius: 16px;
+    box-shadow:
+        inset 4px 4px 8px rgba(0, 0, 0, 0.08),
+        inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="dark"] .neumorphic {
+    box-shadow:
+        8px 8px 16px rgba(0, 0, 0, 0.4),
+        -8px -8px 16px rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .neumorphic-inset {
+    box-shadow:
+        inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+        inset -4px -4px 8px rgba(255, 255, 255, 0.02);
+}
+
+/* ===== Hero Section Styles ===== */
+
+.hero-gradient {
+    background: linear-gradient(135deg,
+            #059669 0%,
+            #10b981 25%,
+            #14b8a6 50%,
+            #0d9488 75%,
+            #047857 100%);
+    background-size: 400% 400%;
+    animation: gradientFlow 8s ease infinite;
+}
+
+.hero-blob {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.1);
+    filter: blur(40px);
+    animation: blob 10s ease-in-out infinite;
+}
+
+.hero-blob-1 {
+    width: 400px;
+    height: 400px;
+    top: -100px;
+    left: -100px;
+}
+
+.hero-blob-2 {
+    width: 300px;
+    height: 300px;
+    bottom: -50px;
+    right: -50px;
+    animation-delay: -5s;
+}
+
+.hero-particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.hero-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    animation: float 4s ease-in-out infinite;
+}
+
+/* ===== Glassmorphism Premium ===== */
+
+.glass-premium {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .glass-premium {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ===== Sparkline Container ===== */
+
+.sparkline-container {
+    height: 40px;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* ===== Progress Ring ===== */
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-circle {
+    transition: stroke-dashoffset 0.5s ease;
+    stroke-linecap: round;
+}
+
+/* ===== Ripple Button Effect ===== */
+
+.btn-ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-ripple .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+}
+
+/* ===== Tooltip Enhanced ===== */
+
+.tooltip-enhanced {
+    position: relative;
+}
+
+.tooltip-enhanced::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: 8px 12px;
+    background: var(--text-primary);
+    color: var(--bg-card);
+    font-size: 0.75rem;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.tooltip-enhanced:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+/* ===== Weather Widget Styles ===== */
+
+.weather-widget {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 12px 16px;
+}
+
+.weather-icon {
+    font-size: 2rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+/* ===== Command Palette Styles ===== */
+
+.command-palette-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 15vh;
+}
+
+.command-palette {
+    width: 100%;
+    max-width: 600px;
+    background: var(--bg-card);
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    animation: fadeInScale 0.2s ease-out;
+}
+
+.command-palette-input {
+    width: 100%;
+    padding: 20px 24px;
+    font-size: 1.125rem;
+    border: none;
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.command-palette-results {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.command-palette-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.command-palette-item:hover,
+.command-palette-item.active {
+    background: var(--bg-hover);
+}
+
+.command-palette-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 1.25rem;
+}
+
+/* ===== Activity Timeline ===== */
+
+.activity-timeline {
+    position: relative;
+    padding-right: 24px;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom,
+            var(--primary-color),
+            var(--primary-light),
+            transparent);
+}
+
+.activity-timeline-item {
+    position: relative;
+    padding-bottom: 24px;
+}
+
+.activity-timeline-dot {
+    position: absolute;
+    right: -24px;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    border: 3px solid var(--bg-card);
+    z-index: 1;
+}
+
+.activity-timeline-dot.pulse {
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* ===== Quick Actions FAB ===== */
+
+.fab-container {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 50;
+}
+
+.fab-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.fab-main:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 32px rgba(5, 150, 105, 0.5);
+}
+
+.fab-menu {
+    position: absolute;
+    bottom: 70px;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.fab-container.open .fab-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.fab-item {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.fab-item:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* ===== Charts Enhanced ===== */
+
+.chart-container-enhanced {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
+    transition: all 0.3s ease;
+}
+
+.chart-container-enhanced:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* ===== Number Counter ===== */
+
+.number-counter {
+    font-variant-numeric: tabular-nums;
+    transition: all 0.3s ease;
+}
+
+/* ===== Trend Indicator ===== */
+
+.trend-up {
+    color: #10b981;
+}
+
+.trend-down {
+    color: #ef4444;
+}
+
+.trend-neutral {
+    color: #6b7280;
+}
+
+.trend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.trend-badge.up {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+}
+
+.trend-badge.down {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+[data-theme="dark"] .trend-badge.up {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+[data-theme="dark"] .trend-badge.down {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}

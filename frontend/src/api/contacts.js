@@ -90,3 +90,27 @@ export const getSuppliersBalances = async () => {
     }
 };
 
+// --- حذف جهات التعامل المرتبطة بعمليات ---
+
+export const migrateAndDeleteContact = async (contactId, targetContactId) => {
+    try {
+        const response = await axios.post(`${API_URL}${contactId}/migrate-and-delete`, {
+            target_contact_id: targetContactId
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error migrating and deleting contact:", error);
+        throw error;
+    }
+};
+
+export const forceDeleteContact = async (contactId) => {
+    try {
+        const response = await axios.delete(`${API_URL}${contactId}/force`);
+        return response.data;
+    } catch (error) {
+        console.error("Error force deleting contact:", error);
+        throw error;
+    }
+};
+

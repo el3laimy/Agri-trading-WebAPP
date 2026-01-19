@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+
+// Import Dashboard Animations CSS
+import '../styles/dashboardAnimations.css';
 
 // Dashboard Widgets
 import {
@@ -13,10 +16,12 @@ import {
     DashboardSkeleton,
     RefreshButton,
     SectionHeader,
-    EmptyState
+    EmptyState,
+    HeroSection
 } from '../components/dashboard/DashboardWidgets';
 import AdvancedChartWidget from '../components/dashboard/charts/AdvancedChartWidget';
 import SalesDistributionWidget from '../components/dashboard/charts/SalesDistributionWidget';
+import CommandPalette from '../components/dashboard/CommandPalette';
 
 /* --- Widget Definitions --- */
 const WIDGETS = [
@@ -43,9 +48,9 @@ function Dashboard() {
         alerts,
         salesByCrop,
         topCustomers,
-
         recentActivities,
         seasonSummary,
+        balanceCheck,
         isLoading: loading,
         refetchAll
     } = useDashboard();
@@ -57,6 +62,9 @@ function Dashboard() {
     const [layout, setLayout] = useState(DEFAULT_LAYOUT);
     const [showConfigModal, setShowConfigModal] = useState(false);
     const [tempLayout, setTempLayout] = useState(DEFAULT_LAYOUT);
+
+    // Command Palette State
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
 
     // Time-based greeting
     const getGreeting = () => {
@@ -98,6 +106,19 @@ function Dashboard() {
         }
         setLayout(DEFAULT_LAYOUT);
     }, [user]);
+
+    // Command Palette Keyboard Shortcut (Ctrl+K)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                setShowCommandPalette(prev => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const handleSaveConfig = () => {
         setLayout(tempLayout);
@@ -176,75 +197,29 @@ function Dashboard() {
         );
     }
 
-
-
-
-
-
-
     /* Render Functions based on ID */
     const renderWidget = (id) => {
         switch (id) {
             // =============== HERO HEADER ===============
             case 'quick_stats':
                 return (
-                    <div className="mb-8 animate-fade-in" key={id}>
-                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-800 dark:via-emerald-700 dark:to-teal-700 p-8 shadow-xl">
-                            {/* Decorative Elements */}
-                            <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-                            <div className="absolute bottom-0 right-0 w-72 h-72 bg-teal-400/20 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
-                            <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-emerald-300/10 rounded-full blur-2xl" />
-
-                            <div className="relative z-10">
-                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                                    {/* Welcome Section */}
-                                    <div className="text-white">
-                                        <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                                            <span className="text-4xl">👋</span>
-                                            {getGreeting()}، {user?.username || 'مستخدم'}
-                                        </h1>
-                                        <p className="text-emerald-100 text-lg">نظرة شاملة على أداء المزرعة والعمليات</p>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => { setTempLayout(layout); setShowConfigModal(true); }}
-                                            className="p-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all border border-white/10"
-                                            title="تخصيص"
-                                        >
-                                            <i className="bi bi-gear text-lg" />
-                                        </button>
-                                        <RefreshButton onClick={handleRefresh} isRefreshing={refreshing} />
-                                    </div>
-                                </div>
-
-                                {/* Quick Stats */}
-                                <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <MiniStatPill
-                                        label="مبيعات اليوم"
-                                        value={formatCurrency(kpis.today_sales, true)}
-                                        icon="bi-cart-check"
-                                    />
-                                    <MiniStatPill
-                                        label="تحصيلات اليوم"
-                                        value={formatCurrency(kpis.today_collections, true)}
-                                        icon="bi-cash-coin"
-                                    />
-                                    <MiniStatPill
-                                        label="رصيد الخزينة"
-                                        value={formatCurrency(kpis.cash_balance, true)}
-                                        icon="bi-safe2"
-                                    />
-                                    <MiniStatPill
-                                        label="هامش الربح"
-                                        value={`${kpis.gross_margin || 0}%`}
-                                        icon="bi-percent"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <HeroSection
+                        key={id}
+                        greeting={getGreeting()}
+                        username={user?.username}
+                        subtitle="نظرة شاملة على أداء المزرعة والعمليات"
+                        balanceCheck={balanceCheck}
+                        onNavigate={navigate}
+                        onConfigClick={() => { setTempLayout(layout); setShowConfigModal(true); }}
+                        onRefresh={handleRefresh}
+                        isRefreshing={refreshing}
+                        quickStats={[
+                            { label: 'مبيعات اليوم', value: formatCurrency(kpis.today_sales, true), icon: 'bi-cart-check' },
+                            { label: 'تحصيلات اليوم', value: formatCurrency(kpis.today_collections, true), icon: 'bi-cash-coin' },
+                            { label: 'رصيد الخزينة', value: formatCurrency(kpis.cash_balance, true), icon: 'bi-safe2' },
+                            { label: 'هامش الربح', value: `${kpis.gross_margin || 0}%`, icon: 'bi-percent' }
+                        ]}
+                    />
                 );
 
             // =============== MAIN KPIs ===============
@@ -295,12 +270,9 @@ function Dashboard() {
             case 'charts':
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
-                        {/* Weekly Trend Chart -> Advanced Chart Widget */}
                         <div className="lg:col-span-2">
                             <AdvancedChartWidget />
                         </div>
-
-                        {/* Doughnut Chart -> Sales Distribution Widget */}
                         <div className="h-full">
                             <SalesDistributionWidget
                                 salesByCrop={salesByCrop}
@@ -360,20 +332,28 @@ function Dashboard() {
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
                         {/* Activity Timeline */}
-                        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden animate-fade-in">
+                        <div className="lg:col-span-2 neumorphic overflow-hidden animate-fade-in">
                             <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                    <span className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
-                                    النشاط الأخير
-                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
+                                        <i className="bi bi-activity text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                            النشاط الأخير
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">آخر العمليات المسجلة</p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={() => navigate('/sales')}
-                                    className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+                                    className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-xl transition-colors"
                                 >
                                     عرض الكل
                                 </button>
                             </div>
-                            <div className="divide-y divide-gray-100 dark:divide-slate-700 max-h-96 overflow-y-auto">
+                            <div className="p-4 max-h-96 overflow-y-auto">
                                 {recentActivities.length > 0 ? (
                                     recentActivities.map((activity) => (
                                         <ActivityItem
@@ -403,15 +383,22 @@ function Dashboard() {
             case 'top_customers':
                 return (
                     <div className="mb-8" key={id}>
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden animate-fade-in">
+                        <div className="neumorphic overflow-hidden animate-fade-in">
                             <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                    <i className="bi bi-trophy-fill text-yellow-500" />
-                                    أفضل العملاء
-                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center shadow-lg">
+                                        <i className="bi bi-trophy text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                                            أفضل العملاء
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">حسب حجم المشتريات</p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={() => navigate('/contacts')}
-                                    className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-xl transition-colors"
+                                    className="px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-xl transition-colors"
                                 >
                                     عرض الكل
                                 </button>
@@ -492,40 +479,53 @@ function Dashboard() {
             case 'alerts':
                 const getAlertStyle = (type) => {
                     const styles = {
-                        success: 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50',
-                        danger: 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50',
-                        warning: 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
-                        info: 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800/50'
+                        success: 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50',
+                        danger: 'bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50',
+                        warning: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
+                        info: 'bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800/50'
                     };
                     return styles[type] || styles.info;
                 };
 
                 return (
                     <div className="mb-8" key={id}>
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 animate-fade-in">
+                        <div className="neumorphic animate-fade-in">
                             <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                    <i className="bi bi-bell-fill text-yellow-500" />
-                                    التنبيهات الذكية
-                                    {alerts.length > 0 && (
-                                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{alerts.length}</span>
-                                    )}
-                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg">
+                                        <i className="bi bi-bell text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                                            التنبيهات الذكية
+                                            {alerts.length > 0 && (
+                                                <span className="bg-red-500 text-white text-xs px-2.5 py-1 rounded-full font-medium animate-pulse">
+                                                    {alerts.length}
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">تنبيهات تلقائية للمتابعة</p>
+                                    </div>
+                                </div>
                             </div>
                             <div className="p-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {alerts.length > 0 ? alerts.map((alert, index) => (
-                                        <div key={index} className={`p-4 rounded-xl border flex items-start gap-3 ${getAlertStyle(alert.type)}`}>
-                                            <i className={`bi ${alert.icon} text-xl mt-0.5`} />
+                                        <div key={index} className={`p-4 rounded-xl border-2 flex items-start gap-3 hover-lift ${getAlertStyle(alert.type)}`}>
+                                            <div className="w-10 h-10 rounded-lg bg-current bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                                                <i className={`bi ${alert.icon} text-xl`} />
+                                            </div>
                                             <div>
                                                 <p className="font-bold text-sm mb-1">{alert.title}</p>
                                                 <p className="text-sm opacity-80">{alert.message}</p>
                                             </div>
                                         </div>
                                     )) : (
-                                        <div className="col-span-full text-center py-8">
-                                            <i className="bi bi-check-circle text-5xl text-emerald-500 mb-3 block opacity-50" />
-                                            <p className="text-gray-500 dark:text-gray-400">لا توجد تنبيهات - كل شيء على ما يرام!</p>
+                                        <div className="col-span-full text-center py-12">
+                                            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                                <i className="bi bi-check-circle text-4xl text-emerald-500" />
+                                            </div>
+                                            <p className="text-gray-500 dark:text-gray-400 font-medium">لا توجد تنبيهات - كل شيء على ما يرام!</p>
                                         </div>
                                     )}
                                 </div>
@@ -549,12 +549,31 @@ function Dashboard() {
 
                 return (
                     <div className="mb-8" key={id}>
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 animate-fade-in">
+                        <div className="neumorphic animate-fade-in">
                             <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                    <i className="bi bi-lightning-charge-fill text-amber-500" />
-                                    إجراءات سريعة
-                                </h3>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
+                                            <i className="bi bi-lightning-charge text-white text-xl" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                                                إجراءات سريعة
+                                            </h3>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">وصول سريع للعمليات الأساسية</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowCommandPalette(true)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-colors flex items-center gap-2"
+                                    >
+                                        <i className="bi bi-search" />
+                                        <span>بحث سريع</span>
+                                        <kbd className="text-xs px-1.5 py-0.5 bg-white dark:bg-slate-600 rounded border border-gray-200 dark:border-slate-500 font-mono">
+                                            Ctrl+K
+                                        </kbd>
+                                    </button>
+                                </div>
                             </div>
                             <div className="p-6">
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
@@ -562,11 +581,10 @@ function Dashboard() {
                                         <button
                                             key={index}
                                             onClick={() => navigate(action.path)}
-                                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 dark:bg-slate-700/50 hover:bg-gradient-to-br hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-white/50"
-                                            style={{ '--tw-gradient-from': '', '--tw-gradient-to': '' }}
+                                            className="group flex flex-col items-center justify-center p-5 rounded-2xl bg-gray-50 dark:bg-slate-700/50 hover:bg-white dark:hover:bg-slate-700 hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-gray-100 dark:hover:border-slate-600"
                                         >
-                                            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
-                                                <i className={`bi ${action.icon} text-white text-xl`} />
+                                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300`}>
+                                                <i className={`bi ${action.icon} text-white text-2xl`} />
                                             </div>
                                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">{action.label}</span>
                                         </button>
@@ -587,13 +605,19 @@ function Dashboard() {
             {/* Render Widgets */}
             {layout.map(id => renderWidget(id))}
 
+            {/* Command Palette */}
+            <CommandPalette
+                isOpen={showCommandPalette}
+                onClose={() => setShowCommandPalette(false)}
+            />
+
             {/* Config Modal */}
             {showConfigModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
                         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setShowConfigModal(false)} />
 
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-200 dark:border-slate-700">
+                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-200 dark:border-slate-700 animate-fade-in-scale">
                             <div className="p-6 border-b border-gray-100 dark:border-slate-700">
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                     <i className="bi bi-gear text-emerald-600 dark:text-emerald-400" />
@@ -607,7 +631,7 @@ function Dashboard() {
                                     {tempLayout.map((id, index) => {
                                         const widget = WIDGETS.find(w => w.id === id);
                                         return (
-                                            <li key={id} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl flex justify-between items-center">
+                                            <li key={id} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl flex justify-between items-center hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                                                 <div className="flex items-center gap-3">
                                                     <input
                                                         type="checkbox"
@@ -622,7 +646,7 @@ function Dashboard() {
                                                         type="button"
                                                         disabled={index === 0}
                                                         onClick={() => moveWidget(index, 'up')}
-                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30"
+                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30 transition-colors"
                                                     >
                                                         <i className="bi bi-arrow-up" />
                                                     </button>
@@ -630,7 +654,7 @@ function Dashboard() {
                                                         type="button"
                                                         disabled={index === tempLayout.length - 1}
                                                         onClick={() => moveWidget(index, 'down')}
-                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30"
+                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30 transition-colors"
                                                     >
                                                         <i className="bi bi-arrow-down" />
                                                     </button>
@@ -663,7 +687,7 @@ function Dashboard() {
                                 <button
                                     type="button"
                                     onClick={handleSaveConfig}
-                                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-colors flex items-center gap-2 shadow-lg hover:shadow-xl"
                                 >
                                     <i className="bi bi-check-lg" />
                                     حفظ التغييرات

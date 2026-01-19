@@ -91,8 +91,10 @@ def create_new_purchase(db: Session, purchase: schemas.PurchaseCreate, user_id: 
             bag_count=bag_count
         )
 
-        # Create General Ledger entries (Double-entry bookkeeping)
+        # Create General Ledger entries using AccountingEngine (ensures balance)
         # Detailed Description for Audit Trail
+        from app.services.accounting_engine import get_engine, LedgerEntry
+        
         formula_name = CALCULATION_FORMULAS.get(formula_key, {}).get('name_ar', 'كجم')
         ledger_description = f"شراء {net_weight_inventory} كجم {crop.crop_name} من المورد {supplier.name}"
         if bag_count:
@@ -102,27 +104,28 @@ def create_new_purchase(db: Session, purchase: schemas.PurchaseCreate, user_id: 
         inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
         accounts_payable_id = int(get_setting(db, "ACCOUNTS_PAYABLE_ID"))
 
-        # 1. Debit Inventory (increase in assets)
-        debit_entry = schemas.GeneralLedgerCreate(
+        # Use AccountingEngine for balanced entries
+        engine = get_engine(db)
+        engine.create_balanced_entry(
+            entries=[
+                LedgerEntry(
+                    account_id=inventory_id,
+                    debit=total_cost,
+                    credit=Decimal(0),
+                    description=ledger_description
+                ),
+                LedgerEntry(
+                    account_id=accounts_payable_id,
+                    debit=Decimal(0),
+                    credit=total_cost,
+                    description=ledger_description
+                )
+            ],
             entry_date=purchase.purchase_date,
-            account_id=inventory_id,
-            debit=total_cost,
-            description=ledger_description
+            source_type='PURCHASE',
+            source_id=db_purchase.purchase_id,
+            created_by=user_id
         )
-        crud.create_ledger_entry(db, entry=debit_entry, source_type='PURCHASE', source_id=db_purchase.purchase_id, created_by=user_id)
-
-        # 2. Credit Accounts Payable (increase in liabilities)
-        credit_entry = schemas.GeneralLedgerCreate(
-            entry_date=purchase.purchase_date,
-            account_id=accounts_payable_id,
-            credit=total_cost,
-            description=ledger_description
-        )
-        crud.create_ledger_entry(db, entry=credit_entry, source_type='PURCHASE', source_id=db_purchase.purchase_id, created_by=user_id)
-
-        # Update account balances
-        crud.update_account_balance(db, account_id=inventory_id, amount=total_cost)
-        crud.update_account_balance(db, account_id=accounts_payable_id, amount=total_cost)
 
         db.commit()
         db.refresh(db_purchase)

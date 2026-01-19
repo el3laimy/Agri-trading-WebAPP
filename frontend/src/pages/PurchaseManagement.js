@@ -4,10 +4,16 @@ import { usePurchases, useCreatePurchase, useUpdatePurchase, useDeletePurchase }
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import PaymentForm from '../components/PaymentForm';
-import { CropFilterTabs } from '../components/sales';
 import { PurchaseForm, PurchasesTable } from '../components/purchases';
 import { validatePurchaseForm } from '../utils/formValidation';
 import { useToast } from '../components/common';
+
+// Import new components
+import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+import { PurchasesTrendChart, PurchasesByStatusChart, TopSuppliersChart, PurchasesStatsCards } from '../components/purchases/charts/PurchasesCharts';
+
+// Import CSS animations
+import '../styles/dashboardAnimations.css';
 
 // Initial form state
 const getInitialFormState = () => ({
@@ -19,12 +25,11 @@ const getInitialFormState = () => ({
     purchasing_pricing_unit: 'kg',
     conversion_factor: 1.0,
     amount_paid: '',
-    // Fields for Complex Crops
     gross_quantity: '',
     bag_count: '',
-    tare_per_bag: '',  // العيار/كيس - يدخله المستخدم
-    tare_weight: '',   // إجمالي العيار (محسوب)
-    calculation_formula: 'qantar_government' // الافتراضي: حكومي
+    tare_per_bag: '',
+    tare_weight: '',
+    calculation_formula: 'qantar_government'
 });
 
 function PurchaseManagement() {
@@ -46,6 +51,9 @@ function PurchaseManagement() {
     const [validationErrors, setValidationErrors] = useState({});
     const [lastPriceHint, setLastPriceHint] = useState(null);
 
+    // Charts visibility toggle
+    const [showCharts, setShowCharts] = useState(true);
+
     // Payment modal state
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [payingPurchase, setPayingPurchase] = useState(null);
@@ -65,9 +73,7 @@ function PurchaseManagement() {
                         date: new Date(lastData.purchase_date).toLocaleDateString('en-US')
                     });
 
-                    // Auto-fill only if price field is empty
                     if (!formState.price_input) {
-                        // Adjust price based on current unit
                         const factor = formState.conversion_factor || 1;
                         const pricePerUnit = lastData.unit_price * factor;
                         setFormState(prev => ({ ...prev, price_input: pricePerUnit.toString() }));
@@ -84,7 +90,6 @@ function PurchaseManagement() {
     const handleInputChange = useCallback((event) => {
         const { name, value } = event.target;
 
-        // Clear error when user types
         if (validationErrors[name]) {
             setValidationErrors(prev => ({ ...prev, [name]: null }));
         }
@@ -106,7 +111,6 @@ function PurchaseManagement() {
                 [name]: value,
                 purchasing_pricing_unit: defaultUnit,
                 conversion_factor: defaultFactor,
-                // Reset complex fields when crop changes
                 gross_quantity: '',
                 bag_count: '',
                 tare_per_bag: '',
@@ -121,7 +125,6 @@ function PurchaseManagement() {
                 conversion_factor: factor
             }));
         } else {
-            // Complex Calculation Logic
             let updates = { [name]: value };
 
             if (currentCrop?.is_complex_unit) {
@@ -129,13 +132,11 @@ function PurchaseManagement() {
                 let newBags = name === 'bag_count' ? parseFloat(value) || 0 : parseFloat(formState.bag_count) || 0;
                 let newTarePerBag = name === 'tare_per_bag' ? parseFloat(value) || 0 : parseFloat(formState.tare_per_bag) || currentCrop.default_tare_per_bag || 0;
 
-                // Auto-calculate Total Tare = Bags × Tare per Bag
                 if (name === 'bag_count' || name === 'tare_per_bag') {
                     const totalTare = newBags * newTarePerBag;
                     updates.tare_weight = totalTare;
                 }
 
-                // Calculate Net (quantity_input) = Gross - Tare
                 if (name === 'gross_quantity' || name === 'bag_count' || name === 'tare_per_bag') {
                     const totalTare = newBags * newTarePerBag;
                     const netWeight = Math.max(0, newGross - totalTare);
@@ -143,7 +144,6 @@ function PurchaseManagement() {
                     updates.tare_weight = totalTare;
                 }
 
-                // Update tare_per_bag when it changes
                 if (name === 'tare_per_bag') {
                     updates.tare_per_bag = value;
                 }
@@ -157,7 +157,6 @@ function PurchaseManagement() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validate Form
         const validation = validatePurchaseForm(formState, currentCrop);
         if (!validation.isValid) {
             setValidationErrors(validation.errors);
@@ -167,7 +166,6 @@ function PurchaseManagement() {
 
         try {
             const quantity_kg = parseFloat(formState.quantity_input);
-            // Price input is per Unit. Unit Price per KG = Price per Unit / Conversion Factor
             const unit_price_per_kg = parseFloat(formState.price_input) / parseFloat(formState.conversion_factor);
 
             const submissionData = {
@@ -179,13 +177,10 @@ function PurchaseManagement() {
                 purchasing_pricing_unit: formState.purchasing_pricing_unit,
                 conversion_factor: formState.conversion_factor,
                 amount_paid: parseFloat(formState.amount_paid) || 0,
-                // Complex Fields
                 gross_quantity: formState.gross_quantity ? parseFloat(formState.gross_quantity) : null,
                 bag_count: formState.bag_count ? parseInt(formState.bag_count) : 0,
                 tare_weight: formState.tare_weight ? parseFloat(formState.tare_weight) : 0,
                 calculation_formula: currentCrop?.is_complex_unit ? formState.calculation_formula : null,
-
-                // Note: quantity_input is KG. We might want to save the calculated units in the note for reference.
                 notes: `Original Input: ${formState.quantity_input} KG. Converted to approx ${(quantity_kg / formState.conversion_factor).toFixed(2)} ${formState.purchasing_pricing_unit} @ ${formState.price_input}/${formState.purchasing_pricing_unit}`
             };
 
@@ -197,7 +192,6 @@ function PurchaseManagement() {
                 await createMutation.mutateAsync(submissionData);
                 showSuccess("تم تسجيل عملية الشراء بنجاح");
             }
-            // No need to manually refetch - TanStack Query handles invalidation
             setFormState(getInitialFormState());
             setCurrentCrop(null);
             setShowAddForm(false);
@@ -231,21 +225,36 @@ function PurchaseManagement() {
             });
             if (!response.ok) throw new Error('Failed to save payment.');
             handleCancelPayment();
-            refetchPurchases(); // Use TanStack Query refetch
+            refetchPurchases();
         } catch (err) {
             console.error("Payment error:", err);
             setError(err.message);
         }
     };
 
-    // Status badge
+    // Status badge - Enhanced design
     const getStatusBadge = (status) => {
-        switch (status) {
-            case 'PAID': return <span className="badge bg-success">مدفوع</span>;
-            case 'PARTIAL': return <span className="badge bg-warning text-dark">جزئي</span>;
-            case 'PENDING':
-            default: return <span className="badge bg-danger">معلق</span>;
-        }
+        const badges = {
+            PAID: (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
+                    <i className="bi bi-check-circle-fill text-[10px]" />
+                    مدفوع
+                </span>
+            ),
+            PARTIAL: (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                    <i className="bi bi-clock-fill text-[10px]" />
+                    جزئي
+                </span>
+            ),
+            PENDING: (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-red-100 to-rose-100 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                    <i className="bi bi-exclamation-circle-fill text-[10px]" />
+                    معلق
+                </span>
+            )
+        };
+        return badges[status] || badges.PENDING;
     };
 
     // Edit handler
@@ -277,7 +286,6 @@ function PurchaseManagement() {
         }
         try {
             await deleteMutation.mutateAsync(purchase.purchase_id);
-            // No need to manually refetch - TanStack Query handles invalidation
         } catch (err) {
             console.error("Failed to delete purchase:", err);
             setError(err.response?.data?.detail || "فشل في حذف عملية الشراء");
@@ -300,7 +308,7 @@ function PurchaseManagement() {
     // Set default filter
     useEffect(() => {
         if (uniqueCrops.length > 0 && selectedCropFilter === null && purchases.length > 0) {
-            setSelectedCropFilter(uniqueCrops[0].crop.crop_id);
+            setSelectedCropFilter('all');
         }
     }, [uniqueCrops, purchases.length, selectedCropFilter]);
 
@@ -320,22 +328,33 @@ function PurchaseManagement() {
     }, [purchases, searchTerm, selectedCropFilter]);
 
     // Calculate totals
-    // quantity_input is now KG. 
-    // calculatedQtyUnit = KG / Factor
     const calculatedQtyUnit = parseFloat(formState.quantity_input || 0) / parseFloat(formState.conversion_factor || 1);
-    // Total Price = Units * PricePerUnit
     const calculatedTotal = calculatedQtyUnit * parseFloat(formState.price_input || 0);
     const calculatedQtyKg = parseFloat(formState.quantity_input || 0);
 
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="p-6 max-w-full mx-auto">
+                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                    <div className="h-40 bg-gradient-to-br from-blue-200 to-cyan-200 dark:from-blue-800/30 dark:to-cyan-800/30" />
+                </div>
+                <div className="neumorphic p-6">
+                    <LoadingCard rows={6} />
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="container mx-auto px-4 py-8 animate-fade-in">
+        <div className="p-6 max-w-full mx-auto">
             {/* Payment Form Modal */}
             {showPaymentForm && payingPurchase && (
                 <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500/75 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity" onClick={handleCancelPayment}></div>
+                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={handleCancelPayment}></div>
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-lg text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-200 dark:border-slate-700 animate-fade-in-scale">
                             <PaymentForm
                                 purchase={payingPurchase}
                                 onSave={handleSavePayment}
@@ -346,87 +365,119 @@ function PurchaseManagement() {
                 </div>
             )}
 
-            {/* Header */}
-            <div className="mb-8">
-                <div className="w-full">
-                    <h2 className="text-2xl font-bold text-emerald-900 dark:text-emerald-400 flex items-center transition-colors">
-                        <i className="bi bi-bag-check ml-2"></i>
-                        إدارة المشتريات
-                    </h2>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1 transition-colors">إدارة وتتبع جميع عمليات الشراء</p>
-                </div>
-            </div>
+            {/* Page Header with Stats */}
+            <PageHeader
+                title="إدارة المشتريات"
+                subtitle="إدارة وتتبع جميع عمليات الشراء والمدفوعات"
+                icon="bi-bag-check"
+                gradient="from-blue-500 to-cyan-500"
+                actions={
+                    <>
+                        <button
+                            onClick={() => setShowCharts(!showCharts)}
+                            className={`p-3 rounded-xl transition-all ${showCharts ? 'bg-white/30 text-white' : 'bg-white/10 text-white/70'}`}
+                            title="إظهار/إخفاء الرسوم البيانية"
+                        >
+                            <i className="bi bi-graph-up" />
+                        </button>
+                        {hasPermission('purchases:write') && (
+                            <ActionButton
+                                label={showAddForm ? 'إلغاء' : 'إضافة عملية شراء'}
+                                icon={showAddForm ? 'bi-x-lg' : 'bi-plus-lg'}
+                                onClick={() => setShowAddForm(!showAddForm)}
+                                variant={showAddForm ? 'danger' : 'primary'}
+                            />
+                        )}
+                    </>
+                }
+            >
+                {/* Stats Cards */}
+                <PurchasesStatsCards purchases={purchases} />
+            </PageHeader>
 
             {/* Error Alert */}
             {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border-r-4 border-red-500 p-4 mb-6 relative rounded-md shadow-sm transition-colors" role="alert">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <i className="bi bi-exclamation-triangle-fill text-red-400 dark:text-red-500 text-xl ml-3"></i>
+                <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-fade-in">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                            <i className="bi bi-exclamation-triangle-fill text-red-500" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-sm text-red-700 dark:text-red-300 font-medium">{error}</p>
+                            <p className="font-bold text-red-700 dark:text-red-400">خطأ في النظام</p>
+                            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
                         </div>
-                        <button
-                            type="button"
-                            className="absolute top-0 left-0 mt-4 ml-4 text-red-400 dark:text-red-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                            onClick={() => setError(null)}
-                        >
-                            <i className="bi bi-x-lg"></i>
+                        <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 p-1">
+                            <i className="bi bi-x-lg" />
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Action Bar */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div className="w-full md:w-1/2">
-                    <div className="relative">
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                            <i className="bi bi-search text-gray-400"></i>
-                        </div>
-                        <input
-                            type="text"
-                            className="block w-full pr-10 pl-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg leading-5 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition-all shadow-sm"
-                            placeholder="بحث بالمورد، المحصول أو رقم العملية..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+            {/* Charts Section */}
+            {showCharts && purchases.length > 0 && !showAddForm && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 animate-fade-in">
+                    {/* Trend Chart */}
+                    <div className="lg:col-span-2 neumorphic p-6">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <i className="bi bi-graph-up text-blue-500" />
+                            اتجاه المشتريات
+                        </h3>
+                        <PurchasesTrendChart purchases={purchases} />
+                    </div>
+
+                    {/* Status Chart */}
+                    <div className="neumorphic p-6">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <i className="bi bi-pie-chart text-cyan-500" />
+                            حالة الدفع
+                        </h3>
+                        <PurchasesByStatusChart purchases={purchases} />
                     </div>
                 </div>
-                <div className="w-full md:w-auto flex justify-end">
-                    {hasPermission('purchases:write') && (
-                        <button
-                            className={`inline-flex items-center px-4 py-2.5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white transition-all duration-200 ${showAddForm
-                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                                : 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500'
-                                } focus:outline-none focus:ring-2 focus:ring-offset-2`}
-                            onClick={() => setShowAddForm(!showAddForm)}
-                        >
-                            <i className={`bi ${showAddForm ? 'bi-x-lg' : 'bi-plus-lg'} ml-2`}></i>
-                            {showAddForm ? 'إلغاء' : 'إضافة عملية شراء جديدة'}
-                        </button>
-                    )}
-                </div>
+            )}
+
+            {/* Search and Filter */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <SearchBox
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="بحث بالمورد، المحصول أو رقم العملية..."
+                    className="w-full md:w-96"
+                />
             </div>
 
-            {/* Crop Filter Tabs */}
+            {/* Crop Filter Chips */}
             {!showAddForm && uniqueCrops.length > 0 && (
-                <CropFilterTabs
-                    uniqueCrops={uniqueCrops}
-                    selectedCropFilter={selectedCropFilter}
-                    onFilterChange={setSelectedCropFilter}
-                    totalCount={purchases.length}
-                />
+                <div className="flex flex-wrap gap-2 mb-6">
+                    <FilterChip
+                        label="الكل"
+                        count={purchases.length}
+                        icon="bi-grid"
+                        active={selectedCropFilter === 'all'}
+                        onClick={() => setSelectedCropFilter('all')}
+                        color="blue"
+                    />
+                    {uniqueCrops.map(({ crop, count }) => (
+                        <FilterChip
+                            key={crop.crop_id}
+                            label={crop.crop_name}
+                            count={count}
+                            icon="bi-flower1"
+                            active={selectedCropFilter === crop.crop_id}
+                            onClick={() => setSelectedCropFilter(crop.crop_id)}
+                            color="blue"
+                        />
+                    ))}
+                </div>
             )}
 
             {/* Add Purchase Form */}
             {showAddForm && (
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 mb-8 overflow-hidden animate-slide-down transition-colors">
-                    <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 transition-colors">
+                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
+                    <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
-                            <i className="bi bi-plus-circle-fill ml-2 text-emerald-600 dark:text-emerald-500"></i>
-                            تسجيل عملية شراء جديدة
+                            <i className="bi bi-plus-circle-fill ml-2 text-blue-600 dark:text-blue-400" />
+                            {editingPurchase ? 'تعديل عملية الشراء' : 'تسجيل عملية شراء جديدة'}
                         </h3>
                     </div>
                     <div className="p-6">
@@ -434,7 +485,7 @@ function PurchaseManagement() {
                             formState={formState}
                             onInputChange={handleInputChange}
                             onSubmit={handleSubmit}
-                            onCancel={() => setShowAddForm(false)}
+                            onCancel={() => { setShowAddForm(false); setEditingPurchase(null); }}
                             crops={crops}
                             suppliers={suppliers}
                             currentCrop={currentCrop}
@@ -449,44 +500,47 @@ function PurchaseManagement() {
             )}
 
             {/* Purchases Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center transition-colors">
-                    <h5 className="font-bold text-gray-800 dark:text-gray-200 mb-0 flex items-center">
-                        <i className="bi bi-list-ul ml-2 text-emerald-600 dark:text-emerald-500"></i>
+            <div className="neumorphic overflow-hidden animate-fade-in">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
+                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+                        <i className="bi bi-list-ul text-blue-500" />
                         سجل المشتريات
-                        <span className="mr-2 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 py-0.5 px-2.5 rounded-full text-xs font-semibold transition-colors">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
                             {filteredPurchases.length}
                         </span>
                     </h5>
-                    <button onClick={() => refetchPurchases()} className="text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" title="تحديث البيانات">
-                        <i className="bi bi-arrow-clockwise text-lg"></i>
-                    </button>
+
+                    {/* Top Suppliers Mini Chart (Desktop only) */}
+                    {purchases.length > 0 && (
+                        <div className="hidden lg:block w-64">
+                            <TopSuppliersChart purchases={purchases} />
+                        </div>
+                    )}
                 </div>
-                <div className="p-0">
+                <div>
                     {filteredPurchases.length === 0 ? (
-                        <div className="text-center py-12 bg-gray-50 dark:bg-slate-900/50 transition-colors">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-800 mb-4 transition-colors">
-                                <i className="bi bi-inbox text-3xl text-gray-400 dark:text-gray-500"></i>
+                        <div className="text-center py-16 animate-fade-in">
+                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+                                <i className="bi bi-inbox text-5xl text-blue-400 dark:text-blue-500" />
                             </div>
-                            <p className="text-gray-500 dark:text-gray-400 mb-4 font-medium">لا توجد عمليات شراء مسجلة</p>
+                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد عمليات شراء</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">لم يتم تسجيل أي عمليات شراء بعد</p>
                             <button
-                                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
                                 onClick={() => setShowAddForm(true)}
+                                className="inline-flex items-center px-5 py-2.5 rounded-xl font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all hover-scale"
                             >
-                                <i className="bi bi-plus-lg ml-2"></i>
+                                <i className="bi bi-plus-lg ml-2" />
                                 إضافة أول عملية شراء
                             </button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <PurchasesTable
-                                purchases={filteredPurchases}
-                                onRecordPayment={handleRecordPayment}
-                                onEdit={handleEdit}
-                                onDelete={handleDelete}
-                                getStatusBadge={getStatusBadge}
-                            />
-                        </div>
+                        <PurchasesTable
+                            purchases={filteredPurchases}
+                            onRecordPayment={handleRecordPayment}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            getStatusBadge={getStatusBadge}
+                        />
                     )}
                 </div>
             </div>

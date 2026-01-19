@@ -1,546 +1,352 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { getTreasurySummary, getTreasuryTransactions, createCashReceipt, createCashPayment, createQuickExpense, deleteTransaction, updateCashReceipt, updateCashPayment, updateQuickExpense } from '../api/treasury';
-import capitalAPI from '../api/capital';
-import { getContacts } from '../api/contacts';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { getTreasurySummary, getTreasuryTransactions, deleteTransaction } from '../api/treasury';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/common';
 
 // Import treasury components
-import {
-    CashReceiptModal,
-    CashPaymentModal,
-    QuickExpenseModal,
-    CapitalTransactionModal,
-} from '../components/treasury';
+import TreasuryKPICards from '../components/treasury/TreasuryKPICards';
+import TransactionsTable from '../components/treasury/TransactionsTable';
+import CashReceiptModal from '../components/treasury/CashReceiptModal';
+import CashPaymentModal from '../components/treasury/CashPaymentModal';
+import QuickExpenseModal from '../components/treasury/QuickExpenseModal';
 
-// Import shared utilities and components
-import { usePageState } from '../hooks';
-import { formatCurrency, formatDate } from '../utils';
-import { PageLoading } from '../components/common';
+// Import shared components
+import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
 
-// Initial form states
-const getInitialReceiptForm = () => ({
-    receipt_date: new Date().toISOString().slice(0, 10),
-    amount: '',
-    contact_id: '',
-    description: '',
-    reference_number: ''
-});
-
-const getInitialPaymentForm = () => ({
-    payment_date: new Date().toISOString().slice(0, 10),
-    amount: '',
-    contact_id: '',
-    description: '',
-    reference_number: ''
-});
-
-const getInitialExpenseForm = () => ({
-    expense_date: new Date().toISOString().slice(0, 10),
-    amount: '',
-    description: '',
-    category: ''
-});
-
-const getInitialCapitalForm = () => ({
-    transaction_date: new Date().toISOString().slice(0, 10),
-    amount: '',
-    type: 'CONTRIBUTION',
-    owner_name: '',
-    description: '',
-    reference_number: ''
-});
+// Import CSS animations
+import '../styles/dashboardAnimations.css';
 
 function TreasuryManagement() {
-    // Data states
+    const { hasPermission } = useAuth();
+    const { showSuccess, showError } = useToast();
+
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
     const [summary, setSummary] = useState(null);
     const [transactions, setTransactions] = useState([]);
-    const [contacts, setContacts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedFilter, setSelectedFilter] = useState('all');
 
     // Modal states
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [showCapitalModal, setShowCapitalModal] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
 
-    // Use shared page state hook for error/success handling
-    const { error: errorMessage, successMessage, showSuccess, showError } = usePageState();
-
-    // Form states
-    const [receiptForm, setReceiptForm] = useState(getInitialReceiptForm());
-    const [paymentForm, setPaymentForm] = useState(getInitialPaymentForm());
-    const [expenseForm, setExpenseForm] = useState(getInitialExpenseForm());
-    const [capitalForm, setCapitalForm] = useState(getInitialCapitalForm());
+    // Format currency
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('ar-EG', {
+            style: 'currency',
+            currency: 'EGP',
+            minimumFractionDigits: 0
+        }).format(value || 0);
+    };
 
     // Fetch data
-    const fetchData = useCallback(async (date) => {
-        setLoading(true);
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
         try {
-            const dateStr = date.toISOString().slice(0, 10);
             const [summaryData, transactionsData] = await Promise.all([
-                getTreasurySummary(dateStr),
-                getTreasuryTransactions(dateStr, 100) // Increase limit to show more
+                getTreasurySummary(selectedDate),
+                getTreasuryTransactions(selectedDate)
             ]);
             setSummary(summaryData);
             setTransactions(transactionsData);
-        } catch (error) {
-            console.error("Failed to fetch treasury data:", error);
+        } catch (err) {
+            console.error('Failed to fetch treasury data:', err);
+            setError('فشل في تحميل بيانات الخزينة');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
-    }, []);
-
-    const fetchContacts = useCallback(async () => {
-        try {
-            const data = await getContacts();
-            setContacts(data);
-        } catch (error) {
-            console.error("Failed to fetch contacts:", error);
-        }
-    }, []);
+    }, [selectedDate]);
 
     useEffect(() => {
-        fetchData(selectedDate);
-        fetchContacts();
-    }, [selectedDate, fetchData, fetchContacts]);
+        fetchData();
+    }, [fetchData]);
 
-    // Submit handlers (Keeping logic same, just UI change)
-    const handleReceiptSubmit = async (e) => {
-        e.preventDefault();
-        if (!receiptForm.amount || receiptForm.amount <= 0) {
-            showError('يرجى إدخال مبلغ صحيح');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const data = {
-                ...receiptForm,
-                amount: parseFloat(receiptForm.amount),
-                contact_id: receiptForm.contact_id ? parseInt(receiptForm.contact_id) : null
-            };
-
-            if (editingTransaction) {
-                await updateCashReceipt(editingTransaction.transaction_id, data);
-                showSuccess('تم تحديث القبض بنجاح');
-            } else {
-                await createCashReceipt(data);
-                showSuccess('تم تسجيل القبض بنجاح');
-            }
-
-            setShowReceiptModal(false);
-            setReceiptForm(getInitialReceiptForm());
-            setEditingTransaction(null);
-            fetchData(selectedDate);
-        } catch (error) {
-            showError('فشل حفظ القبض: ' + (error.response?.data?.detail || error.message));
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handlePaymentSubmit = async (e) => {
-        e.preventDefault();
-        if (!paymentForm.amount || paymentForm.amount <= 0) {
-            showError('يرجى إدخال مبلغ صحيح');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const data = {
-                ...paymentForm,
-                amount: parseFloat(paymentForm.amount),
-                contact_id: paymentForm.contact_id ? parseInt(paymentForm.contact_id) : null
-            };
-
-            if (editingTransaction) {
-                await updateCashPayment(editingTransaction.transaction_id, data);
-                showSuccess('تم تحديث الصرف بنجاح');
-            } else {
-                await createCashPayment(data);
-                showSuccess('تم تسجيل الصرف بنجاح');
-            }
-
-            setShowPaymentModal(false);
-            setPaymentForm(getInitialPaymentForm());
-            setEditingTransaction(null);
-            fetchData(selectedDate);
-        } catch (error) {
-            showError('فشل حفظ الصرف: ' + (error.response?.data?.detail || error.message));
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleExpenseSubmit = async (e) => {
-        e.preventDefault();
-        if (!expenseForm.amount || expenseForm.amount <= 0) {
-            showError('يرجى إدخال مبلغ صحيح');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const data = {
-                ...expenseForm,
-                amount: parseFloat(expenseForm.amount)
-            };
-
-            if (editingTransaction) {
-                await updateQuickExpense(editingTransaction.transaction_id, data);
-                showSuccess('تم تحديث المصروف بنجاح');
-            } else {
-                await createQuickExpense(data);
-                showSuccess('تم تسجيل المصروف بنجاح');
-            }
-
-            setShowExpenseModal(false);
-            setExpenseForm(getInitialExpenseForm());
-            setEditingTransaction(null);
-            fetchData(selectedDate);
-        } catch (error) {
-            showError('فشل حفظ المصروف: ' + (error.response?.data?.detail || error.message));
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleCapitalSubmit = async (e) => {
-        e.preventDefault();
-        if (!capitalForm.amount || capitalForm.amount <= 0) {
-            showError('يرجى إدخال مبلغ صحيح');
-            return;
-        }
-        if (!capitalForm.owner_name) {
-            showError('يرجى إدخال اسم المالك/الشريك');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const data = {
-                ...capitalForm,
-                amount: parseFloat(capitalForm.amount)
-            };
-            await capitalAPI.createTransaction(data);
-            showSuccess('تم تسجيل حركة رأس المال بنجاح');
-            setShowCapitalModal(false);
-            setCapitalForm(getInitialCapitalForm());
-            fetchData(selectedDate);
-        } catch (error) {
-            showError('فشل تسجيل الحركة: ' + (error.response?.data?.detail || error.message));
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    // --- Tailwind Components Internal Definition ---
-
-    const StatCard = ({ title, value, icon, gradient, textColor = 'text-white' }) => (
-        <div className="relative overflow-hidden rounded-xl shadow-sm h-full" style={{ background: gradient }}>
-            <div className={`p-6 relative z-10 ${textColor}`}>
-                <div className="flex items-center mb-4">
-                    <div className="bg-white/20 rounded-full p-2 flex items-center justify-center me-3 w-10 h-10">
-                        <i className={`bi ${icon} text-xl`}></i>
-                    </div>
-                    <span className="opacity-90 text-sm font-bold">{title}</span>
-                </div>
-                <h4 className="text-3xl font-bold">{formatCurrency(value)}</h4>
-            </div>
-            <div className="absolute -bottom-4 -left-4 opacity-10">
-                <i className={`bi ${icon} text-9xl text-white`}></i>
-            </div>
-        </div>
-    );
-
-    const TransactionCard = ({ transaction, type }) => {
-        const isReceipt = type === 'receipt';
-        const colorClass = isReceipt ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
-        const bgIcon = isReceipt ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30';
-        const iconColor = isReceipt ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
-
-        return (
-            <div className="bg-white dark:bg-slate-800 rounded-lg p-4 mb-3 border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow text-right">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-4">
-                        <div className={`${bgIcon} w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-colors`}>
-                            <i className={`bi ${isReceipt ? 'bi-arrow-down-left' : 'bi-arrow-up-right'} ${iconColor} text-xl`}></i>
-                        </div>
-                        <div className="text-right">
-                            <h6 className="font-bold text-gray-800 dark:text-gray-100 mb-1">
-                                {isReceipt
-                                    ? (transaction.contact_name ? `استلام من ${transaction.contact_name}` : 'قبض نقدية')
-                                    : (transaction.contact_name
-                                        ? `صرف لـ ${transaction.contact_name}`
-                                        : (transaction.source === 'QUICK_EXPENSE' ? (transaction.description || 'مصروف سريع') : 'صرف نقدية'))}
-                            </h6>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm mb-0">
-                                {transaction.source === 'QUICK_EXPENSE' ? 'مصروف سريع' : transaction.description}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="text-end">
-                        <h6 className={`font-bold text-lg mb-1 ${colorClass} dir-ltr`}>
-                            {isReceipt ? '+' : '-'}{formatCurrency(transaction.amount)}
-                        </h6>
-                        <div className="flex items-center justify-end gap-2">
-                            <span className="bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded text-xs font-medium border border-gray-200 dark:border-slate-600 transition-colors">
-                                {formatDate(transaction.date)}
-                            </span>
-                            <button
-                                className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                onClick={() => handleEditTransaction(transaction, type)}
-                                title="تعديل المعاملة"
-                            >
-                                <i className="bi bi-pencil"></i>
-                            </button>
-                            <button
-                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                                onClick={() => handleDeleteTransaction(transaction.transaction_id)}
-                                title="حذف المعاملة"
-                            >
-                                <i className="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const handleDeleteTransaction = async (id) => {
-        if (window.confirm('هل أنت متأكد من حذف هذه المعاملة؟ لا يمكن التراجع عن هذا الإجراء.')) {
-            try {
-                setLoading(true);
-                await deleteTransaction(id);
-                showSuccess('تم حذف المعاملة بنجاح');
-                fetchData(selectedDate);
-            } catch (error) {
-                showError('فشل حذف المعاملة: ' + (error.response?.data?.detail || error.message));
-                setLoading(false);
-            }
-        }
-    };
-
-    const handleEditTransaction = (transaction, type) => {
+    // Handle transaction actions
+    const handleEdit = (transaction) => {
         setEditingTransaction(transaction);
-        if (type === 'receipt') {
-            setReceiptForm({
-                receipt_date: transaction.date,
-                amount: transaction.amount,
-                contact_id: transaction.contact_id || '',
-                description: transaction.description,
-                reference_number: ''
-            });
+        if (transaction.transaction_type === 'CASH_IN') {
             setShowReceiptModal(true);
-        } else if (type === 'payment') {
-            if (transaction.source === 'QUICK_EXPENSE' || transaction.source === 'EXPENSE') {
-                setExpenseForm({
-                    expense_date: transaction.date,
-                    amount: transaction.amount,
-                    description: transaction.description,
-                    category: ''
-                });
-                setShowExpenseModal(true);
-            } else {
-                setPaymentForm({
-                    payment_date: transaction.date,
-                    amount: transaction.amount,
-                    contact_id: transaction.contact_id || '',
-                    description: transaction.description,
-                    reference_number: ''
-                });
-                setShowPaymentModal(true);
-            }
+        } else if (transaction.transaction_type === 'CASH_OUT') {
+            setShowPaymentModal(true);
+        } else if (transaction.transaction_type === 'EXPENSE') {
+            setShowExpenseModal(true);
         }
+    };
+
+    const handleDelete = async (transaction) => {
+        if (!window.confirm(`هل أنت متأكد من حذف هذه العملية؟`)) {
+            return;
+        }
+        try {
+            await deleteTransaction(transaction.transaction_id);
+            showSuccess('تم حذف العملية بنجاح');
+            fetchData();
+        } catch (err) {
+            console.error('Failed to delete transaction:', err);
+            showError('فشل في حذف العملية');
+        }
+    };
+
+    const handleModalClose = () => {
+        setShowReceiptModal(false);
+        setShowPaymentModal(false);
+        setShowExpenseModal(false);
+        setEditingTransaction(null);
+    };
+
+    const handleModalSuccess = () => {
+        handleModalClose();
+        fetchData();
+        showSuccess('تمت العملية بنجاح');
     };
 
     // Filter transactions
-    const receipts = transactions.filter(t => t.type === 'IN');
-    const payments = transactions.filter(t => t.type === 'OUT');
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            const matchesSearch =
+                t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                t.reference_number?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    if (loading && !summary) {
-        return <PageLoading text="جاري تحميل بيانات الخزينة..." />;
+            const matchesFilter = selectedFilter === 'all'
+                ? true
+                : t.transaction_type === selectedFilter;
+
+            return matchesSearch && matchesFilter;
+        });
+    }, [transactions, searchTerm, selectedFilter]);
+
+    // Stats from summary
+    const stats = useMemo(() => {
+        if (!summary) return [];
+        return [
+            {
+                label: 'رصيد البداية',
+                value: formatCurrency(summary.opening_balance),
+                icon: 'bi-wallet2',
+                gradient: 'from-gray-500/30 to-gray-600/30'
+            },
+            {
+                label: 'المقبوضات',
+                value: formatCurrency(summary.total_in_today),
+                icon: 'bi-arrow-down-circle',
+                gradient: 'from-green-500/30 to-emerald-500/30'
+            },
+            {
+                label: 'المدفوعات',
+                value: formatCurrency(summary.total_out_today),
+                icon: 'bi-arrow-up-circle',
+                gradient: 'from-red-500/30 to-rose-500/30'
+            },
+            {
+                label: 'رصيد الإغلاق',
+                value: formatCurrency(summary.closing_balance),
+                icon: 'bi-safe',
+                gradient: 'from-amber-500/30 to-yellow-500/30'
+            }
+        ];
+    }, [summary]);
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="p-6 max-w-full mx-auto">
+                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                    <div className="h-40 bg-gradient-to-br from-amber-200 to-yellow-200 dark:from-amber-800/30 dark:to-yellow-800/30" />
+                </div>
+                <div className="neumorphic p-6">
+                    <LoadingCard rows={6} />
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto font-sans">
-            {/* Success/Error Messages */}
-            {successMessage && (
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 border-s-4 border-emerald-500 p-4 mb-6 rounded shadow-sm flex items-center animate-fade-in text-right">
-                    <i className="bi bi-check-circle-fill text-emerald-500 text-xl me-3"></i>
-                    <p className="text-emerald-800 dark:text-emerald-300 font-medium m-0">{successMessage}</p>
-                </div>
+        <div className="p-6 max-w-full mx-auto">
+            {/* Modals */}
+            {showReceiptModal && (
+                <CashReceiptModal
+                    transaction={editingTransaction}
+                    onClose={handleModalClose}
+                    onSuccess={handleModalSuccess}
+                />
             )}
-            {errorMessage && (
-                <div className="bg-red-50 dark:bg-red-900/20 border-s-4 border-red-500 p-4 mb-6 rounded shadow-sm flex items-center animate-fade-in text-right">
-                    <i className="bi bi-exclamation-triangle-fill text-red-500 text-xl me-3"></i>
-                    <p className="text-red-800 dark:text-red-300 font-medium m-0">{errorMessage}</p>
-                </div>
+            {showPaymentModal && (
+                <CashPaymentModal
+                    transaction={editingTransaction}
+                    onClose={handleModalClose}
+                    onSuccess={handleModalSuccess}
+                />
+            )}
+            {showExpenseModal && (
+                <QuickExpenseModal
+                    transaction={editingTransaction}
+                    onClose={handleModalClose}
+                    onSuccess={handleModalSuccess}
+                />
             )}
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 text-right">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">دفتر الخزينة اليومي</h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">متابعة حركة النقدية الصادرة والواردة</p>
-                </div>
-                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 flex items-center transition-colors">
-                    <span className="text-gray-500 dark:text-gray-400 text-xs px-2 border-l border-gray-200 dark:border-slate-700 font-bold">التاريخ:</span>
-                    <div className="flex items-center px-2">
-                        <DatePicker
-                            selected={selectedDate}
-                            onChange={(date) => setSelectedDate(date)}
-                            className="bg-transparent border-none text-center font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none w-24 cursor-pointer"
-                            dateFormat="dd/MM/yyyy"
+            {/* Page Header with Stats */}
+            <PageHeader
+                title="إدارة الخزينة"
+                subtitle="تتبع التدفقات النقدية اليومية والأرصدة"
+                icon="bi-safe"
+                gradient="from-amber-500 to-yellow-500"
+                actions={
+                    <>
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="px-4 py-2.5 rounded-xl bg-white/20 text-white border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50"
                         />
-                        <i className="bi bi-calendar-event text-emerald-500 dark:text-emerald-400"></i>
+                        {hasPermission('treasury:write') && (
+                            <>
+                                <ActionButton
+                                    label="قبض"
+                                    icon="bi-arrow-down-circle"
+                                    onClick={() => { setEditingTransaction(null); setShowReceiptModal(true); }}
+                                    variant="secondary"
+                                />
+                                <ActionButton
+                                    label="صرف"
+                                    icon="bi-arrow-up-circle"
+                                    onClick={() => { setEditingTransaction(null); setShowPaymentModal(true); }}
+                                    variant="secondary"
+                                />
+                                <ActionButton
+                                    label="مصروف سريع"
+                                    icon="bi-lightning"
+                                    onClick={() => { setEditingTransaction(null); setShowExpenseModal(true); }}
+                                    variant="primary"
+                                />
+                            </>
+                        )}
+                    </>
+                }
+            >
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {stats.map((stat, index) => (
+                        <div
+                            key={index}
+                            className={`glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-${index + 1}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center animate-float`}>
+                                    <i className={`bi ${stat.icon} text-lg`} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-white/70">{stat.label}</p>
+                                    <p className="text-lg font-bold">{stat.value}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </PageHeader>
+
+            {/* Error Alert */}
+            {error && (
+                <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-fade-in">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                            <i className="bi bi-exclamation-triangle-fill text-red-500" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-red-700 dark:text-red-400">خطأ في النظام</p>
+                            <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
+                        </div>
+                        <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 p-1">
+                            <i className="bi bi-x-lg" />
+                        </button>
                     </div>
                 </div>
+            )}
+
+            {/* Search and Filter */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <SearchBox
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="بحث في العمليات..."
+                    className="w-full md:w-96"
+                />
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 text-right">
-                <StatCard
-                    title="رصيد افتتاحي"
-                    value={summary?.opening_balance || 0}
-                    icon="bi-safe"
-                    gradient="linear-gradient(135deg, #64748b 0%, #475569 100%)"
+            {/* Filter Chips */}
+            <div className="flex flex-wrap gap-2 mb-6">
+                <FilterChip
+                    label="الكل"
+                    count={transactions.length}
+                    icon="bi-grid"
+                    active={selectedFilter === 'all'}
+                    onClick={() => setSelectedFilter('all')}
+                    color="amber"
                 />
-                <StatCard
-                    title="إجمالي المقبوضات"
-                    value={summary?.total_in_today || 0}
+                <FilterChip
+                    label="المقبوضات"
+                    count={transactions.filter(t => t.transaction_type === 'CASH_IN').length}
                     icon="bi-arrow-down-circle"
-                    gradient="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                    active={selectedFilter === 'CASH_IN'}
+                    onClick={() => setSelectedFilter('CASH_IN')}
+                    color="emerald"
                 />
-                <StatCard
-                    title="إجمالي المصروفات"
-                    value={summary?.total_out_today || 0}
+                <FilterChip
+                    label="المدفوعات"
+                    count={transactions.filter(t => t.transaction_type === 'CASH_OUT').length}
                     icon="bi-arrow-up-circle"
-                    gradient="linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+                    active={selectedFilter === 'CASH_OUT'}
+                    onClick={() => setSelectedFilter('CASH_OUT')}
+                    color="amber"
                 />
-                <StatCard
-                    title="رصيد الإغلاق المتوقع"
-                    value={summary?.closing_balance || 0}
-                    icon="bi-wallet2"
-                    gradient="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"
+                <FilterChip
+                    label="المصروفات"
+                    count={transactions.filter(t => t.transaction_type === 'EXPENSE').length}
+                    icon="bi-lightning"
+                    active={selectedFilter === 'EXPENSE'}
+                    onClick={() => setSelectedFilter('EXPENSE')}
+                    color="amber"
                 />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap justify-center gap-4 mb-8 text-right">
-                <button
-                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-                    onClick={() => setShowReceiptModal(true)}
-                >
-                    <i className="bi bi-plus-circle me-2 text-xl"></i> استلام نقدية (قبض)
-                </button>
-                <button
-                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5 dark:bg-red-500 dark:hover:bg-red-600"
-                    onClick={() => setShowPaymentModal(true)}
-                >
-                    <i className="bi bi-dash-circle me-2 text-xl"></i> صرف نقدية
-                </button>
-                <button
-                    className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5 dark:bg-amber-400 dark:hover:bg-amber-500"
-                    onClick={() => setShowExpenseModal(true)}
-                >
-                    <i className="bi bi-lightning me-2 text-xl"></i> تسجيل مصروف
-                </button>
-                <button
-                    className="px-6 py-3 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 rounded-xl shadow-sm font-bold flex items-center transition-all hover:shadow-md transform hover:-translate-y-0.5"
-                    onClick={() => setShowCapitalModal(true)}
-                >
-                    <i className="bi bi-bank me-2 text-xl"></i> رأس المال
-                </button>
-            </div>
-
-            {/* Split Operations View */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-right">
-                {/* Receipts Column */}
-                <div className="bg-gray-50/50 dark:bg-slate-900/20 rounded-2xl p-1 border border-gray-100 dark:border-slate-700 h-full flex flex-col transition-colors">
-                    <div className="bg-emerald-600 dark:bg-emerald-900/50 text-white p-4 rounded-xl flex justify-between items-center mb-4 shadow-sm">
-                        <h5 className="mb-0 font-bold flex items-center"><i className="bi bi-download me-2"></i> حركة الوارد (المقبوضات)</h5>
-                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold border border-white/30">{receipts.length} حركة</span>
-                    </div>
-                    <div className="px-2 flex-grow overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                        {receipts.length > 0 ? (
-                            receipts.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="receipt" />)
-                        ) : (
-                            <div className="text-center py-12 text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center h-full">
-                                <div className="bg-gray-100 dark:bg-slate-800 p-4 rounded-full mb-3 transition-colors">
-                                    <i className="bi bi-inbox text-4xl opacity-50"></i>
-                                </div>
-                                <p>لا توجد مقبوضات اليوم</p>
-                            </div>
-                        )}
-                    </div>
+            {/* Transactions Table */}
+            <div className="neumorphic overflow-hidden animate-fade-in">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
+                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+                        <i className="bi bi-list-ul text-amber-500" />
+                        سجل العمليات
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                            {filteredTransactions.length}
+                        </span>
+                    </h5>
+                    <button onClick={fetchData} className="text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors" title="تحديث البيانات">
+                        <i className="bi bi-arrow-clockwise text-lg" />
+                    </button>
                 </div>
-
-                {/* Payments Column */}
-                <div className="bg-gray-50/50 dark:bg-slate-900/20 rounded-2xl p-1 border border-gray-100 dark:border-slate-700 h-full flex flex-col transition-colors">
-                    <div className="bg-red-600 dark:bg-red-900/50 text-white p-4 rounded-xl flex justify-between items-center mb-4 shadow-sm">
-                        <h5 className="mb-0 font-bold flex items-center"><i className="bi bi-upload me-2"></i> حركة الصادر (المدفوعات)</h5>
-                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold border border-white/30">{payments.length} حركة</span>
-                    </div>
-                    <div className="px-2 flex-grow overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                        {payments.length > 0 ? (
-                            payments.map(t => <TransactionCard key={t.transaction_id} transaction={t} type="payment" />)
-                        ) : (
-                            <div className="text-center py-12 text-gray-400 dark:text-gray-500 flex flex-col items-center justify-center h-full">
-                                <div className="bg-gray-100 dark:bg-slate-800 p-4 rounded-full mb-3 transition-colors">
-                                    <i className="bi bi-inbox text-4xl opacity-50"></i>
-                                </div>
-                                <p>لا توجد مدفوعات اليوم</p>
+                <div>
+                    {filteredTransactions.length === 0 ? (
+                        <div className="text-center py-16 animate-fade-in">
+                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 flex items-center justify-center animate-float">
+                                <i className="bi bi-inbox text-5xl text-amber-400 dark:text-amber-500" />
                             </div>
-                        )}
-                    </div>
+                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد عمليات</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">لا توجد عمليات مسجلة لهذا التاريخ</p>
+                        </div>
+                    ) : (
+                        <TransactionsTable
+                            transactions={filteredTransactions}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            formatCurrency={formatCurrency}
+                        />
+                    )}
                 </div>
             </div>
-
-            {/* Modals - Keeping original modal components */}
-            <CashReceiptModal
-                show={showReceiptModal}
-                onClose={() => setShowReceiptModal(false)}
-                formData={receiptForm}
-                setFormData={setReceiptForm}
-                onSubmit={handleReceiptSubmit}
-                contacts={contacts}
-                submitting={submitting}
-            />
-
-            <CashPaymentModal
-                show={showPaymentModal}
-                onClose={() => setShowPaymentModal(false)}
-                formData={paymentForm}
-                setFormData={setPaymentForm}
-                onSubmit={handlePaymentSubmit}
-                contacts={contacts}
-                submitting={submitting}
-            />
-
-            <QuickExpenseModal
-                show={showExpenseModal}
-                onClose={() => setShowExpenseModal(false)}
-                formData={expenseForm}
-                setFormData={setExpenseForm}
-                onSubmit={handleExpenseSubmit}
-                submitting={submitting}
-            />
-
-            <CapitalTransactionModal
-                show={showCapitalModal}
-                onClose={() => setShowCapitalModal(false)}
-                formData={capitalForm}
-                setFormData={setCapitalForm}
-                onSubmit={handleCapitalSubmit}
-                submitting={submitting}
-            />
         </div>
     );
 }

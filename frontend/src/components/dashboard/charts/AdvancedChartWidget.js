@@ -1,48 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import { GlassCard } from '../DashboardWidgets';
+import Chart from 'react-apexcharts';
 import { getAdvancedChartData } from '../../../api/reports';
-import { format, subDays, startOfMonth, startOfYear, endOfMonth, endOfYear, subMonths, subYears } from 'date-fns';
-import { ar } from 'date-fns/locale';
-
-// Register ChartJS components
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-);
+import { format, subDays, startOfYear, subYears } from 'date-fns';
 
 // Constants
 const PERIODS = [
-    { id: 'week', label: '7 أيام' },
-    { id: 'month', label: '30 يوم' },
-    { id: 'year', label: 'سنة' },
+    { id: 'week', label: '7 أيام', icon: 'bi-calendar-week' },
+    { id: 'month', label: '30 يوم', icon: 'bi-calendar-month' },
+    { id: 'year', label: 'سنة', icon: 'bi-calendar3' },
 ];
 
 const AdvancedChartWidget = () => {
     // --- State ---
-    const [period, setPeriod] = useState('week'); // week, month, year
+    const [period, setPeriod] = useState('week');
     const [comparisonEnabled, setComparisonEnabled] = useState(false);
     const [expensesEnabled, setExpensesEnabled] = useState(false);
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState(null);
-    const chartRef = useRef(null);
 
     // --- Helpers ---
     const getDateRange = (selectedPeriod) => {
@@ -60,9 +34,9 @@ const AdvancedChartWidget = () => {
             compStart = subDays(compEnd, 29);
         } else if (selectedPeriod === 'year') {
             start = startOfYear(today);
-            end = today; // Or endOfYear if looking at past years
+            end = today;
             compStart = startOfYear(subYears(today, 1));
-            compEnd = subYears(today, 1); // Same date last year
+            compEnd = subYears(today, 1);
         }
 
         return { start, end, compStart, compEnd };
@@ -98,231 +72,307 @@ const AdvancedChartWidget = () => {
         fetchData();
     }, [period, comparisonEnabled, expensesEnabled]);
 
-
-    // --- Chart Config ---
+    // --- ApexCharts Configuration ---
     const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        },
-        plugins: {
-            legend: {
-                position: 'top',
-                align: 'end',
-                labels: {
-                    usePointStyle: true,
-                    color: '#9ca3af', // text-gray-400
-                    font: { family: 'Cairo' }
+        chart: {
+            type: 'area',
+            toolbar: {
+                show: true,
+                tools: {
+                    download: true,
+                    selection: true,
+                    zoom: true,
+                    zoomin: true,
+                    zoomout: true,
+                    pan: true,
+                    reset: true
                 }
             },
-            tooltip: {
-                backgroundColor: 'rgba(17, 24, 39, 0.9)', // gray-900
-                titleFont: { family: 'Cairo', size: 13 },
-                bodyFont: { family: 'Cairo', size: 12 },
-                padding: 10,
-                cornerRadius: 8,
-                displayColors: true,
-                callbacks: {
-                    label: function (context) {
-                        let label = context.dataset.label || '';
-                        if (label) {
-                            label += ': ';
-                        }
-                        if (context.parsed.y !== null) {
-                            label += new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(context.parsed.y);
-                        }
-                        return label;
+            fontFamily: 'Cairo, sans-serif',
+            animations: {
+                enabled: true,
+                easing: 'easeinout',
+                speed: 1000,
+                animateGradually: {
+                    enabled: true,
+                    delay: 150
+                },
+                dynamicAnimation: {
+                    enabled: true,
+                    speed: 500
+                }
+            },
+            dropShadow: {
+                enabled: true,
+                color: '#10b981',
+                top: 10,
+                left: 0,
+                blur: 8,
+                opacity: 0.2
+            }
+        },
+        colors: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6'],
+        stroke: {
+            curve: 'smooth',
+            width: [3, 3, 2, 2],
+            dashArray: [0, 0, 5, 5]
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.05,
+                stops: [0, 90, 100]
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        xaxis: {
+            categories: data?.labels || [],
+            labels: {
+                style: {
+                    colors: '#9ca3af',
+                    fontFamily: 'Cairo'
+                }
+            },
+            axisBorder: {
+                show: false
+            },
+            axisTicks: {
+                show: false
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    colors: '#9ca3af',
+                    fontFamily: 'Cairo'
+                },
+                formatter: (value) => {
+                    if (value >= 1000000) {
+                        return (value / 1000000).toFixed(1) + ' م';
+                    } else if (value >= 1000) {
+                        return (value / 1000).toFixed(0) + ' ك';
                     }
+                    return value;
                 }
             }
         },
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: { color: '#9ca3af', font: { family: 'Cairo' } }
+        grid: {
+            borderColor: 'rgba(156, 163, 175, 0.1)',
+            strokeDashArray: 4,
+            padding: {
+                left: 10,
+                right: 10
+            }
+        },
+        legend: {
+            position: 'top',
+            horizontalAlign: 'left',
+            fontFamily: 'Cairo',
+            fontSize: '13px',
+            markers: {
+                radius: 12
+            }
+        },
+        tooltip: {
+            theme: 'dark',
+            style: {
+                fontFamily: 'Cairo'
             },
             y: {
-                grid: { color: 'rgba(156, 163, 175, 0.1)' }, // gray-400 with opacity
-                ticks: { color: '#9ca3af', font: { family: 'Cairo' } }
+                formatter: (value) => {
+                    return new Intl.NumberFormat('ar-EG', {
+                        style: 'currency',
+                        currency: 'EGP',
+                        minimumFractionDigits: 0
+                    }).format(value);
+                }
             }
         },
-        animation: {
-            duration: 2000,
-            easing: 'easeOutQuart'
+        markers: {
+            size: 0,
+            hover: {
+                size: 6
+            }
         }
     };
 
-    // --- Prepare Datasets ---
-    const chartDataFormatted = {
-        labels: data?.labels || [],
-        datasets: [
-            {
-                label: 'المبيعات',
-                data: data?.datasets?.sales || [],
-                borderColor: '#10b981', // emerald-500
-                backgroundColor: (context) => {
-                    const ctx = context.chart.ctx;
-                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-                    gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-                    return gradient;
-                },
-                fill: true,
-                tension: 0.4,
-                order: 1
-            },
-            {
-                label: 'المشتريات',
-                data: data?.datasets?.purchases || [],
-                borderColor: '#ef4444', // red-500
-                backgroundColor: 'rgba(239, 68, 68, 0.05)',
-                fill: true,
-                tension: 0.4,
-                order: 2
-            },
-            ...(expensesEnabled ? [{
-                label: 'المصاريف',
-                data: data?.datasets?.expenses || [],
-                borderColor: '#f59e0b', // amber-500
-                borderDash: [5, 5],
-                tension: 0.4,
-                order: 3
-            }] : []),
-            ...(comparisonEnabled && data?.datasets?.sales_compare ? [{
-                label: 'مبيعات (فترة سابقة)',
-                data: data?.datasets?.sales_compare || [],
-                borderColor: '#10b981',
-                borderDash: [4, 4],
-                pointRadius: 0,
-                borderWidth: 1,
-                opacity: 0.5,
-                tension: 0.4,
-                order: 4
-            }] : [])
-        ]
+    // --- Prepare Series Data ---
+    const series = [
+        {
+            name: 'المبيعات',
+            data: data?.datasets?.sales || []
+        },
+        {
+            name: 'المشتريات',
+            data: data?.datasets?.purchases || []
+        },
+        ...(expensesEnabled ? [{
+            name: 'المصاريف',
+            data: data?.datasets?.expenses || []
+        }] : []),
+        ...(comparisonEnabled && data?.datasets?.sales_compare ? [{
+            name: 'مبيعات (فترة سابقة)',
+            data: data?.datasets?.sales_compare || []
+        }] : [])
+    ];
+
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('ar-EG', {
+            style: 'currency',
+            currency: 'EGP',
+            minimumFractionDigits: 0
+        }).format(value || 0);
     };
 
-
     return (
-        <GlassCard className="h-[450px] flex flex-col p-6">
+        <div className="neumorphic h-[480px] flex flex-col overflow-hidden animate-fade-in">
             {/* Header & Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div>
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                        <i className="bi bi-graph-up-arrow text-emerald-500"></i>
-                        تحليل الأداء المالي
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">متابعة المبيعات والمشتريات والمصاريف</p>
-                </div>
-
-                {/* Filters */}
-                <div className="flex flex-wrap items-center gap-3 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-xl border border-white/20 backdrop-blur-sm">
-                    {/* Period Buttons */}
-                    <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                        {PERIODS.map((p) => (
-                            <button
-                                key={p.id}
-                                onClick={() => setPeriod(p.id)}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${period === p.id
-                                        ? 'bg-white dark:bg-gray-600 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                                    }`}
-                            >
-                                {p.label}
-                            </button>
-                        ))}
+            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
+                            <i className="bi bi-graph-up-arrow text-white text-xl" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                                تحليل الأداء المالي
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                متابعة المبيعات والمشتريات والمصاريف
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                    {/* Filters */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Period Buttons */}
+                        <div className="flex bg-gray-100 dark:bg-slate-700 rounded-xl p-1">
+                            {PERIODS.map((p) => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => setPeriod(p.id)}
+                                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 flex items-center gap-2 ${period === p.id
+                                            ? 'bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-md'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                >
+                                    <i className={`bi ${p.icon}`} />
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
 
-                    {/* Toggles */}
-                    <button
-                        onClick={() => setExpensesEnabled(!expensesEnabled)}
-                        className={`p-2 rounded-lg transition-colors duration-200 border ${expensesEnabled
-                                ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-400'
-                                : 'bg-transparent border-transparent text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                        title="عرض المصاريف"
-                    >
-                        <i className="bi bi-cash-stack"></i>
-                    </button>
+                        <div className="w-px h-8 bg-gray-200 dark:bg-slate-600 mx-2" />
 
-                    <button
-                        onClick={() => setComparisonEnabled(!comparisonEnabled)}
-                        className={`p-2 rounded-lg transition-colors duration-200 border ${comparisonEnabled
-                                ? 'bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400'
-                                : 'bg-transparent border-transparent text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                            }`}
-                        title="مقارنة مع الفترة السابقة"
-                    >
-                        <i className="bi bi-arrow-left-right"></i>
-                    </button>
+                        {/* Toggle Buttons */}
+                        <button
+                            onClick={() => setExpensesEnabled(!expensesEnabled)}
+                            className={`p-2.5 rounded-xl transition-all duration-300 ${expensesEnabled
+                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 shadow-md'
+                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                                }`}
+                            title="عرض المصاريف"
+                        >
+                            <i className="bi bi-cash-stack text-lg" />
+                        </button>
 
-                    <button
-                        onClick={() => {
-                            if (chartRef.current) {
-                                chartRef.current.reset(); // Reset animation
-                                chartRef.current.update();
-                            }
-                        }}
-                        className="p-2 text-gray-400 hover:text-emerald-500 transition-colors"
-                        title="إعادة الرسم"
-                    >
-                        <i className="bi bi-play-circle"></i>
-                    </button>
+                        <button
+                            onClick={() => setComparisonEnabled(!comparisonEnabled)}
+                            className={`p-2.5 rounded-xl transition-all duration-300 ${comparisonEnabled
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-md'
+                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                                }`}
+                            title="مقارنة مع الفترة السابقة"
+                        >
+                            <i className="bi bi-arrow-left-right text-lg" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Chart Area */}
-            <div className="relative flex-1 min-h-0">
+            <div className="relative flex-1 p-4">
                 {loading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/30 dark:bg-gray-900/30 backdrop-blur-[1px] rounded-lg">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-lg">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 rounded-full border-4 border-emerald-200 border-t-emerald-500 animate-spin" />
+                            <span className="text-sm text-gray-500 dark:text-gray-400">جاري تحميل البيانات...</span>
+                        </div>
                     </div>
                 )}
 
                 {data ? (
-                    <Line ref={chartRef} options={chartOptions} data={chartDataFormatted} />
+                    <Chart
+                        options={chartOptions}
+                        series={series}
+                        type="area"
+                        height="100%"
+                    />
                 ) : (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                        جاري تحميل البيانات...
+                        <i className="bi bi-graph-up text-4xl opacity-50" />
                     </div>
                 )}
             </div>
 
             {/* Summary Footer */}
             {data?.summary && (
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-around text-center">
-                    <div>
-                        <p className="text-xs text-gray-500">مبيعات الفترة</p>
-                        <p className="font-bold text-lg text-emerald-600">
-                            {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(data.summary.total_sales)}
-                        </p>
-                        {comparisonEnabled && (
-                            <span className={`text-xs ${data.summary.sales_change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {data.summary.sales_change > 0 ? '+' : ''}{data.summary.sales_change}%
-                            </span>
+                <div className="p-4 bg-gray-50 dark:bg-slate-700/50 border-t border-gray-100 dark:border-slate-700">
+                    <div className="flex justify-around text-center">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                <i className="bi bi-cart-check text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">مبيعات الفترة</p>
+                                <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                                    {formatCurrency(data.summary.total_sales)}
+                                </p>
+                            </div>
+                            {comparisonEnabled && data.summary.sales_change !== undefined && (
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${data.summary.sales_change >= 0
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    }`}>
+                                    <i className={`bi ${data.summary.sales_change >= 0 ? 'bi-arrow-up' : 'bi-arrow-down'} mr-1`} />
+                                    {Math.abs(data.summary.sales_change)}%
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <i className="bi bi-bag text-red-600 dark:text-red-400" />
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">المشتريات</p>
+                                <p className="font-bold text-red-600 dark:text-red-400">
+                                    {formatCurrency(data.summary.total_purchases)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {expensesEnabled && (
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                    <i className="bi bi-receipt text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">المصاريف</p>
+                                    <p className="font-bold text-amber-600 dark:text-amber-400">
+                                        {formatCurrency(data.summary.total_expenses)}
+                                    </p>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    <div>
-                        <p className="text-xs text-gray-500">المشتريات</p>
-                        <p className="font-bold text-lg text-red-500">
-                            {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(data.summary.total_purchases)}
-                        </p>
-                    </div>
-                    {expensesEnabled && (
-                        <div>
-                            <p className="text-xs text-gray-500">المصاريف</p>
-                            <p className="font-bold text-lg text-amber-500">
-                                {new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(data.summary.total_expenses)}
-                            </p>
-                        </div>
-                    )}
                 </div>
             )}
-        </GlassCard>
+        </div>
     );
 };
 
