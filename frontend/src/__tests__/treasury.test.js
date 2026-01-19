@@ -131,7 +131,7 @@ describe('createCashReceipt', () => {
             contact_id: 1,
             amount: 5000,
             payment_date: '2024-01-15',
-            notes: 'Payment received'
+            description: 'Payment received'
         };
         const mockResponse = { id: 1, ...receiptData };
         axios.post.mockResolvedValue({ data: mockResponse });
@@ -161,9 +161,10 @@ describe('createCashReceipt', () => {
     });
 
     test('should throw on network error', async () => {
+        const validData = { amount: 100, contact_id: 1 };
         axios.post.mockRejectedValue(new Error('Network Error'));
 
-        await expect(createCashReceipt({})).rejects.toThrow('Network Error');
+        await expect(createCashReceipt(validData)).rejects.toThrow('Network Error');
     });
 });
 
@@ -178,7 +179,7 @@ describe('createCashPayment', () => {
             contact_id: 2,
             amount: 3000,
             payment_date: '2024-01-15',
-            notes: 'Supplier payment'
+            description: 'Supplier payment'
         };
         const mockResponse = { id: 2, ...paymentData };
         axios.post.mockResolvedValue({ data: mockResponse });
@@ -220,23 +221,37 @@ describe('createQuickExpense', () => {
             amount: 500,
             expense_date: '2024-01-15'
         };
-        const mockResponse = { id: 3, ...expenseData };
+        // Zod coercing string date to Date object
+        const receivedDate = new Date('2024-01-15');
+        const mockResponse = { id: 3, ...expenseData, expense_date: receivedDate };
         axios.post.mockResolvedValue({ data: mockResponse });
 
         const result = await createQuickExpense(expenseData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/quick-expense', expenseData);
-    });
-
-    test('should throw on validation error', async () => {
-        const invalidData = { description: '', amount: 100 };
-        axios.post.mockRejectedValue({
-            response: { status: 422, data: { detail: 'Description is required' } }
+        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/quick-expense', {
+            ...expenseData,
+            expense_date: expect.any(Date) // Match Date object
         });
-
-        await expect(createQuickExpense(invalidData)).rejects.toBeDefined();
     });
+});
+    });
+
+test('should throw on validation error', async () => {
+    const invalidData = { description: '', amount: 100 };
+    axios.post.mockRejectedValue({
+        response: { status: 422, data: { detail: 'Description is required' } }
+    });
+
+    await expect(createQuickExpense(invalidData)).rejects.toBeDefined();
+});
+
+test('should throw on network error', async () => {
+    const validData = { amount: 100, description: 'Test' };
+    axios.post.mockRejectedValue(new Error('Network Error'));
+
+    await expect(createQuickExpense(validData)).rejects.toThrow('Network Error');
+});
 });
 
 // =============================================================================
@@ -246,7 +261,7 @@ describe('createQuickExpense', () => {
 describe('updateCashReceipt', () => {
 
     test('should update cash receipt with valid data', async () => {
-        const updateData = { amount: 6000, notes: 'Updated receipt' };
+        const updateData = { amount: 6000, description: 'Updated receipt' };
         const mockResponse = { id: 1, ...updateData };
         axios.put.mockResolvedValue({ data: mockResponse });
 

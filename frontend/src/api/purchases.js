@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { PurchaseSchema, BasePurchaseSchema } from '../schemas/purchases';
+import { idSchema } from '../schemas/common';
 
 const API_URL = '/api/v1/purchases/';
 
@@ -23,7 +25,8 @@ export const getPurchases = async () => {
  */
 export const createPurchase = async (purchaseData) => {
     try {
-        const response = await axios.post(API_URL, purchaseData);
+        const validatedData = PurchaseSchema.parse(purchaseData);
+        const response = await axios.post(API_URL, validatedData);
         return response.data;
     } catch (error) {
         console.error("Error creating purchase:", error);
@@ -33,7 +36,8 @@ export const createPurchase = async (purchaseData) => {
 
 export const updatePurchase = async (purchaseId, purchaseData) => {
     try {
-        const response = await axios.put(`${API_URL}${purchaseId}`, purchaseData);
+        const validatedData = BasePurchaseSchema.partial().parse(purchaseData);
+        const response = await axios.put(`${API_URL}${purchaseId}`, validatedData);
         return response.data;
     } catch (error) {
         console.error("Error updating purchase:", error);
@@ -60,6 +64,10 @@ export const deletePurchase = async (purchaseId) => {
  */
 export const getLastPurchasePrice = async (cropId, supplierId) => {
     try {
+        // Validate IDs
+        idSchema.parse(cropId);
+        idSchema.parse(supplierId);
+
         const response = await axios.get(`${API_URL}last-price/${cropId}/${supplierId}`);
         return response.data;
     } catch (error) {

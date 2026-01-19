@@ -16,7 +16,8 @@ export default defineConfig({
                 'src/**/__tests__/**',
                 'src/index.js',
                 'src/reportWebVitals.js',
-                'src/setupTests.js'
+                'src/setupTests.js',
+                'src/serviceWorkerRegistration.js'
             ],
             thresholds: {
                 lines: 80,
