@@ -42,6 +42,8 @@ import UserManagement from './pages/UserManagement';
 // New Pages
 import ReportsHub from './pages/ReportsHub';
 import CropPerformance from './pages/CropPerformance';
+import TransformationManagement from './pages/TransformationManagement';
+import CardexReport from './pages/CardexReport';
 
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -85,6 +87,7 @@ function App() {
                       <Route path="/cash-flow" element={<CashFlowReport />} />
                       <Route path="/debtors" element={<DebtorsView />} />
                       <Route path="/crop-performance" element={<CropPerformance />} />
+                      <Route path="/cardex" element={<CardexReport />} />
 
                       {/* Legacy Routes (Redirect to new paths if needed) */}
                       <Route path="/reports/general-ledger" element={<Navigate to="/general-ledger" replace />} />
@@ -105,6 +108,7 @@ function App() {
                       <Route path="/daily-prices" element={<DailyPrices />} />
                       <Route path="/backups" element={<BackupManagement />} />
                       <Route path="/users" element={<UserManagement />} />
+                      <Route path="/transformations" element={<TransformationManagement />} />
 
                       {/* Default Redirect */}
                       <Route path="*" element={<Navigate to="/dashboard" />} />

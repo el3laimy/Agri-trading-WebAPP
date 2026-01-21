@@ -4,18 +4,32 @@ from datetime import datetime
 from app.database import Base
 
 class Crop(Base):
+    """
+    نموذج المحاصيل المبسط
+    - الوحدات (allowed_pricing_units, conversion_factors) للعرض فقط
+    - التخزين الداخلي دائماً بالكيلوجرام
+    - التحويل يحدث في الواجهة قبل الإرسال للخادم
+    """
     __tablename__ = "crops"
 
     crop_id = Column(Integer, primary_key=True, index=True)
     crop_name = Column(String, unique=True, nullable=False, index=True)
+    
+    # وحدات القياس للعرض والتحويل فقط (JSON)
+    # مثال: ["kg", "طن", "شكارة"]
     allowed_pricing_units = Column(Text, nullable=False)
+    
+    # معاملات التحويل للكيلوجرام (JSON)
+    # مثال: {"kg": 1, "طن": 1000, "شكارة": 50}
     conversion_factors = Column(Text, nullable=False)
+    
     is_active = Column(Boolean, default=True)
     
-    # New Fields for Complex Calculations
-    is_complex_unit = Column(Boolean, default=False)
-    default_tare_per_bag = Column(Numeric(18, 4), default=0.0)
-    standard_unit_weight = Column(Numeric(18, 4), nullable=True) # e.g. 157.5
+    # [DEPRECATED] الحقول المعقدة - للتوافق مع البيانات القديمة فقط
+    # سيتم حذفها في migration مستقبلي
+    is_complex_unit = Column(Boolean, default=False)  # DEPRECATED
+    default_tare_per_bag = Column(Numeric(18, 4), default=0.0)  # DEPRECATED
+    standard_unit_weight = Column(Numeric(18, 4), nullable=True)  # DEPRECATED
 
 class Contact(Base):
     __tablename__ = "contacts"
@@ -170,14 +184,28 @@ class GeneralLedger(Base):
     creator = relationship("User", foreign_keys=[created_by])
 
 class Expense(Base):
+    """
+    نموذج المصروفات المحسّن
+    
+    expense_type:
+    - 'DIRECT': مصروف خاص بمحصول (يضاف لتكلفة البضاعة المباعة)
+    - 'INDIRECT': مصروف تشغيلي عام
+    """
     __tablename__ = "expenses"
 
     expense_id = Column(Integer, primary_key=True, index=True)
     expense_date = Column(Date, nullable=False)
     description = Column(String, nullable=False)
-    amount = Column(Numeric(18, 4), nullable=False) # Changed to Numeric
-    season_id = Column(Integer, ForeignKey("seasons.season_id"), nullable=True)  # إضافة الموسم
-    category = Column(String, nullable=True)  # فئة المصروف
+    amount = Column(Numeric(18, 4), nullable=False)
+    
+    # تصنيف المصروف
+    expense_type = Column(String, nullable=False, default='INDIRECT')  # 'DIRECT' or 'INDIRECT'
+    category = Column(String, nullable=True)  # فئة المصروف (نقل، عمالة، إيجار، إلخ)
+    
+    # ربط اختياري بمحصول (للمصروفات الخاصة فقط)
+    crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=True)
+    
+    season_id = Column(Integer, ForeignKey("seasons.season_id"), nullable=True)
     
     # The account that was credited (e.g., Cash, Bank)
     credit_account_id = Column(Integer, ForeignKey("financial_accounts.account_id"), nullable=False)
@@ -186,10 +214,12 @@ class Expense(Base):
     
     supplier_id = Column(Integer, ForeignKey("contacts.contact_id"), nullable=True)
     
-    # توثيق العمليات - من قام بتسجيل المصروف
+    # توثيق العمليات
     created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # العلاقات
+    crop = relationship("Crop", foreign_keys=[crop_id])
     credit_account = relationship("FinancialAccount", foreign_keys=[credit_account_id])
     debit_account = relationship("FinancialAccount", foreign_keys=[debit_account_id])
     supplier = relationship("Contact")
@@ -242,6 +272,81 @@ class InventoryAdjustment(Base):
     notes = Column(String, nullable=True)
 
     crop = relationship("Crop")
+
+
+# ============================================
+# نظام التحويل (Transformation System)
+# بديل للمحاصيل المركبة
+# ============================================
+
+class Transformation(Base):
+    """
+    نموذج التحويل - لتحويل محصول خام إلى منتجات نهائية
+    مثال: 10 طن قطن زهر → 6 طن شعر + 3 طن بذرة + 1 طن هالك
+    """
+    __tablename__ = "transformations"
+
+    transformation_id = Column(Integer, primary_key=True, index=True)
+    
+    # المحصول المصدر (الخام)
+    source_crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
+    source_quantity_kg = Column(Numeric(18, 4), nullable=False)  # الكمية المسحوبة من المخزون
+    source_cost_per_kg = Column(Numeric(18, 4), nullable=False)  # تكلفة الكيلو (من المخزون)
+    source_total_cost = Column(Numeric(18, 4), nullable=False)   # إجمالي تكلفة الخام
+    
+    # مصاريف التحويل (غربلة، نقل، عمالة)
+    processing_cost = Column(Numeric(18, 4), default=0.0)
+    
+    # إجمالي التكلفة = source_total_cost + processing_cost
+    total_cost = Column(Numeric(18, 4), nullable=False)
+    
+    transformation_date = Column(Date, nullable=False)
+    notes = Column(Text, nullable=True)
+    
+    # الموسم
+    season_id = Column(Integer, ForeignKey("seasons.season_id"), nullable=True)
+    
+    # التوثيق
+    created_by = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # العلاقات
+    source_crop = relationship("Crop", foreign_keys=[source_crop_id])
+    season = relationship("Season")
+    creator = relationship("User", foreign_keys=[created_by])
+    outputs = relationship("TransformationOutput", back_populates="transformation", cascade="all, delete-orphan")
+
+
+class TransformationOutput(Base):
+    """
+    نموذج مخرجات التحويل
+    كل تحويل يمكن أن ينتج عنه عدة محاصيل بنسب مختلفة
+    """
+    __tablename__ = "transformation_outputs"
+
+    output_id = Column(Integer, primary_key=True, index=True)
+    transformation_id = Column(Integer, ForeignKey("transformations.transformation_id"), nullable=False)
+    
+    # المحصول الناتج
+    output_crop_id = Column(Integer, ForeignKey("crops.crop_id"), nullable=False)
+    output_quantity_kg = Column(Numeric(18, 4), nullable=False)  # الكمية الناتجة
+    
+    # نسبة توزيع التكلفة (0.00 - 1.00)
+    # مثال: الشعر 0.80، البذرة 0.15، الهالك 0.05
+    cost_allocation_ratio = Column(Numeric(5, 4), nullable=False, default=0.0)
+    
+    # التكلفة المحسوبة = total_cost × cost_allocation_ratio
+    allocated_cost = Column(Numeric(18, 4), nullable=False)
+    cost_per_kg = Column(Numeric(18, 4), nullable=False)  # للمخزون
+    
+    # هل هذا هالك/خسارة؟
+    is_waste = Column(Boolean, default=False)
+    
+    notes = Column(Text, nullable=True)
+    
+    # العلاقات
+    transformation = relationship("Transformation", back_populates="outputs")
+    output_crop = relationship("Crop", foreign_keys=[output_crop_id])
 
 class Season(Base):
     __tablename__ = "seasons"

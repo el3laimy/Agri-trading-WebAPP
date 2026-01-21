@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useToast } from '../components/common';
 import { useAuth } from '../context/AuthContext';
+import { getCrops } from '../api/crops';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
@@ -45,8 +46,11 @@ function ExpenseManagement() {
         description: '',
         amount: '',
         expense_date: new Date().toISOString().slice(0, 10),
-        category: 'عام'
+        category: 'عام',
+        expense_type: 'INDIRECT',
+        crop_id: ''
     });
+    const [crops, setCrops] = useState([]);
 
     // Fetch expenses
     const fetchExpenses = useCallback(async () => {
@@ -64,7 +68,17 @@ function ExpenseManagement() {
 
     useEffect(() => {
         fetchExpenses();
+        fetchCrops();
     }, [fetchExpenses]);
+
+    const fetchCrops = async () => {
+        try {
+            const data = await getCrops();
+            setCrops(data.filter(c => c.is_active));
+        } catch (err) {
+            console.error('Failed to fetch crops');
+        }
+    };
 
     const stats = useMemo(() => {
         const total = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -94,7 +108,14 @@ function ExpenseManagement() {
                 amount: parseFloat(formState.amount)
             });
             showSuccess('تم تسجيل المصروف بنجاح');
-            setFormState({ description: '', amount: '', expense_date: new Date().toISOString().slice(0, 10), category: 'عام' });
+            setFormState({
+                description: '',
+                amount: '',
+                expense_date: new Date().toISOString().slice(0, 10),
+                category: 'عام',
+                expense_type: 'INDIRECT',
+                crop_id: ''
+            });
             setShowAddForm(false);
             fetchExpenses();
         } catch (err) {
@@ -259,6 +280,34 @@ function ExpenseManagement() {
                                     <option value="إيجار">إيجار</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">نوع المصروف</label>
+                                <select
+                                    name="expense_type"
+                                    value={formState.expense_type}
+                                    onChange={handleInputChange}
+                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                >
+                                    <option value="INDIRECT">عام (تشغيلي)</option>
+                                    <option value="DIRECT">خاص بمحصول</option>
+                                </select>
+                            </div>
+                            {formState.expense_type === 'DIRECT' && (
+                                <div>
+                                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">المحصول</label>
+                                    <select
+                                        name="crop_id"
+                                        value={formState.crop_id}
+                                        onChange={handleInputChange}
+                                        className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    >
+                                        <option value="">-- اختر محصول --</option>
+                                        {crops.map(crop => (
+                                            <option key={crop.crop_id} value={crop.crop_id}>{crop.crop_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
                             <button

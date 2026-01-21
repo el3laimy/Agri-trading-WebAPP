@@ -124,25 +124,48 @@ def get_capital_breakdown(db: Session = Depends(get_db)):
 @router.get("/balance-check")
 def check_system_balance(db: Session = Depends(get_db)):
     """
-    التحقق من توازن النظام المحاسبي
+    التحقق المزدوج من توازن النظام المحاسبي
     
     Returns:
-        is_balanced: هل النظام متوازن
-        difference: الفرق بين الأصول والخصوم
-        total_assets: إجمالي الأصول
-        total_liabilities_and_equity: إجمالي الخصوم وحقوق الملكية
-        details: تفاصيل كل عنصر
+        ledger_balance: التوازن الدفتري (من أرصدة الحسابات) - يتطابق مع ميزان المراجعة
+        physical_balance: التوازن الفعلي (من المخزون الحقيقي)
+        has_discrepancy: هل يوجد فرق بين المخزون الدفتري والفعلي
+        discrepancy_amount: قيمة الفرق في المخزون
     """
     engine = get_engine(db)
-    report = engine.validate_system_balance()
+    dual_report = engine.validate_dual_balance()
+    
+    ledger = dual_report.ledger_balance
+    physical = dual_report.physical_balance
+    
     return {
-        "is_balanced": report.is_balanced,
-        "difference": float(report.difference),
-        "total_assets": float(report.total_assets),
-        "total_liabilities_and_equity": float(report.total_liabilities_and_equity),
-        "checked_at": report.checked_at.isoformat(),
-        "details": report.details,
-        "status": "متوازن ✅" if report.is_balanced else f"غير متوازن ❌ (الفرق: {report.difference} ج.م)"
+        # التوازن الدفتري (الأساسي - يتطابق مع ميزان المراجعة)
+        "is_balanced": ledger.is_balanced,
+        "difference": float(ledger.difference),
+        "total_assets": float(ledger.total_assets),
+        "total_liabilities_and_equity": float(ledger.total_liabilities_and_equity),
+        "details": ledger.details,
+        "status": "متوازن ✅" if ledger.is_balanced else f"غير متوازن ❌ (الفرق: {ledger.difference} ج.م)",
+        
+        # معلومات إضافية عن التوازن الفعلي
+        "physical_balance": {
+            "is_balanced": physical.is_balanced,
+            "difference": float(physical.difference),
+            "total_assets": float(physical.total_assets),
+            "total_liabilities_and_equity": float(physical.total_liabilities_and_equity),
+            "details": physical.details,
+        },
+        
+        # الفرق بين المخزون الدفتري والفعلي
+        "inventory_discrepancy": {
+            "has_discrepancy": dual_report.has_discrepancy,
+            "amount": float(dual_report.discrepancy_amount),
+            "ledger_inventory": ledger.details.get("inventory", 0),
+            "physical_inventory": physical.details.get("inventory", 0),
+            "message": f"فرق المخزون: {dual_report.discrepancy_amount} ج.م" if dual_report.has_discrepancy else "المخزون متطابق ✅"
+        },
+        
+        "checked_at": dual_report.checked_at.isoformat()
     }
 
 

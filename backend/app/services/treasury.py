@@ -10,6 +10,8 @@ def get_treasury_summary(db: Session, target_date: date = None):
     if target_date is None:
         target_date = date.today()
     
+    from decimal import Decimal
+    
     # 1. Opening Balance: Sum of all transactions BEFORE target_date for CASH accounts
     # Balance = Sum(Debit) - Sum(Credit) [Asset Account]
     
@@ -22,26 +24,26 @@ def get_treasury_summary(db: Session, target_date: date = None):
      .filter(models.FinancialAccount.account_id == cash_id)\
      .filter(models.GeneralLedger.entry_date < target_date)
     
-    opening_balance = opening_balance_query.scalar() or 0.0
+    opening_balance = opening_balance_query.scalar() or Decimal(0)
 
     # 2. Total IN (Day): Sum of Debits to Cash accounts on target_date
     total_in = db.query(func.sum(models.GeneralLedger.debit))\
         .filter(models.GeneralLedger.account_id == cash_id)\
         .filter(models.GeneralLedger.entry_date == target_date)\
-        .scalar() or 0.0
+        .scalar() or Decimal(0)
 
     # 3. Total OUT (Day): Sum of Credits to Cash accounts on target_date
     total_out = db.query(func.sum(models.GeneralLedger.credit))\
         .filter(models.GeneralLedger.account_id == cash_id)\
         .filter(models.GeneralLedger.entry_date == target_date)\
-        .scalar() or 0.0
+        .scalar() or Decimal(0)
 
     # 4. Closing Balance
     closing_balance = opening_balance + total_in - total_out
 
     # 5. Current Balance (Total System Balance right now)
     cash_account = crud.get_financial_account(db, cash_id)
-    current_balance = cash_account.current_balance if cash_account else 0.0
+    current_balance = cash_account.current_balance if cash_account else Decimal(0)
 
     return schemas.TreasurySummary(
         opening_balance=opening_balance,

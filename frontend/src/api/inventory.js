@@ -4,8 +4,8 @@ const API_BASE_URL = '/api/v1';
 
 const getAuthHeader = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 
-export const getInventory = async (token) => {
-    const response = await axios.get(`${API_BASE_URL}/inventory/`, getAuthHeader(token));
+export const getInventory = async () => {
+    const response = await axios.get(`${API_BASE_URL}/inventory/`);
     return response.data;
 };
 

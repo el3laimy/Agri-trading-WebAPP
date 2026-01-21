@@ -27,11 +27,6 @@ function CropManagement() {
     const [migrationTarget, setMigrationTarget] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Complex Crops Fields
-    const [isComplex, setIsComplex] = useState(false);
-    const [defaultTare, setDefaultTare] = useState(0);
-    const [standardWeight, setStandardWeight] = useState(0);
-
     useEffect(() => {
         fetchCrops();
     }, []);
@@ -50,9 +45,7 @@ function CropManagement() {
 
     // Stats
     const stats = useMemo(() => {
-        const simple = crops.filter(c => !c.is_complex_unit).length;
-        const complex = crops.filter(c => c.is_complex_unit).length;
-        return { total: crops.length, simple, complex };
+        return { total: crops.length, active: crops.filter(c => c.is_active).length };
     }, [crops]);
 
     const handleFactorChange = (index, event) => {
@@ -86,9 +79,9 @@ function CropManagement() {
                 crop_name: cropName,
                 allowed_pricing_units,
                 conversion_factors: factorsObject,
-                is_complex_unit: isComplex,
-                default_tare_per_bag: parseFloat(defaultTare) || 0,
-                standard_unit_weight: parseFloat(standardWeight) || null
+                is_complex_unit: false, // دائماً بسيط
+                default_tare_per_bag: 0,
+                standard_unit_weight: null
             };
 
             if (editingCrop) {
@@ -109,9 +102,6 @@ function CropManagement() {
     const handleEdit = (crop) => {
         setEditingCrop(crop);
         setCropName(crop.crop_name);
-        setIsComplex(crop.is_complex_unit || false);
-        setDefaultTare(crop.default_tare_per_bag || 0);
-        setStandardWeight(crop.standard_unit_weight || 0);
 
         const factorsArray = Object.entries(crop.conversion_factors).map(([unit, factor]) => ({
             unit,
@@ -195,9 +185,6 @@ function CropManagement() {
 
     const resetForm = () => {
         setCropName('');
-        setIsComplex(false);
-        setDefaultTare(0);
-        setStandardWeight(0);
         setConversionFactors([{ unit: '', factor: '' }]);
         setShowAddForm(false);
         setEditingCrop(null);
@@ -208,8 +195,7 @@ function CropManagement() {
         return crops.filter(crop => {
             const matchesSearch = crop.crop_name?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesFilter = selectedFilter === 'all' ? true :
-                selectedFilter === 'simple' ? !crop.is_complex_unit :
-                    selectedFilter === 'complex' ? crop.is_complex_unit : true;
+                selectedFilter === 'active' ? crop.is_active : !crop.is_active;
             return matchesSearch && matchesFilter;
         });
     }, [crops, searchTerm, selectedFilter]);
@@ -356,7 +342,7 @@ function CropManagement() {
                 }
             >
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                     <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
@@ -374,19 +360,8 @@ function CropManagement() {
                                 <i className="bi bi-check-circle text-lg text-green-300" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">بسيط</p>
-                                <p className="text-lg font-bold">{stats.simple}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-gear text-lg text-amber-300" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-white/70">مركب</p>
-                                <p className="text-lg font-bold">{stats.complex}</p>
+                                <p className="text-xs text-white/70">نشط</p>
+                                <p className="text-lg font-bold">{stats.active}</p>
                             </div>
                         </div>
                     </div>
@@ -406,8 +381,7 @@ function CropManagement() {
             {/* Filter Chips */}
             <div className="flex flex-wrap gap-2 mb-6">
                 <FilterChip label="الكل" count={crops.length} icon="bi-grid" active={selectedFilter === 'all'} onClick={() => setSelectedFilter('all')} color="emerald" />
-                <FilterChip label="بسيط" count={stats.simple} icon="bi-check-circle" active={selectedFilter === 'simple'} onClick={() => setSelectedFilter('simple')} color="emerald" />
-                <FilterChip label="مركب" count={stats.complex} icon="bi-gear" active={selectedFilter === 'complex'} onClick={() => setSelectedFilter('complex')} color="amber" />
+                <FilterChip label="نشط" count={stats.active} icon="bi-check-circle" active={selectedFilter === 'active'} onClick={() => setSelectedFilter('active')} color="emerald" />
             </div>
 
             {/* Add/Edit Form */}
@@ -430,27 +404,6 @@ function CropManagement() {
                                 placeholder="مثال: قمح، ذرة، أرز..."
                                 className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100 font-bold text-lg"
                             />
-                        </div>
-
-                        {/* Complex Toggle */}
-                        <div className="neumorphic-inset p-4 rounded-xl mb-6">
-                            <label className="inline-flex items-center cursor-pointer">
-                                <input type="checkbox" className="sr-only peer" checked={isComplex} onChange={(e) => setIsComplex(e.target.checked)} />
-                                <div className="relative w-11 h-6 bg-gray-200 dark:bg-slate-600 rounded-full peer peer-checked:bg-lime-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                                <span className="mr-3 text-sm font-bold text-gray-900 dark:text-gray-100">محصول مركب (حسابات خاصة)</span>
-                            </label>
-                            {isComplex && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 animate-fade-in">
-                                    <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">العيار الافتراضي (كجم)</label>
-                                        <input type="number" step="0.01" value={defaultTare} onChange={(e) => setDefaultTare(e.target.value)} className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">وزن الوحدة القياسي</label>
-                                        <input type="number" step="0.01" value={standardWeight} onChange={(e) => setStandardWeight(e.target.value)} placeholder="مثال: 157.5" className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" />
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* Conversion Factors */}

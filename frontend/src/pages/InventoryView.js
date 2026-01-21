@@ -18,9 +18,9 @@ function InventoryView() {
     // Stats
     const stats = useMemo(() => {
         const totalItems = inventory?.length || 0;
-        const totalQuantity = inventory?.reduce((sum, item) => sum + (item.quantity_kg || 0), 0) || 0;
-        const inStock = inventory?.filter(i => i.quantity_kg > 0).length || 0;
-        const outOfStock = inventory?.filter(i => i.quantity_kg <= 0).length || 0;
+        const totalQuantity = inventory?.reduce((sum, item) => sum + (parseFloat(item.current_stock_kg) || 0), 0) || 0;
+        const inStock = inventory?.filter(i => parseFloat(i.current_stock_kg) > 0).length || 0;
+        const outOfStock = inventory?.filter(i => parseFloat(i.current_stock_kg) <= 0).length || 0;
         return { totalItems, totalQuantity, inStock, outOfStock };
     }, [inventory]);
 
@@ -33,9 +33,10 @@ function InventoryView() {
     const filteredInventory = useMemo(() => {
         return (inventory || []).filter(item => {
             const matchesSearch = item.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase());
+            const stockKg = parseFloat(item.current_stock_kg) || 0;
             const matchesFilter = selectedFilter === 'all' ? true :
-                selectedFilter === 'inStock' ? item.quantity_kg > 0 :
-                    selectedFilter === 'outOfStock' ? item.quantity_kg <= 0 : true;
+                selectedFilter === 'inStock' ? stockKg > 0 :
+                    selectedFilter === 'outOfStock' ? stockKg <= 0 : true;
             return matchesSearch && matchesFilter;
         });
     }, [inventory, searchTerm, selectedFilter]);
@@ -175,11 +176,11 @@ function InventoryView() {
                                         <div className="flex-1">
                                             <h5 className="font-bold text-gray-800 dark:text-gray-200">{item.crop?.crop_name || 'غير محدد'}</h5>
                                             <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                                                {formatQuantity(item.quantity_kg)}
+                                                {formatQuantity(parseFloat(item.current_stock_kg) || 0)}
                                             </p>
                                         </div>
-                                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${item.quantity_kg > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
-                                            {item.quantity_kg > 0 ? 'متوفر' : 'نفذ'}
+                                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${parseFloat(item.current_stock_kg) > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
+                                            {parseFloat(item.current_stock_kg) > 0 ? 'متوفر' : 'نفذ'}
                                         </div>
                                     </div>
                                 </div>

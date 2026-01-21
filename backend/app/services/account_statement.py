@@ -150,7 +150,7 @@ def get_account_statement(
                 'reference_type': 'SALE',
                 'reference_id': sale.sale_id,
                 'debit': sale.total_sale_amount,  # مدين = العميل مدين لنا
-                'credit': 0.0,
+                'credit': Decimal(0),
                 'crop_name': crop_name,
                 'quantity': original_qty,
                 'unit_price': original_price,
@@ -180,7 +180,7 @@ def get_account_statement(
                 'description': f"وارد منه بضاعة - {crop_name}",
                 'reference_type': 'PURCHASE',
                 'reference_id': purchase.purchase_id,
-                'debit': 0.0,
+                'debit': Decimal(0),
                 'credit': purchase.total_cost,  # دائن = نحن مدينون للمورد
                 'crop_name': crop_name,
                 'quantity': original_qty,
@@ -205,7 +205,7 @@ def get_account_statement(
                 'description': f"واصل منه نقدية - {payment.payment_method}",
                 'reference_type': 'PAYMENT',
                 'reference_id': payment.payment_id,
-                'debit': 0.0,
+                'debit': Decimal(0),
                 'credit': payment.amount,  # دائن = قلل دين العميل
                 'crop_name': None,
                 'quantity': None,
@@ -220,7 +220,7 @@ def get_account_statement(
                 'reference_type': 'PAYMENT',
                 'reference_id': payment.payment_id,
                 'debit': payment.amount,  # مدين = قلل دينا للمورد
-                'credit': 0.0,
+                'credit': Decimal(0),
                 'crop_name': None,
                 'quantity': None,
                 'unit_price': None,
@@ -236,7 +236,7 @@ def get_account_statement(
                     'description': f"واصل منه نقدية (عام) - {payment.payment_method}",
                     'reference_type': 'PAYMENT',
                     'reference_id': payment.payment_id,
-                    'debit': 0.0,
+                    'debit': Decimal(0),
                     'credit': payment.amount,
                     'crop_name': None,
                     'quantity': None,
@@ -251,7 +251,7 @@ def get_account_statement(
                     'reference_type': 'PAYMENT',
                     'reference_id': payment.payment_id,
                     'debit': payment.amount,
-                    'credit': 0.0,
+                    'credit': Decimal(0),
                     'crop_name': None,
                     'quantity': None,
                     'unit_price': None,

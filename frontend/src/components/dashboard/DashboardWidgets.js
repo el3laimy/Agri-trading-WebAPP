@@ -412,32 +412,43 @@ export function HeroSection({
                                 <RealTimeClock />
                             </div>
 
-                            {/* Balance Indicator */}
+                            {/* Balance Indicators - Dual */}
                             {balanceCheck && (
-                                <div
-                                    onClick={() => onNavigate('/reports/capital-distribution')}
-                                    className={`glass-premium px-5 py-3 rounded-2xl cursor-pointer transition-all flex items-center gap-3 hover-scale ${balanceCheck.is_balanced === null
+                                <div className="flex items-center gap-2">
+                                    {/* مؤشر التوازن الدفتري */}
+                                    <div
+                                        onClick={() => onNavigate('/reports/capital-distribution')}
+                                        className={`glass-premium px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 hover-scale ${balanceCheck.is_balanced === null
                                             ? ''
                                             : balanceCheck.is_balanced
                                                 ? 'ring-2 ring-green-400/50'
-                                                : 'ring-2 ring-red-400/50 animate-pulse-glow'
-                                        }`}
-                                    title={balanceCheck.status}
-                                >
-                                    <i className={`bi ${balanceCheck.is_balanced === null
+                                                : 'ring-2 ring-red-400/50'
+                                            }`}
+                                        title={balanceCheck.status}
+                                    >
+                                        <i className={`bi ${balanceCheck.is_balanced === null
                                             ? 'bi-question-circle'
                                             : balanceCheck.is_balanced
                                                 ? 'bi-check-circle-fill text-green-300'
                                                 : 'bi-exclamation-triangle-fill text-red-300'
-                                        } text-xl`} />
-                                    <span className="text-sm font-medium text-white">
-                                        {balanceCheck.is_balanced === null
-                                            ? 'جاري الفحص...'
-                                            : balanceCheck.is_balanced
-                                                ? 'الميزانية متوازنة'
-                                                : `فرق: ${balanceCheck.difference?.toLocaleString()} ج.م`
-                                        }
-                                    </span>
+                                            }`} />
+                                        <span className="text-xs font-medium text-white">
+                                            {balanceCheck.is_balanced ? 'متوازن' : `فرق: ${balanceCheck.difference?.toLocaleString()}`}
+                                        </span>
+                                    </div>
+                                    {/* مؤشر فرق المخزون */}
+                                    {balanceCheck.inventory_discrepancy?.has_discrepancy && (
+                                        <div
+                                            onClick={() => onNavigate('/inventory')}
+                                            className="glass-premium px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 hover-scale ring-2 ring-amber-400/50"
+                                            title={`دفتري: ${balanceCheck.inventory_discrepancy?.ledger_inventory?.toLocaleString()} | فعلي: ${balanceCheck.inventory_discrepancy?.physical_inventory?.toLocaleString()}`}
+                                        >
+                                            <i className="bi bi-box-seam text-amber-300" />
+                                            <span className="text-xs font-medium text-white">
+                                                مخزون: {balanceCheck.inventory_discrepancy?.amount?.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

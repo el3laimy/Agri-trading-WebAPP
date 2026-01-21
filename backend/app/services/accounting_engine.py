@@ -38,6 +38,17 @@ class BalanceReport:
     total_liabilities_and_equity: Decimal
     checked_at: datetime
     details: Dict = None
+    report_type: str = "physical"  # "ledger" أو "physical"
+
+
+@dataclass
+class DualBalanceReport:
+    """تقرير التوازن المزدوج - دفتري وفعلي"""
+    ledger_balance: BalanceReport      # التوازن الدفتري (من أرصدة الحسابات)
+    physical_balance: BalanceReport    # التوازن الفعلي (من المخزون الحقيقي)
+    has_discrepancy: bool              # هل يوجد فرق بين التقريرين
+    discrepancy_amount: Decimal        # قيمة الفرق بين المخزون الدفتري والفعلي
+    checked_at: datetime
 
 
 class AccountingError(Exception):
@@ -319,7 +330,121 @@ class AccountingEngine:
                 "capital": float(owner_capital),
                 "profit": float(net_profit),
                 "payables": float(accounts_payable)
-            }
+            },
+            report_type="physical"
+        )
+    
+    def validate_ledger_balance(self) -> BalanceReport:
+        """
+        التحقق من التوازن الدفتري (من أرصدة الحسابات)
+        
+        يستخدم رصيد حساب المخزون في دفتر الأستاذ بدلاً من القيمة الفعلية
+        هذا يضمن التطابق مع ميزان المراجعة
+        """
+        checked_at = datetime.now()
+        
+        # حساب الأصول من أرصدة الحسابات
+        cash_id = get_setting(self.db, "CASH_ACCOUNT_ID")
+        cash_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(cash_id) if cash_id else 0
+        ).first()
+        cash_balance = self._to_decimal(cash_account.current_balance) if cash_account else Decimal("0")
+        
+        # قيمة المخزون من رصيد الحساب (للتطابق مع ميزان المراجعة)
+        inventory_id = get_setting(self.db, "INVENTORY_ACCOUNT_ID")
+        inventory_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(inventory_id) if inventory_id else 0
+        ).first()
+        inventory_ledger = self._to_decimal(inventory_account.current_balance) if inventory_account else Decimal("0")
+        
+        # الذمم المدينة من رصيد الحساب
+        receivables_id = get_setting(self.db, "ACCOUNTS_RECEIVABLE_ID")
+        receivables_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(receivables_id) if receivables_id else 0
+        ).first()
+        accounts_receivable = self._to_decimal(receivables_account.current_balance) if receivables_account else Decimal("0")
+        
+        total_assets = cash_balance + inventory_ledger + accounts_receivable
+        
+        # حساب الخصوم وحقوق الملكية من أرصدة الحسابات
+        equity_id = get_setting(self.db, "OWNER_EQUITY_ID")
+        equity_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(equity_id) if equity_id else 0
+        ).first()
+        owner_capital = abs(self._to_decimal(equity_account.current_balance)) if equity_account else Decimal("0")
+        
+        # الذمم الدائنة من رصيد الحساب
+        payables_id = get_setting(self.db, "ACCOUNTS_PAYABLE_ID")
+        payables_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(payables_id) if payables_id else 0
+        ).first()
+        accounts_payable = abs(self._to_decimal(payables_account.current_balance)) if payables_account else Decimal("0")
+        
+        # إيرادات المبيعات
+        revenue_id = get_setting(self.db, "SALES_REVENUE_ACCOUNT_ID")
+        revenue_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(revenue_id) if revenue_id else 0
+        ).first()
+        revenue = abs(self._to_decimal(revenue_account.current_balance)) if revenue_account else Decimal("0")
+        
+        # تكلفة البضاعة المباعة
+        cogs_id = get_setting(self.db, "COGS_ACCOUNT_ID")
+        cogs_account = self.db.query(models.FinancialAccount).filter(
+            models.FinancialAccount.account_id == int(cogs_id) if cogs_id else 0
+        ).first()
+        cogs = self._to_decimal(cogs_account.current_balance) if cogs_account else Decimal("0")
+        
+        # صافي الربح = الإيرادات - التكاليف
+        net_profit = revenue - cogs
+        
+        total_liabilities_and_equity = owner_capital + net_profit + accounts_payable
+        
+        # حساب الفرق
+        difference = total_assets - total_liabilities_and_equity
+        is_balanced = abs(difference) < Decimal("1.00")  # هامش 1 جنيه
+        
+        return BalanceReport(
+            is_balanced=is_balanced,
+            difference=difference.quantize(Decimal("0.01")),
+            total_assets=total_assets.quantize(Decimal("0.01")),
+            total_liabilities_and_equity=total_liabilities_and_equity.quantize(Decimal("0.01")),
+            checked_at=checked_at,
+            details={
+                "cash": float(cash_balance),
+                "inventory": float(inventory_ledger),
+                "receivables": float(accounts_receivable),
+                "capital": float(owner_capital),
+                "profit": float(net_profit),
+                "payables": float(accounts_payable)
+            },
+            report_type="ledger"
+        )
+    
+    def validate_dual_balance(self) -> DualBalanceReport:
+        """
+        التحقق المزدوج - يقارن التوازن الدفتري والفعلي
+        
+        Returns:
+            DualBalanceReport: تقرير يحتوي على كلا التوازنين والفرق بينهما
+        """
+        checked_at = datetime.now()
+        
+        # الحصول على التقريرين
+        ledger_report = self.validate_ledger_balance()
+        physical_report = self.validate_system_balance()
+        
+        # حساب الفرق في المخزون بين الدفتري والفعلي
+        ledger_inventory = Decimal(str(ledger_report.details.get("inventory", 0)))
+        physical_inventory = Decimal(str(physical_report.details.get("inventory", 0)))
+        discrepancy = abs(physical_inventory - ledger_inventory)
+        has_discrepancy = discrepancy > Decimal("1.00")  # هامش 1 جنيه
+        
+        return DualBalanceReport(
+            ledger_balance=ledger_report,
+            physical_balance=physical_report,
+            has_discrepancy=has_discrepancy,
+            discrepancy_amount=discrepancy.quantize(Decimal("0.01")),
+            checked_at=checked_at
         )
 
 
@@ -327,3 +452,4 @@ class AccountingEngine:
 def get_engine(db: Session) -> AccountingEngine:
     """الحصول على محرك المحاسبة"""
     return AccountingEngine(db)
+

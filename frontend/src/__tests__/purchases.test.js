@@ -76,12 +76,11 @@ describe('createPurchase', () => {
 
     test('should create purchase with valid data', async () => {
         const purchaseData = {
-            cropId: 1,
-            supplierId: 1,
+            crop_id: 1,
+            supplier_id: 1,
             purchase_date: '2024-01-15',
             quantity_kg: 1000,
             unit_price: 5,
-            total_cost: 5000,
             amount_paid: 2000
         };
         const mockResponse = { purchase_id: 1, ...purchaseData };
@@ -90,15 +89,15 @@ describe('createPurchase', () => {
         const result = await createPurchase(purchaseData);
 
         expect(result).toEqual(mockResponse);
-        // We compare validation output which keeps camelCase
+        // We compare validation output which uses snake_case
         expect(axios.post).toHaveBeenCalledWith('/api/v1/purchases/', expect.objectContaining({
-            cropId: 1,
-            supplierId: 1
+            crop_id: 1,
+            supplier_id: 1
         }));
     });
 
     test('should throw on validation error (422) - missing required fields', async () => {
-        const invalidData = { cropId: 1 }; // Missing supplierId, quantity, etc.
+        const invalidData = { crop_id: 1 }; // Missing supplier_id, quantity, etc.
         axios.post.mockRejectedValue({
             response: { status: 422, data: { detail: 'Validation error' } }
         });
@@ -109,8 +108,8 @@ describe('createPurchase', () => {
     test('should throw on crop not found (404)', async () => {
         // We pass valid structure but server returns 404
         const purchaseData = {
-            cropId: 99999, supplierId: 1, quantity_kg: 100,
-            unit_price: 10, total_cost: 1000, amount_paid: 0,
+            crop_id: 99999, supplier_id: 1, quantity_kg: 100,
+            unit_price: 10, amount_paid: 0,
             purchase_date: '2024-01-01'
         };
         axios.post.mockRejectedValue({
@@ -122,8 +121,8 @@ describe('createPurchase', () => {
 
     test('should throw on supplier not found (404)', async () => {
         const purchaseData = {
-            cropId: 1, supplierId: 99999, quantity_kg: 100,
-            unit_price: 10, total_cost: 1000, amount_paid: 0,
+            crop_id: 1, supplier_id: 99999, quantity_kg: 100,
+            unit_price: 10, amount_paid: 0,
             purchase_date: '2024-01-01'
         };
         axios.post.mockRejectedValue({
@@ -136,8 +135,8 @@ describe('createPurchase', () => {
     test('should throw on negative quantity', async () => {
         // Validation now catches this before axios
         const invalidData = {
-            cropId: 1, supplierId: 1, quantity_kg: -100,
-            unit_price: 10, total_cost: 1000, amount_paid: 0,
+            crop_id: 1, supplier_id: 1, quantity_kg: -100,
+            unit_price: 10, amount_paid: 0,
             purchase_date: '2024-01-01'
         };
 
@@ -148,8 +147,8 @@ describe('createPurchase', () => {
 
     test('should throw on network error', async () => {
         const validData = {
-            cropId: 1, supplierId: 1, quantity_kg: 100,
-            unit_price: 10, total_cost: 1000, amount_paid: 0,
+            crop_id: 1, supplier_id: 1, quantity_kg: 100,
+            unit_price: 10, amount_paid: 0,
             purchase_date: '2024-01-01'
         };
         axios.post.mockRejectedValue(new Error('Network Error'));
@@ -170,7 +169,11 @@ describe('updatePurchase', () => {
         const result = await updatePurchase(1, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/purchases/1', updateData);
+        // Use objectContaining because Schema may add defaults
+        expect(axios.put).toHaveBeenCalledWith('/api/v1/purchases/1', expect.objectContaining({
+            quantity_kg: 1500,
+            total_cost: 7500
+        }));
     });
 
     // ... null tests ...
@@ -261,7 +264,7 @@ describe('Purchases API Edge Cases Summary', () => {
         });
 
         // Add IDs so we fail specifically on Quantity check (or Zod check for quantity)
-        await expect(createPurchase({ cropId: 1, supplierId: 1, quantity_kg: 0 })).rejects.toBeDefined();
-        await expect(createPurchase({ cropId: 1, supplierId: 1, quantity_kg: -100 })).rejects.toBeDefined();
+        await expect(createPurchase({ crop_id: 1, supplier_id: 1, quantity_kg: 0 })).rejects.toBeDefined();
+        await expect(createPurchase({ crop_id: 1, supplier_id: 1, quantity_kg: -100 })).rejects.toBeDefined();
     });
 });

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app import crud, schemas
 from app.database import get_db
+from app.services import season_closing
 
 router = APIRouter()
 
@@ -20,6 +21,11 @@ def get_season(season_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="الموسم غير موجود")
     return season
 
+@router.get("/{season_id}/summary")
+def get_season_summary(season_id: int, db: Session = Depends(get_db)):
+    """الحصول على ملخص الموسم (المبيعات، المشتريات، المصروفات)"""
+    return season_closing.get_season_summary(db, season_id)
+
 @router.post("/", response_model=schemas.SeasonRead)
 def create_season(season: schemas.SeasonCreate, db: Session = Depends(get_db)):
     """Create a new season"""
@@ -33,6 +39,18 @@ def update_season(season_id: int, season_update: schemas.SeasonUpdate, db: Sessi
         raise HTTPException(status_code=404, detail="الموسم غير موجود")
     return db_season
 
+@router.post("/{season_id}/close")
+def close_season(season_id: int, db: Session = Depends(get_db)):
+    """
+    إغلاق الموسم وترحيل الأرباح
+    
+    - يحسب صافي الربح (الإيرادات - المصروفات)
+    - يرحل الربح لحساب الأرباح المرحلة
+    - يغير حالة الموسم إلى COMPLETED
+    - لا يصفر أرصدة الموردين/العملاء/الخزينة
+    """
+    return season_closing.close_season(db, season_id)
+
 @router.delete("/{season_id}", response_model=schemas.SeasonRead)
 def delete_season(season_id: int, db: Session = Depends(get_db)):
     """Delete a season"""
@@ -40,3 +58,4 @@ def delete_season(season_id: int, db: Session = Depends(get_db)):
     if db_season is None:
         raise HTTPException(status_code=404, detail="الموسم غير موجود")
     return db_season
+

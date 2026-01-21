@@ -224,6 +224,50 @@ class InventoryAdjustmentRead(InventoryAdjustmentBase):
     crop: Crop
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- Transformation Schemas ---
+class TransformationOutputBase(BaseModel):
+    """مخرج واحد من عملية التحويل"""
+    output_crop_id: int
+    output_quantity_kg: Decimal
+    cost_allocation_ratio: Decimal  # 0.00 - 1.00
+    is_waste: bool = False
+    notes: Optional[str] = None
+
+class TransformationOutputCreate(TransformationOutputBase):
+    pass
+
+class TransformationOutputRead(TransformationOutputBase):
+    output_id: int
+    transformation_id: int
+    allocated_cost: Decimal
+    cost_per_kg: Decimal
+    output_crop: Crop
+    model_config = ConfigDict(from_attributes=True)
+
+class TransformationBase(BaseModel):
+    """عملية تحويل محصول خام إلى منتجات"""
+    source_crop_id: int
+    source_quantity_kg: Decimal
+    processing_cost: Decimal = Decimal(0)
+    transformation_date: date
+    notes: Optional[str] = None
+    season_id: Optional[int] = None
+
+class TransformationCreate(TransformationBase):
+    outputs: List[TransformationOutputCreate]
+
+class TransformationRead(TransformationBase):
+    transformation_id: int
+    source_cost_per_kg: Decimal
+    source_total_cost: Decimal
+    total_cost: Decimal
+    source_crop: Crop
+    outputs: List[TransformationOutputRead]
+    creator: Optional[UserSummary] = None
+    created_at: Optional[date] = None
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Season Schemas ---
 class SeasonBase(BaseModel):
     name: str
