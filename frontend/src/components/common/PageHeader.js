@@ -14,7 +14,7 @@ import '../../styles/dashboardAnimations.css';
 function FloatingBlob({ className, delay = 0 }) {
     return (
         <div
-            className={`absolute rounded-full bg-white/10 blur-3xl animate-blob ${className}`}
+            className={`absolute rounded-full bg-white/10 blur-3xl animate-blob pointer-events-none ${className}`} // Added pointer-events-none
             style={{ animationDelay: `${delay}s` }}
         />
     );
@@ -98,7 +98,7 @@ export function PageHeader({
                 {showParticles && <ParticlesEffect />}
 
                 {/* Content */}
-                <div className="relative z-10">
+                <div className="relative z-20"> {/* INCREASED Z-INDEX to be above particles/blobs */}
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         {/* Title Section */}
                         <div className="flex items-center gap-4 animate-fade-in-up">
@@ -115,7 +115,7 @@ export function PageHeader({
 
                         {/* Actions */}
                         {actions && (
-                            <div className="flex items-center gap-3 animate-fade-in-up stagger-3">
+                            <div className="flex items-center gap-3 animate-fade-in-up stagger-3 relative z-30"> {/* EXTRA Z-INDEX validity */}
                                 {actions}
                             </div>
                         )}
@@ -123,15 +123,15 @@ export function PageHeader({
 
                     {/* Children (Stats, etc.) */}
                     {children && (
-                        <div className="mt-6 animate-fade-in-up stagger-4">
+                        <div className="mt-6 animate-fade-in-up stagger-4 relative z-20">
                             {children}
                         </div>
                     )}
                 </div>
 
-                {/* Decorative Corner Shapes */}
-                <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-br-full" />
-                <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-tl from-black/10 to-transparent rounded-tl-full" />
+                {/* Decorative Corner Shapes - Added pointer-events-none */}
+                <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-br-full pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-tl from-black/10 to-transparent rounded-tl-full pointer-events-none" />
             </div>
         </div>
     );
@@ -157,8 +157,8 @@ export function StatsBar({ stats = [] }) {
                     </div>
                     {stat.trend !== undefined && (
                         <div className={`ml-auto text-xs font-medium px-2 py-1 rounded-lg animate-bounce-in ${stat.trend >= 0
-                                ? 'bg-green-500/30 text-green-200'
-                                : 'bg-red-500/30 text-red-200'
+                            ? 'bg-green-500/30 text-green-200'
+                            : 'bg-red-500/30 text-red-200'
                             }`}>
                             <i className={`bi ${stat.trend >= 0 ? 'bi-arrow-up' : 'bi-arrow-down'} mr-1`} />
                             {Math.abs(stat.trend)}%

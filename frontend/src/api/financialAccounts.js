@@ -1,10 +1,10 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = '/api/v1/financial-accounts/';
+const API_URL = '/financial-accounts/';
 
 export const getFinancialAccounts = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await apiClient.get(API_URL);
         return response.data;
     } catch (error) {
         console.error("Error fetching financial accounts:", error);
@@ -14,7 +14,7 @@ export const getFinancialAccounts = async () => {
 
 export const createFinancialAccount = async (accountData) => {
     try {
-        const response = await axios.post(API_URL, accountData);
+        const response = await apiClient.post(API_URL, accountData);
         return response.data;
     } catch (error) {
         console.error("Error creating financial account:", error);
@@ -24,7 +24,7 @@ export const createFinancialAccount = async (accountData) => {
 
 export const updateFinancialAccount = async (accountId, accountData) => {
     try {
-        const response = await axios.put(`${API_URL}${accountId}`, accountData);
+        const response = await apiClient.put(`${API_URL}${accountId}`, accountData);
         return response.data;
     } catch (error) {
         console.error("Error updating financial account:", error);
@@ -34,7 +34,7 @@ export const updateFinancialAccount = async (accountId, accountData) => {
 
 export const deleteFinancialAccount = async (accountId) => {
     try {
-        const response = await axios.delete(`${API_URL}${accountId}`);
+        const response = await apiClient.delete(`${API_URL}${accountId}`);
         return response.data;
     } catch (error) {
         console.error("Error deleting financial account:", error);

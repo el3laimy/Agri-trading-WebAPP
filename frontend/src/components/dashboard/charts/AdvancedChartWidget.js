@@ -221,11 +221,12 @@ const AdvancedChartWidget = () => {
     ];
 
     const formatCurrency = (value) => {
+        const num = parseFloat(value) || 0;
         return new Intl.NumberFormat('ar-EG', {
             style: 'currency',
             currency: 'EGP',
             minimumFractionDigits: 0
-        }).format(value || 0);
+        }).format(num);
     };
 
     return (
@@ -256,8 +257,8 @@ const AdvancedChartWidget = () => {
                                     key={p.id}
                                     onClick={() => setPeriod(p.id)}
                                     className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 flex items-center gap-2 ${period === p.id
-                                            ? 'bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-md'
-                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        ? 'bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-md'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                                         }`}
                                 >
                                     <i className={`bi ${p.icon}`} />
@@ -272,8 +273,8 @@ const AdvancedChartWidget = () => {
                         <button
                             onClick={() => setExpensesEnabled(!expensesEnabled)}
                             className={`p-2.5 rounded-xl transition-all duration-300 ${expensesEnabled
-                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 shadow-md'
-                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 shadow-md'
+                                : 'bg-gray-100 dark:bg-slate-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
                                 }`}
                             title="عرض المصاريف"
                         >
@@ -283,8 +284,8 @@ const AdvancedChartWidget = () => {
                         <button
                             onClick={() => setComparisonEnabled(!comparisonEnabled)}
                             className={`p-2.5 rounded-xl transition-all duration-300 ${comparisonEnabled
-                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-md'
-                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-md'
+                                : 'bg-gray-100 dark:bg-slate-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
                                 }`}
                             title="مقارنة مع الفترة السابقة"
                         >
@@ -335,8 +336,8 @@ const AdvancedChartWidget = () => {
                             </div>
                             {comparisonEnabled && data.summary.sales_change !== undefined && (
                                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${data.summary.sales_change >= 0
-                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                     }`}>
                                     <i className={`bi ${data.summary.sales_change >= 0 ? 'bi-arrow-up' : 'bi-arrow-down'} mr-1`} />
                                     {Math.abs(data.summary.sales_change)}%

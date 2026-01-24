@@ -1,12 +1,12 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_BASE = '/api/v1/transformations';
+const API_BASE = '/transformations';
 
 /**
  * قائمة عمليات التحويل
  */
 export const getTransformations = async () => {
-    const response = await axios.get(API_BASE);
+    const response = await apiClient.get(API_BASE);
     return response.data;
 };
 
@@ -14,7 +14,7 @@ export const getTransformations = async () => {
  * الحصول على عملية تحويل واحدة
  */
 export const getTransformation = async (id) => {
-    const response = await axios.get(`${API_BASE}/${id}`);
+    const response = await apiClient.get(`${API_BASE}/${id}`);
     return response.data;
 };
 
@@ -28,7 +28,7 @@ export const getTransformation = async (id) => {
  * @param {Array} data.outputs - المخرجات
  */
 export const createTransformation = async (data) => {
-    const response = await axios.post(API_BASE, data);
+    const response = await apiClient.post(API_BASE, data);
     return response.data;
 };
 
@@ -36,6 +36,6 @@ export const createTransformation = async (data) => {
  * حذف عملية تحويل
  */
 export const deleteTransformation = async (id) => {
-    const response = await axios.delete(`${API_BASE}/${id}`);
+    const response = await apiClient.delete(`${API_BASE}/${id}`);
     return response.data;
 };

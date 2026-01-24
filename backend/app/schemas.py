@@ -356,6 +356,7 @@ class TreasuryTransaction(BaseModel):
     type: str  # 'IN' or 'OUT'
     source: Optional[str] = None
     contact_name: Optional[str] = None
+    account_name: Optional[str] = None  # New field for Contra Account Name
 
 class AccountStatementEntry(BaseModel):
     """سطر واحد في كشف الحساب"""

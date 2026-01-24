@@ -2,13 +2,14 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from datetime import date
 from typing import List
+from decimal import Decimal
 
 from app import models, schemas, crud
 
 class JournalEntryLine(schemas.BaseModel):
     account_id: int
-    debit: float = 0.0
-    credit: float = 0.0
+    debit: Decimal = Decimal(0.0)
+    credit: Decimal = Decimal(0.0)
 
 class JournalEntryCreate(schemas.BaseModel):
     entry_date: date
@@ -22,8 +23,11 @@ def create_journal_entry(db: Session, journal_entry: JournalEntryCreate):
     total_debit = sum(line.debit for line in journal_entry.lines)
     total_credit = sum(line.credit for line in journal_entry.lines)
 
-    if round(total_debit, 2) != round(total_credit, 2):
-        raise HTTPException(status_code=400, detail="Journal entry is not balanced. Debits must equal credits.")
+    if total_debit != total_credit:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Journal entry is not balanced. Debits ({total_debit}) must equal credits ({total_credit})."
+        )
     
     if total_debit == 0:
         raise HTTPException(status_code=400, detail="Journal entry must have a non-zero debit/credit amount.")

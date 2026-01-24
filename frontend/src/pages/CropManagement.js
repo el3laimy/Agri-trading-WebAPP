@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getCrops, createCrop, updateCrop, deleteCrop, migrateAndDeleteCrop, forceDeleteCrop } from '../api/crops';
+import { safeParseFloat } from '../utils/mathUtils';
 import { useToast } from '../components/common';
 
 // Import shared components
@@ -69,7 +70,7 @@ function CropManagement() {
         try {
             const factorsObject = conversionFactors.reduce((acc, curr) => {
                 if (curr.unit && curr.factor) {
-                    acc[curr.unit] = parseFloat(curr.factor);
+                    acc[curr.unit] = safeParseFloat(curr.factor);
                 }
                 return acc;
             }, {});

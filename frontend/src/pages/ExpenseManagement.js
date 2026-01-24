@@ -2,35 +2,14 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useToast } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { getCrops } from '../api/crops';
+import { getExpenses, createExpense, deleteExpense } from '../api/expenses';
+import { safeParseFloat } from '../utils/mathUtils'; // Import safe parser
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
-
-// API functions
-const getExpenses = async () => {
-    const response = await fetch('http://localhost:8000/api/v1/expenses/');
-    if (!response.ok) throw new Error('Failed to fetch expenses');
-    return response.json();
-};
-
-const createExpense = async (data) => {
-    const response = await fetch('http://localhost:8000/api/v1/expenses/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error('Failed to create expense');
-    return response.json();
-};
-
-const deleteExpense = async (id) => {
-    const response = await fetch(`http://localhost:8000/api/v1/expenses/${id}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('Failed to delete expense');
-    return response.json();
-};
 
 function ExpenseManagement() {
     const { hasPermission } = useAuth();
@@ -48,9 +27,12 @@ function ExpenseManagement() {
         expense_date: new Date().toISOString().slice(0, 10),
         category: 'عام',
         expense_type: 'INDIRECT',
-        crop_id: ''
+        crop_id: '',
+        credit_account_id: '',  // Required by backend
+        debit_account_id: ''    // Required by backend
     });
     const [crops, setCrops] = useState([]);
+    const [accounts, setAccounts] = useState([]);
 
     // Fetch expenses
     const fetchExpenses = useCallback(async () => {
@@ -69,6 +51,7 @@ function ExpenseManagement() {
     useEffect(() => {
         fetchExpenses();
         fetchCrops();
+        fetchAccounts();
     }, [fetchExpenses]);
 
     const fetchCrops = async () => {
@@ -80,13 +63,23 @@ function ExpenseManagement() {
         }
     };
 
+    const fetchAccounts = async () => {
+        try {
+            const { getFinancialAccounts } = await import('../api/financialAccounts');
+            const data = await getFinancialAccounts();
+            setAccounts(data);
+        } catch (err) {
+            console.error('Failed to fetch accounts');
+        }
+    };
+
     const stats = useMemo(() => {
-        const total = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        const total = expenses.reduce((sum, e) => sum + (safeParseFloat(e.amount) || 0), 0);
         const thisMonth = expenses.filter(e => {
             const expDate = new Date(e.expense_date);
             const now = new Date();
             return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
-        }).reduce((sum, e) => sum + (e.amount || 0), 0);
+        }).reduce((sum, e) => sum + (safeParseFloat(e.amount) || 0), 0);
         return { total, thisMonth, count: expenses.length };
     }, [expenses]);
 
@@ -103,10 +96,19 @@ function ExpenseManagement() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await createExpense({
-                ...formState,
-                amount: parseFloat(formState.amount)
-            });
+            const payload = {
+                expense_date: formState.expense_date,
+                description: formState.description,
+                amount: safeParseFloat(formState.amount),
+                credit_account_id: parseInt(formState.credit_account_id),
+                debit_account_id: parseInt(formState.debit_account_id),
+                supplier_id: null,  // Optional
+                // These are extra fields stored in DB but not required by schema
+                category: formState.category,
+                expense_type: formState.expense_type,
+                crop_id: formState.crop_id ? parseInt(formState.crop_id) : null
+            };
+            await createExpense(payload);
             showSuccess('تم تسجيل المصروف بنجاح');
             setFormState({
                 description: '',
@@ -114,12 +116,15 @@ function ExpenseManagement() {
                 expense_date: new Date().toISOString().slice(0, 10),
                 category: 'عام',
                 expense_type: 'INDIRECT',
-                crop_id: ''
+                crop_id: '',
+                credit_account_id: '',
+                debit_account_id: ''
             });
             setShowAddForm(false);
             fetchExpenses();
         } catch (err) {
-            showError('فشل في تسجيل المصروف');
+            console.error('Expense creation error:', err);
+            showError(err.response?.data?.detail || 'فشل في تسجيل المصروف');
         }
     };
 
@@ -278,6 +283,36 @@ function ExpenseManagement() {
                                     <option value="عمالة">عمالة</option>
                                     <option value="صيانة">صيانة</option>
                                     <option value="إيجار">إيجار</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">حساب المصروف (مدين) *</label>
+                                <select
+                                    name="debit_account_id"
+                                    value={formState.debit_account_id}
+                                    onChange={handleInputChange}
+                                    required
+                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                >
+                                    <option value="">-- اختر حساب المصروف --</option>
+                                    {accounts.filter(a => a.account_type === 'EXPENSE').map(acc => (
+                                        <option key={acc.account_id} value={acc.account_id}>{acc.account_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">طريقة الدفع (دائن) *</label>
+                                <select
+                                    name="credit_account_id"
+                                    value={formState.credit_account_id}
+                                    onChange={handleInputChange}
+                                    required
+                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                >
+                                    <option value="">-- اختر طريقة الدفع --</option>
+                                    {accounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.account_type)).map(acc => (
+                                        <option key={acc.account_id} value={acc.account_id}>{acc.account_name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div>

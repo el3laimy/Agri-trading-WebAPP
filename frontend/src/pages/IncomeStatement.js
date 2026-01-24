@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { usePageState } from '../hooks';
 import { formatCurrency } from '../utils';
+import { getIncomeStatement } from '../api/reports';
 
 // Import shared components
 import { PageHeader, ActionButton, LoadingCard } from '../components/common/PageHeader';
@@ -23,15 +24,10 @@ const IncomeStatement = () => {
         try {
             const start = startDate.toISOString().split('T')[0];
             const end = endDate.toISOString().split('T')[0];
-            const response = await fetch(`http://localhost:8000/api/v1/reports/income-statement?start_date=${start}&end_date=${end}`);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to generate report');
-            }
-            const data = await response.json();
+            const data = await getIncomeStatement(start, end);
             setReportData(data);
         } catch (err) {
-            showError(err.message);
+            showError(err.response?.data?.detail || err.message || 'Failed to generate report');
         } finally {
             stopLoading();
         }

@@ -30,16 +30,16 @@ const GeneralLedger = () => {
     const entriesPerPage = 20;
 
     const stats = useMemo(() => {
-        const totalDebit = entries.reduce((sum, e) => sum + (e.debit || 0), 0);
-        const totalCredit = entries.reduce((sum, e) => sum + (e.credit || 0), 0);
+        const totalDebit = entries.reduce((sum, e) => sum + (parseFloat(e.debit) || 0), 0);
+        const totalCredit = entries.reduce((sum, e) => sum + (parseFloat(e.credit) || 0), 0);
         const uniqueAccounts = [...new Set(entries.filter(e => e.account).map(e => e.account.account_id))].length;
         return { totalDebit, totalCredit, entriesCount: entries.length, uniqueAccounts };
     }, [entries]);
 
     const fetchAccounts = async () => {
         try {
-            const response = await fetch('http://localhost:8000/api/v1/financial-accounts/');
-            const data = await response.json();
+            const { getFinancialAccounts } = await import('../api/financialAccounts');
+            const data = await getFinancialAccounts();
             setAccounts(data);
         } catch (err) { console.error("Failed to fetch accounts", err); }
     };

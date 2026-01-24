@@ -1,10 +1,10 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = '/api/v1/sales/';
+const API_URL = '/sales/';
 
 export const getSales = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await apiClient.get(API_URL);
         return response.data;
     } catch (error) {
         console.error("Error fetching sales:", error);
@@ -14,7 +14,7 @@ export const getSales = async () => {
 
 export const createSale = async (saleData) => {
     try {
-        const response = await axios.post(API_URL, saleData);
+        const response = await apiClient.post(API_URL, saleData);
         return response.data;
     } catch (error) {
         console.error("Error creating sale:", error);
@@ -24,7 +24,7 @@ export const createSale = async (saleData) => {
 
 export const downloadInvoice = async (saleId) => {
     try {
-        const response = await axios.get(`${API_URL}${saleId}/invoice`, {
+        const response = await apiClient.get(`${API_URL}${saleId}/invoice`, {
             responseType: 'blob', // Important for handling binary data (PDF)
         });
         return response.data;
@@ -36,7 +36,7 @@ export const downloadInvoice = async (saleId) => {
 
 export const updateSale = async (saleId, saleData) => {
     try {
-        const response = await axios.put(`${API_URL}${saleId}`, saleData);
+        const response = await apiClient.put(`${API_URL}${saleId}`, saleData);
         return response.data;
     } catch (error) {
         console.error("Error updating sale:", error);
@@ -46,7 +46,7 @@ export const updateSale = async (saleId, saleData) => {
 
 export const deleteSale = async (saleId) => {
     try {
-        const response = await axios.delete(`${API_URL}${saleId}`);
+        const response = await apiClient.delete(`${API_URL}${saleId}`);
         return response.data;
     } catch (error) {
         console.error("Error deleting sale:", error);
@@ -62,7 +62,7 @@ export const deleteSale = async (saleId) => {
  */
 export const getLastSalePrice = async (cropId, customerId) => {
     try {
-        const response = await axios.get(`${API_URL}last-price/${cropId}/${customerId}`);
+        const response = await apiClient.get(`${API_URL}last-price/${cropId}/${customerId}`);
         return response.data;
     } catch (error) {
         console.error("Error fetching last price:", error);

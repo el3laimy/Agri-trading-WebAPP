@@ -1,25 +1,21 @@
-import axios from 'axios';
-
-const API_BASE_URL = '/api/v1';
-
-const getAuthHeader = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
+import apiClient from './client';
 
 export const getInventory = async () => {
-    const response = await axios.get(`${API_BASE_URL}/inventory/`);
+    const response = await apiClient.get('/inventory/');
     return response.data;
 };
 
-export const getInventoryAdjustments = async (token) => {
-    const response = await axios.get(`${API_BASE_URL}/inventory/adjustments`, getAuthHeader(token));
+export const getInventoryAdjustments = async () => {
+    const response = await apiClient.get('/inventory/adjustments');
     return response.data;
 };
 
-export const createInventoryAdjustment = async (token, data) => {
-    const response = await axios.post(`${API_BASE_URL}/inventory/adjustments`, data, getAuthHeader(token));
+export const createInventoryAdjustment = async (data) => {
+    const response = await apiClient.post('/inventory/adjustments', data);
     return response.data;
 };
 
-export const getCropBatches = async (token, cropId) => {
-    const response = await axios.get(`${API_BASE_URL}/inventory/${cropId}/batches`, getAuthHeader(token));
+export const getCropBatches = async (cropId) => {
+    const response = await apiClient.get(`/inventory/${cropId}/batches`);
     return response.data;
 };

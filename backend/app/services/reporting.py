@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_
 from datetime import date, timedelta
+from decimal import Decimal
 
 from app import models
 
@@ -41,14 +42,18 @@ def generate_balance_sheet(db: Session, end_date: date):
     assets = []
     liabilities = []
     equity_accounts = []
-    total_assets = 0
-    total_liabilities = 0
-    total_equity = 0
+    assets = []
+    liabilities = []
+    equity_accounts = []
+    total_assets = Decimal(0)
+    total_liabilities = Decimal(0)
+    total_equity = Decimal(0)
     
-    revenue_for_re = 0
-    expense_for_re = 0
+    revenue_for_re = Decimal(0)
+    expense_for_re = Decimal(0)
 
-    for acc_id, acc_name, acc_type, balance in account_balances:
+    for acc_id, acc_name, acc_type, balance_val in account_balances:
+        balance = Decimal(str(balance_val or 0))
         if acc_type in ['LIABILITY', 'EQUITY', 'REVENUE']:
             balance = -balance
 
@@ -91,7 +96,9 @@ def generate_equity_statement(db: Session, start_date: date, end_date: date):
         .join(models.FinancialAccount, models.FinancialAccount.account_id == models.GeneralLedger.account_id)\
         .filter(models.FinancialAccount.account_type == 'EQUITY')\
         .filter(models.GeneralLedger.entry_date < start_date)\
+        .filter(models.GeneralLedger.entry_date < start_date)\
         .scalar() or 0
+    beginning_equity_balance = Decimal(str(beginning_equity_balance))
 
     # 2. Calculate Net Income for the period
     income_statement = generate_income_statement(db, start_date, end_date)
@@ -106,8 +113,8 @@ def generate_equity_statement(db: Session, start_date: date, end_date: date):
      .filter(models.GeneralLedger.entry_date.between(start_date, end_date))\
      .all()
 
-    contributions = sum(t.credit for t in equity_transactions)
-    draws = sum(t.debit for t in equity_transactions)
+    contributions = sum(Decimal(str(t.credit or 0)) for t in equity_transactions)
+    draws = sum(Decimal(str(t.debit or 0)) for t in equity_transactions)
 
     # 4. Calculate Ending Equity
     ending_equity = beginning_equity_balance + net_income + contributions - draws
@@ -140,10 +147,13 @@ def generate_income_statement(db: Session, start_date: date, end_date: date):
 
     revenues = []
     expenses = []
-    total_revenue = 0
-    total_expense = 0
+    revenues = []
+    expenses = []
+    total_revenue = Decimal(0)
+    total_expense = Decimal(0)
 
-    for acc_type, acc_name, balance in transactions:
+    for acc_type, acc_name, balance_val in transactions:
+        balance = Decimal(str(balance_val or 0))
         if acc_type == 'REVENUE':
             amount = balance
             revenues.append({"account_name": acc_name, "amount": amount})

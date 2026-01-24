@@ -12,6 +12,7 @@ import { useToast } from '../components/common';
 // Import shared utilities and components
 import { usePageState } from '../hooks';
 import { formatPhoneForWhatsApp } from '../utils';
+import { safeParseFloat, safeParseInt } from '../utils/mathUtils';
 
 // Import new components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
@@ -217,17 +218,13 @@ function SaleManagement() {
 
     const handleSavePayment = async (paymentData) => {
         try {
-            const response = await fetch('http://localhost:8000/api/v1/payments/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(paymentData)
-            });
-            if (!response.ok) throw new Error('Failed to save payment.');
+            const apiClient = (await import('../api/client')).default;
+            await apiClient.post('/payments/', paymentData);
             handleCancelPayment();
             refetchSales();
         } catch (err) {
             console.error("Payment error:", err);
-            showError(err.message);
+            showError(err.response?.data?.detail || err.message);
         }
     };
 
@@ -250,11 +247,8 @@ function SaleManagement() {
         if (!email) return;
 
         try {
-            await fetch(`http://localhost:8000/api/v1/sales/${sale.sale_id}/share/email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
+            const apiClient = (await import('../api/client')).default;
+            await apiClient.post(`/sales/${sale.sale_id}/share/email`, { email });
             alert("تم إرسال الفاتورة بنجاح");
         } catch (err) {
             console.error(err);
@@ -356,10 +350,10 @@ function SaleManagement() {
         });
     }, [sales, searchTerm, selectedCropFilter]);
 
-    // Calculate totals
-    const calculatedQtyKg = parseFloat(formState.quantity_input || 0);
-    const calculatedQtyUnit = calculatedQtyKg / parseFloat(formState.specific_selling_factor || 1);
-    const calculatedTotal = calculatedQtyUnit * parseFloat(formState.price_input || 0);
+    // Calculate totals - SAFE PARSING
+    const calculatedQtyKg = safeParseFloat(formState.quantity_input);
+    const calculatedQtyUnit = calculatedQtyKg / safeParseFloat(formState.specific_selling_factor, 1);
+    const calculatedTotal = calculatedQtyUnit * safeParseFloat(formState.price_input);
 
     // Loading state
     if (isLoading) {

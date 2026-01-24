@@ -1,10 +1,10 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = '/api/v1/expenses/';
+const API_URL = '/expenses/';
 
 export const getExpenses = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await apiClient.get(API_URL);
         return response.data;
     } catch (error) {
         console.error("Error fetching expenses:", error);
@@ -14,7 +14,7 @@ export const getExpenses = async () => {
 
 export const createExpense = async (expenseData) => {
     try {
-        const response = await axios.post(API_URL, expenseData);
+        const response = await apiClient.post(API_URL, expenseData);
         return response.data;
     } catch (error) {
         console.error("Error creating expense:", error);
@@ -24,7 +24,7 @@ export const createExpense = async (expenseData) => {
 
 export const updateExpense = async (expenseId, expenseData) => {
     try {
-        const response = await axios.put(`${API_URL}${expenseId}`, expenseData);
+        const response = await apiClient.put(`${API_URL}${expenseId}`, expenseData);
         return response.data;
     } catch (error) {
         console.error("Error updating expense:", error);
@@ -34,7 +34,7 @@ export const updateExpense = async (expenseId, expenseData) => {
 
 export const deleteExpense = async (expenseId) => {
     try {
-        const response = await axios.delete(`${API_URL}${expenseId}`);
+        const response = await apiClient.delete(`${API_URL}${expenseId}`);
         return response.data;
     } catch (error) {
         console.error("Error deleting expense:", error);

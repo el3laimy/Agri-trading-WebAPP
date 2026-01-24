@@ -3,7 +3,20 @@ import React from 'react';
 /**
  * Component for treasury transactions table - Tailwind CSS version
  */
-function TransactionsTable({ transactions, formatDate, formatCurrency, onRefresh }) {
+function TransactionsTable({ transactions = [], formatDate, formatCurrency, onRefresh }) {
+    // Ensure transactions is always an array
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
+    // Safe wrapper functions with fallbacks
+    const safeFormatDate = (date) => {
+        if (typeof formatDate === 'function') return formatDate(date);
+        return date ? new Date(date).toLocaleDateString('ar-EG') : '-';
+    };
+
+    const safeFormatCurrency = (amount) => {
+        if (typeof formatCurrency === 'function') return formatCurrency(amount);
+        return `${(parseFloat(amount) || 0).toLocaleString('ar-EG')} ج.م`;
+    };
 
     const MobileTransactionCard = ({ transaction }) => (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700 p-3.5 space-y-3">
@@ -17,11 +30,11 @@ function TransactionsTable({ transactions, formatDate, formatCurrency, onRefresh
                         {transaction.type === 'IN' ? 'وارد' : 'صادر'}
                     </span>
                     <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                        {formatDate(transaction.date)}
+                        {safeFormatDate(transaction.date)}
                     </span>
                 </div>
                 <div className={`text-sm font-bold whitespace-nowrap tabular-nums ${transaction.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {transaction.type === 'IN' ? '+' : '-'}{formatCurrency(transaction.amount).replace('ج.م', '')} <span className="text-xs font-normal text-gray-400">ج.م</span>
+                    {transaction.type === 'IN' ? '+' : '-'}{safeFormatCurrency(transaction.amount).replace('ج.م', '')} <span className="text-xs font-normal text-gray-400">ج.م</span>
                 </div>
             </div>
 
@@ -32,9 +45,11 @@ function TransactionsTable({ transactions, formatDate, formatCurrency, onRefresh
             <div className="pt-2 border-t border-gray-50 dark:border-slate-700/50 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex items-center">
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-slate-500 me-2"></div>
-                    <span className="truncate max-w-[200px]" title={transaction.source}>
-                        {transaction.source}
+                    <span className="truncate max-w-[200px] font-medium text-gray-700 dark:text-gray-300" title={transaction.account_name || 'عام'}>
+                        {transaction.account_name || 'عام'}
                     </span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span className="font-mono text-[10px]">{transaction.source}</span>
                 </div>
             </div>
         </div>
@@ -62,18 +77,18 @@ function TransactionsTable({ transactions, formatDate, formatCurrency, onRefresh
                     <thead className="bg-gray-50/95 dark:bg-slate-700/95 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
                         <tr>
                             <th className="w-[15%] px-4 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">التاريخ</th>
-                            <th className="w-[35%] px-4 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">الوصف</th>
+                            <th className="w-[30%] px-4 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">الوصف</th>
                             <th className="w-[12%] px-4 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">النوع</th>
-                            <th className="w-[18%] px-4 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">المصدر</th>
+                            <th className="w-[23%] px-4 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">الحساب / الجهة</th>
                             <th className="w-[20%] px-4 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">المبلغ</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
-                        {transactions.length > 0 ? (
-                            transactions.map((t) => (
+                        {safeTransactions.length > 0 ? (
+                            safeTransactions.map((t) => (
                                 <tr key={t.transaction_id} className="hover:bg-gray-50 dark:hover:bg-slate-700/40 transition-colors group">
                                     <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap tabular-nums font-medium">
-                                        {formatDate(t.date)}
+                                        {safeFormatDate(t.date)}
                                     </td>
                                     <td className="px-4 py-3.5 text-sm text-gray-800 dark:text-gray-200">
                                         <div className="line-clamp-1" title={t.description}>
@@ -92,14 +107,19 @@ function TransactionsTable({ transactions, formatDate, formatCurrency, onRefresh
                                     <td className="px-4 py-3.5">
                                         <div className="flex items-center">
                                             <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-slate-500 me-2"></div>
-                                            <span className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[120px]" title={t.source}>
-                                                {t.source}
-                                            </span>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-[150px]" title={t.account_name || 'عام'}>
+                                                    {t.account_name || 'عام'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono hidden group-hover:block">
+                                                    {t.source}
+                                                </span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className={`px-4 py-3.5 text-left text-sm font-bold whitespace-nowrap tabular-nums ${t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                                         }`}>
-                                        {t.type === 'IN' ? '+' : '-'}{formatCurrency(t.amount).replace('ج.م', '')} <span className="text-xs font-normal text-gray-400">ج.م</span>
+                                        {t.type === 'IN' ? '+' : '-'}{safeFormatCurrency(t.amount).replace('ج.م', '')} <span className="text-xs font-normal text-gray-400">ج.م</span>
                                     </td>
                                 </tr>
                             ))
@@ -121,8 +141,8 @@ function TransactionsTable({ transactions, formatDate, formatCurrency, onRefresh
 
             {/* Mobile Card View */}
             <div className="md:hidden flex flex-col p-4 space-y-3 bg-gray-50 dark:bg-slate-800/50 max-h-[500px] overflow-y-auto">
-                {transactions.length > 0 ? (
-                    transactions.map((t) => <MobileTransactionCard key={t.transaction_id} transaction={t} />)
+                {safeTransactions.length > 0 ? (
+                    safeTransactions.map((t) => <MobileTransactionCard key={t.transaction_id} transaction={t} />)
                 ) : (
                     <div className="text-center py-12 text-gray-400 dark:text-gray-500">
                         <div className="flex flex-col items-center justify-center">

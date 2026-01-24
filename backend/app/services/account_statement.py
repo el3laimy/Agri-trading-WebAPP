@@ -117,7 +117,7 @@ def get_account_statement(
         start_date = date(end_date.year, 1, 1)
     
     entries: List[schemas.AccountStatementEntry] = []
-    running_balance = 0.0
+    running_balance = Decimal(0)
     
     # حساب الرصيد الافتتاحي (قبل تاريخ البداية)
     opening_balance = _calculate_opening_balance(db, contact_id, start_date)
@@ -140,9 +140,10 @@ def get_account_statement(
             crop_name = sale.crop.crop_name if sale.crop else "محصول"
             # حساب الكمية بالوحدة الأصلية
             original_unit = sale.selling_pricing_unit or 'kg'
-            factor = sale.specific_selling_factor or 1.0
-            original_qty = (sale.quantity_sold_kg or 0) / factor
-            original_price = (sale.selling_unit_price or 0) * factor
+            factor = sale.specific_selling_factor or Decimal(1)
+            if factor == 0: factor = Decimal(1) # Prevent division by zero
+            original_qty = Decimal(str(sale.quantity_sold_kg or 0)) / factor
+            original_price = Decimal(str(sale.selling_unit_price or 0)) * factor
             
             transactions.append({
                 'date': sale.sale_date,
@@ -171,9 +172,10 @@ def get_account_statement(
             crop_name = purchase.crop.crop_name if purchase.crop else "محصول"
             # حساب الكمية بالوحدة الأصلية
             original_unit = purchase.purchasing_pricing_unit or 'kg'
-            factor = purchase.conversion_factor or 1.0
-            original_qty = (purchase.quantity_kg or 0) / factor
-            original_price = (purchase.unit_price or 0) * factor
+            factor = purchase.conversion_factor or Decimal(1)
+            if factor == 0: factor = Decimal(1)
+            original_qty = Decimal(str(purchase.quantity_kg or 0)) / factor
+            original_price = Decimal(str(purchase.unit_price or 0)) * factor
             
             transactions.append({
                 'date': purchase.purchase_date,
@@ -227,24 +229,13 @@ def get_account_statement(
                 'unit': None
             })
         elif payment.transaction_type == 'GENERAL':
-            # قبض/صرف عام على الحساب (من الخزينة)
-            # تحديد اتجاه الحركة بناءً على نوع جهة الاتصال
-            if contact.is_customer:
-                # قبض من عميل - دائن
-                transactions.append({
-                    'date': payment.payment_date,
-                    'description': f"واصل منه نقدية (عام) - {payment.payment_method}",
-                    'reference_type': 'PAYMENT',
-                    'reference_id': payment.payment_id,
-                    'debit': Decimal(0),
-                    'credit': payment.amount,
-                    'crop_name': None,
-                    'quantity': None,
-                    'unit_price': None,
-                    'unit': None
-                })
-            elif contact.is_supplier:
-                # صرف لمورد - مدين
+            # تحديد اتجاه الحركة بناءً على حساب الخزينة
+            # إذا كان حساب الدائن هو الخزينة = خرجت نقود = صرف له (مدين)
+            # إذا كان حساب المدين هو الخزينة = دخلت نقود = قبض منه (دائن)
+            cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+            
+            if payment.credit_account_id == cash_id:
+                # صرف نقدية للطرف الآخر (Debit Contact)
                 transactions.append({
                     'date': payment.payment_date,
                     'description': f"صادر له نقدية (عام) - {payment.payment_method}",
@@ -257,13 +248,55 @@ def get_account_statement(
                     'unit_price': None,
                     'unit': None
                 })
+            elif payment.debit_account_id == cash_id:
+                # استلام نقدية من الطرف الآخر (Credit Contact)
+                transactions.append({
+                    'date': payment.payment_date,
+                    'description': f"واصل منه نقدية (عام) - {payment.payment_method}",
+                    'reference_type': 'PAYMENT',
+                    'reference_id': payment.payment_id,
+                    'debit': Decimal(0),
+                    'credit': payment.amount,
+                    'crop_name': None,
+                    'quantity': None,
+                    'unit_price': None,
+                    'unit': None
+                })
+            else:
+                # تحويل بنكي أو تسوية لا تشمل الخزينة الرئيسية (نعتمد على النوع القديم احتياطياً)
+                if contact.is_customer:
+                     transactions.append({
+                        'date': payment.payment_date,
+                        'description': f"تسوية (عام) - {payment.payment_method}",
+                        'reference_type': 'PAYMENT',
+                        'reference_id': payment.payment_id,
+                        'debit': Decimal(0),
+                        'credit': payment.amount,
+                        'crop_name': None,
+                        'quantity': None,
+                        'unit_price': None,
+                        'unit': None
+                    })
+                else:
+                    transactions.append({
+                        'date': payment.payment_date,
+                        'description': f"تسوية (عام) - {payment.payment_method}",
+                        'reference_type': 'PAYMENT',
+                        'reference_id': payment.payment_id,
+                        'debit': payment.amount,
+                        'credit': Decimal(0),
+                        'crop_name': None,
+                        'quantity': None,
+                        'unit_price': None,
+                        'unit': None
+                    })
     
     # ترتيب المعاملات حسب التاريخ
     transactions.sort(key=lambda x: x['date'])
     
     # بناء الإدخالات مع الرصيد التراكمي
     for t in transactions:
-        running_balance = running_balance + t['debit'] - t['credit']
+        running_balance = running_balance + Decimal(str(t['debit'] or 0)) - Decimal(str(t['credit'] or 0))
         entries.append(schemas.AccountStatementEntry(
             date=t['date'],
             description=t['description'],
@@ -298,7 +331,7 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
     """
     contact = db.query(models.Contact).filter(models.Contact.contact_id == contact_id).first()
     if not contact:
-        return 0.0
+        return Decimal(0)
     
     balance = Decimal(0)
     
@@ -309,8 +342,8 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Sale.customer_id == contact_id,
                 models.Sale.sale_date < before_date
             )
-        ).scalar() or Decimal(0)
-        balance += sales_total
+        ).scalar() or 0
+        balance += Decimal(str(sales_total))
         
         # التحصيلات قبل التاريخ
         received = db.query(func.sum(models.Payment.amount)).filter(
@@ -319,8 +352,8 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Payment.transaction_type == 'SALE',
                 models.Payment.payment_date < before_date
             )
-        ).scalar() or Decimal(0)
-        balance -= received
+        ).scalar() or 0
+        balance -= Decimal(str(received))
     
     # المشتريات قبل التاريخ (للموردين)
     if contact.is_supplier:
@@ -329,8 +362,8 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Purchase.supplier_id == contact_id,
                 models.Purchase.purchase_date < before_date
             )
-        ).scalar() or Decimal(0)
-        balance -= purchases_total  # سالب = علينا له
+        ).scalar() or 0
+        balance -= Decimal(str(purchases_total))  # سالب = علينا له
         
         # المدفوعات قبل التاريخ
         paid = db.query(func.sum(models.Payment.amount)).filter(
@@ -339,8 +372,8 @@ def _calculate_opening_balance(db: Session, contact_id: int, before_date: date) 
                 models.Payment.transaction_type == 'PURCHASE',
                 models.Payment.payment_date < before_date
             )
-        ).scalar() or Decimal(0)
-        balance += paid
+        ).scalar() or 0
+        balance += Decimal(str(paid))
     
     return balance
 

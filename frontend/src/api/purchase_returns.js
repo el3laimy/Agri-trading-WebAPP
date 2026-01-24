@@ -1,13 +1,11 @@
-import axios from 'axios';
-
-const API_URL = '/api/v1';
+import apiClient from './client';
 
 export const getPurchaseReturns = async () => {
-    const response = await axios.get(`${API_URL}/purchase-returns`);
+    const response = await apiClient.get('/purchase-returns');
     return response.data;
 };
 
 export const createPurchaseReturn = async (data) => {
-    const response = await axios.post(`${API_URL}/purchase-returns`, data);
+    const response = await apiClient.post('/purchase-returns', data);
     return response.data;
 };

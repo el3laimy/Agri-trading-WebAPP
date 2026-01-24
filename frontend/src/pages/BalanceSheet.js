@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { usePageState } from '../hooks';
 import { PageHeader, PageLoading, Card } from '../components/common';
 import { formatCurrency } from '../utils';
+import { getBalanceSheet } from '../api/reports';
 
 const BalanceSheet = () => {
     const [reportData, setReportData] = useState(null);
@@ -23,17 +24,11 @@ const BalanceSheet = () => {
 
         try {
             const dateStr = endDate.toISOString().split('T')[0];
-            const response = await fetch(`http://localhost:8000/api/v1/reports/balance-sheet?end_date=${dateStr}`);
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to generate report');
-            }
-            const data = await response.json();
+            const data = await getBalanceSheet(dateStr);
             setReportData(data);
         } catch (err) {
             console.error(err);
-            showError(err.message);
+            showError(err.response?.data?.detail || err.message || 'Failed to generate report');
         } finally {
             stopLoading();
         }

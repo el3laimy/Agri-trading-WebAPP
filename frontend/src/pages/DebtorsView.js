@@ -39,7 +39,7 @@ function DebtorsView() {
 
     const currentData = activeTab === 'receivables' ? debtData.receivables : debtData.payables;
     const filteredData = currentData.filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()) || item.phone?.includes(searchTerm));
-    const totalAmount = filteredData.reduce((sum, item) => sum + (item.balance_due || 0), 0);
+    const totalAmount = filteredData.reduce((sum, item) => sum + (parseFloat(item.balance_due) || 0), 0);
 
     const handlePrint = () => window.print();
 
@@ -163,7 +163,7 @@ function DebtorsView() {
                             </div>
                             <div>
                                 <p className="text-xs text-white/70">لنا</p>
-                                <p className="text-lg font-bold">{formatCurrency(debtData.receivables?.reduce((s, i) => s + (i.balance_due || 0), 0))}</p>
+                                <p className="text-lg font-bold">{formatCurrency(debtData.receivables?.reduce((s, i) => s + (parseFloat(i.balance_due) || 0), 0))}</p>
                             </div>
                         </div>
                     </div>
@@ -174,7 +174,7 @@ function DebtorsView() {
                             </div>
                             <div>
                                 <p className="text-xs text-white/70">علينا</p>
-                                <p className="text-lg font-bold">{formatCurrency(debtData.payables?.reduce((s, i) => s + (i.balance_due || 0), 0))}</p>
+                                <p className="text-lg font-bold">{formatCurrency(debtData.payables?.reduce((s, i) => s + (parseFloat(i.balance_due) || 0), 0))}</p>
                             </div>
                         </div>
                     </div>

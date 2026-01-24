@@ -30,12 +30,12 @@ const ExpenseForm = ({ onSave, onCancel, expense }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [accountsRes, contactsRes] = await Promise.all([
-                    fetch('http://localhost:8000/api/v1/financial-accounts/'),
-                    fetch('http://localhost:8000/api/v1/contacts/'),
+                const { getFinancialAccounts } = await import('../api/financialAccounts');
+                const { getContacts } = await import('../api/contacts');
+                const [accountsData, contactsData] = await Promise.all([
+                    getFinancialAccounts(),
+                    getContacts(),
                 ]);
-                const accountsData = await accountsRes.json();
-                const contactsData = await contactsRes.json();
                 setAccounts(accountsData);
                 setContacts(contactsData);
             } catch (error) {

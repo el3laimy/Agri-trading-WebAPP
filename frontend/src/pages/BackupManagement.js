@@ -23,7 +23,7 @@ const BackupManagement = () => {
     const loadBackups = async () => {
         setLoading(true);
         try {
-            const data = await backupApi.getBackups(token);
+            const data = await backupApi.getBackups();
             setBackups(data);
             setError(null);
         } catch (err) {
@@ -37,7 +37,7 @@ const BackupManagement = () => {
     const handleCreateBackup = async () => {
         setLoading(true);
         try {
-            await backupApi.createBackup(token);
+            await backupApi.createBackup();
             setSuccess("تم إنشاء النسخة الاحتياطية بنجاح");
             await loadBackups();
         } catch (err) {
@@ -51,7 +51,7 @@ const BackupManagement = () => {
     const handleRestore = async (filename) => {
         setLoading(true);
         try {
-            await backupApi.restoreBackup(token, filename);
+            await backupApi.restoreBackup(filename);
             setSuccess("تم استعادة النظام بنجاح. يرجى إعادة تحميل الصفحة.");
             setConfirmAction(null);
             setTimeout(() => window.location.reload(), 2000);
@@ -66,7 +66,7 @@ const BackupManagement = () => {
     const handleDelete = async (filename) => {
         setLoading(true);
         try {
-            await backupApi.deleteBackup(token, filename);
+            await backupApi.deleteBackup(filename);
             setSuccess("تم حذف ملف النسخة الاحتياطية");
             setConfirmAction(null);
             await loadBackups();
@@ -84,7 +84,7 @@ const BackupManagement = () => {
 
         setUploading(true);
         try {
-            await backupApi.uploadBackup(token, file);
+            await backupApi.uploadBackup(file);
             setSuccess("تم رفع الملف بنجاح");
             await loadBackups();
         } catch (err) {

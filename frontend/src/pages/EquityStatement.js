@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { usePageState } from '../hooks';
 import { PageHeader, PageLoading, Card } from '../components/common';
 import { formatCurrency } from '../utils';
+import { getEquityStatement } from '../api/reports';
 
 const EquityStatement = () => {
     const [reportData, setReportData] = useState(null);
@@ -25,17 +26,11 @@ const EquityStatement = () => {
         try {
             const start = startDate.toISOString().split('T')[0];
             const end = endDate.toISOString().split('T')[0];
-
-            const response = await fetch(`http://localhost:8000/api/v1/reports/equity-statement?start_date=${start}&end_date=${end}`);
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to generate report');
-            }
-            const data = await response.json();
+            const data = await getEquityStatement(start, end);
             setReportData(data);
         } catch (err) {
             console.error(err);
-            showError(err.message);
+            showError(err.response?.data?.detail || err.message || 'Failed to generate report');
         } finally {
             stopLoading();
         }

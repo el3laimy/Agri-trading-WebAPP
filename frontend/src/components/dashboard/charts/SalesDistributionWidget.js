@@ -13,8 +13,8 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
     );
 
     // Calculate Totals
-    const totalValue = salesByCrop.reduce((sum, item) => sum + (item.value || 0), 0);
-    const totalVolume = salesByCrop.reduce((sum, item) => sum + (item.volume || 0), 0);
+    const totalValue = salesByCrop.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0);
+    const totalVolume = salesByCrop.reduce((sum, item) => sum + (parseFloat(item.volume) || 0), 0);
     const currentTotal = viewMode === 'value' ? totalValue : totalVolume;
 
     // Color Palette
@@ -151,8 +151,8 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
                         <button
                             onClick={() => setViewMode('value')}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${viewMode === 'value'
-                                    ? 'bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-md'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-white dark:bg-slate-600 text-emerald-600 dark:text-emerald-400 shadow-md'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                         >
                             <i className="bi bi-currency-dollar mr-1" />
@@ -161,8 +161,8 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
                         <button
                             onClick={() => setViewMode('volume')}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${viewMode === 'volume'
-                                    ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-md'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-md'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                         >
                             <i className="bi bi-box-seam mr-1" />

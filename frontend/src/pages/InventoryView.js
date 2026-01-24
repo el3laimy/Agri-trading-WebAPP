@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { useToast } from '../components/common';
+import { safeParseFloat } from '../utils/mathUtils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
@@ -18,9 +19,9 @@ function InventoryView() {
     // Stats
     const stats = useMemo(() => {
         const totalItems = inventory?.length || 0;
-        const totalQuantity = inventory?.reduce((sum, item) => sum + (parseFloat(item.current_stock_kg) || 0), 0) || 0;
-        const inStock = inventory?.filter(i => parseFloat(i.current_stock_kg) > 0).length || 0;
-        const outOfStock = inventory?.filter(i => parseFloat(i.current_stock_kg) <= 0).length || 0;
+        const totalQuantity = inventory?.reduce((sum, item) => sum + safeParseFloat(item.current_stock_kg), 0) || 0;
+        const inStock = inventory?.filter(i => safeParseFloat(i.current_stock_kg) > 0).length || 0;
+        const outOfStock = inventory?.filter(i => safeParseFloat(i.current_stock_kg) <= 0).length || 0;
         return { totalItems, totalQuantity, inStock, outOfStock };
     }, [inventory]);
 
@@ -33,7 +34,7 @@ function InventoryView() {
     const filteredInventory = useMemo(() => {
         return (inventory || []).filter(item => {
             const matchesSearch = item.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase());
-            const stockKg = parseFloat(item.current_stock_kg) || 0;
+            const stockKg = safeParseFloat(item.current_stock_kg);
             const matchesFilter = selectedFilter === 'all' ? true :
                 selectedFilter === 'inStock' ? stockKg > 0 :
                     selectedFilter === 'outOfStock' ? stockKg <= 0 : true;

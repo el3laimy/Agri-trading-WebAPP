@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getTreasurySummary, getTreasuryTransactions, deleteTransaction } from '../api/treasury';
+import {
+    getTreasurySummary,
+    getTreasuryTransactions,
+    deleteTransaction,
+    createCashReceipt,
+    createCashPayment,
+    createQuickExpense,
+    updateCashReceipt,
+    updateCashPayment,
+    updateQuickExpense
+} from '../api/treasury';
+import { getContacts } from '../api/contacts';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common';
 
@@ -23,16 +34,19 @@ function TreasuryManagement() {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
     const [summary, setSummary] = useState(null);
     const [transactions, setTransactions] = useState([]);
+    const [contacts, setContacts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
 
     // Modal states
-    const [showReceiptModal, setShowReceiptModal] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [activeModal, setActiveModal] = useState(null); // 'receipt', 'payment', 'expense', null
     const [editingTransaction, setEditingTransaction] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Form Data State
+    const [formData, setFormData] = useState({});
 
     // Format currency
     const formatCurrency = (value) => {
@@ -48,12 +62,14 @@ function TreasuryManagement() {
         setIsLoading(true);
         setError(null);
         try {
-            const [summaryData, transactionsData] = await Promise.all([
+            const [summaryData, transactionsData, contactsData] = await Promise.all([
                 getTreasurySummary(selectedDate),
-                getTreasuryTransactions(selectedDate)
+                getTreasuryTransactions(selectedDate),
+                getContacts()
             ]);
             setSummary(summaryData);
             setTransactions(transactionsData);
+            setContacts(contactsData);
         } catch (err) {
             console.error('Failed to fetch treasury data:', err);
             setError('فشل في تحميل بيانات الخزينة');
@@ -66,18 +82,90 @@ function TreasuryManagement() {
         fetchData();
     }, [fetchData]);
 
-    // Handle transaction actions
-    const handleEdit = (transaction) => {
-        setEditingTransaction(transaction);
-        if (transaction.transaction_type === 'CASH_IN') {
-            setShowReceiptModal(true);
-        } else if (transaction.transaction_type === 'CASH_OUT') {
-            setShowPaymentModal(true);
-        } else if (transaction.transaction_type === 'EXPENSE') {
-            setShowExpenseModal(true);
+    // Initialize Form Data Helper
+    const initFormData = (type, transaction = null) => {
+        const today = new Date().toISOString().split('T')[0];
+        if (transaction) {
+            // Edit Mode
+            if (type === 'receipt') {
+                return {
+                    receipt_date: transaction.transaction_date,
+                    amount: transaction.amount,
+                    contact_id: transaction.contact_id || '',
+                    description: transaction.description,
+                    reference_number: transaction.reference_number || ''
+                };
+            } else if (type === 'payment') {
+                return {
+                    payment_date: transaction.transaction_date,
+                    amount: transaction.amount,
+                    contact_id: transaction.contact_id || '',
+                    description: transaction.description,
+                    reference_number: transaction.reference_number || ''
+                };
+            } else { // expense
+                return {
+                    expense_date: transaction.transaction_date,
+                    amount: transaction.amount,
+                    description: transaction.description,
+                    category: transaction.category || ''
+                };
+            }
+        } else {
+            // New Mode
+            if (type === 'receipt') {
+                return { receipt_date: today, amount: '', contact_id: '', description: '', reference_number: '' };
+            } else if (type === 'payment') {
+                return { payment_date: today, amount: '', contact_id: '', description: '', reference_number: '' };
+            } else {
+                return { expense_date: today, amount: '', description: '', category: '' };
+            }
         }
     };
 
+    // Open Modal Handlers
+    const openModal = (type, transaction = null) => {
+        setEditingTransaction(transaction);
+        setFormData(initFormData(type, transaction));
+        setActiveModal(type);
+    };
+
+    const handleModalClose = () => {
+        setActiveModal(null);
+        setEditingTransaction(null);
+        setFormData({});
+    };
+
+    // Submit Handler
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            if (editingTransaction) {
+                // Update
+                const id = editingTransaction.transaction_id;
+                if (activeModal === 'receipt') await updateCashReceipt(id, formData);
+                else if (activeModal === 'payment') await updateCashPayment(id, formData);
+                else if (activeModal === 'expense') await updateQuickExpense(id, formData);
+                showSuccess('تم تحديث العملية بنجاح');
+            } else {
+                // Create
+                if (activeModal === 'receipt') await createCashReceipt(formData);
+                else if (activeModal === 'payment') await createCashPayment(formData);
+                else if (activeModal === 'expense') await createQuickExpense(formData);
+                showSuccess('تم إضافة العملية بنجاح');
+            }
+            handleModalClose();
+            fetchData();
+        } catch (err) {
+            console.error('Operation failed:', err);
+            showError('فشل في تنفيذ العملية: ' + (err.response?.data?.detail || err.message));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Handle Delete
     const handleDelete = async (transaction) => {
         if (!window.confirm(`هل أنت متأكد من حذف هذه العملية؟`)) {
             return;
@@ -92,21 +180,9 @@ function TreasuryManagement() {
         }
     };
 
-    const handleModalClose = () => {
-        setShowReceiptModal(false);
-        setShowPaymentModal(false);
-        setShowExpenseModal(false);
-        setEditingTransaction(null);
-    };
-
-    const handleModalSuccess = () => {
-        handleModalClose();
-        fetchData();
-        showSuccess('تمت العملية بنجاح');
-    };
-
     // Filter transactions
     const filteredTransactions = useMemo(() => {
+        if (!Array.isArray(transactions)) return [];
         return transactions.filter(t => {
             const matchesSearch =
                 t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,7 +228,7 @@ function TreasuryManagement() {
     }, [summary]);
 
     // Loading state
-    if (isLoading) {
+    if (isLoading && !summary) { // Only show full loader on initial load
         return (
             <div className="p-6 max-w-full mx-auto">
                 <div className="neumorphic overflow-hidden mb-6 animate-pulse">
@@ -168,27 +244,32 @@ function TreasuryManagement() {
     return (
         <div className="p-6 max-w-full mx-auto">
             {/* Modals */}
-            {showReceiptModal && (
-                <CashReceiptModal
-                    transaction={editingTransaction}
-                    onClose={handleModalClose}
-                    onSuccess={handleModalSuccess}
-                />
-            )}
-            {showPaymentModal && (
-                <CashPaymentModal
-                    transaction={editingTransaction}
-                    onClose={handleModalClose}
-                    onSuccess={handleModalSuccess}
-                />
-            )}
-            {showExpenseModal && (
-                <QuickExpenseModal
-                    transaction={editingTransaction}
-                    onClose={handleModalClose}
-                    onSuccess={handleModalSuccess}
-                />
-            )}
+            <CashReceiptModal
+                show={activeModal === 'receipt'}
+                onClose={handleModalClose}
+                formData={formData}
+                setFormData={setFormData}
+                onSubmit={handleSubmit}
+                contacts={contacts}
+                submitting={submitting}
+            />
+            <CashPaymentModal
+                show={activeModal === 'payment'}
+                onClose={handleModalClose}
+                formData={formData}
+                setFormData={setFormData}
+                onSubmit={handleSubmit}
+                contacts={contacts}
+                submitting={submitting}
+            />
+            <QuickExpenseModal
+                show={activeModal === 'expense'}
+                onClose={handleModalClose}
+                formData={formData}
+                setFormData={setFormData}
+                onSubmit={handleSubmit}
+                submitting={submitting}
+            />
 
             {/* Page Header with Stats */}
             <PageHeader
@@ -209,19 +290,19 @@ function TreasuryManagement() {
                                 <ActionButton
                                     label="قبض"
                                     icon="bi-arrow-down-circle"
-                                    onClick={() => { setEditingTransaction(null); setShowReceiptModal(true); }}
+                                    onClick={() => openModal('receipt')}
                                     variant="secondary"
                                 />
                                 <ActionButton
                                     label="صرف"
                                     icon="bi-arrow-up-circle"
-                                    onClick={() => { setEditingTransaction(null); setShowPaymentModal(true); }}
+                                    onClick={() => openModal('payment')}
                                     variant="secondary"
                                 />
                                 <ActionButton
                                     label="مصروف سريع"
                                     icon="bi-lightning"
-                                    onClick={() => { setEditingTransaction(null); setShowExpenseModal(true); }}
+                                    onClick={() => openModal('expense')}
                                     variant="primary"
                                 />
                             </>
@@ -340,7 +421,11 @@ function TreasuryManagement() {
                     ) : (
                         <TransactionsTable
                             transactions={filteredTransactions}
-                            onEdit={handleEdit}
+                            onEdit={(t) => {
+                                if (t.transaction_type === 'CASH_IN') openModal('receipt', t);
+                                else if (t.transaction_type === 'CASH_OUT') openModal('payment', t);
+                                else if (t.transaction_type === 'EXPENSE') openModal('expense', t);
+                            }}
                             onDelete={handleDelete}
                             formatCurrency={formatCurrency}
                         />

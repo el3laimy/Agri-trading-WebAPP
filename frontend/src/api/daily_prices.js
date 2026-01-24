@@ -1,22 +1,16 @@
-import axios from 'axios';
-
-const API_URL = '/api/v1';
+import apiClient from './client';
 
 export const getDailyPrices = async (cropId = null, startDate = null, endDate = null) => {
-    let url = `${API_URL}/daily-prices?`;
-    const params = [];
+    const params = {};
+    if (cropId) params.crop_id = cropId;
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
 
-    if (cropId) params.push(`crop_id=${cropId}`);
-    if (startDate) params.push(`start_date=${startDate}`);
-    if (endDate) params.push(`end_date=${endDate}`);
-
-    url += params.join('&');
-
-    const response = await axios.get(url);
+    const response = await apiClient.get('/daily-prices', { params });
     return response.data;
 };
 
 export const createDailyPrice = async (data) => {
-    const response = await axios.post(`${API_URL}/daily-prices`, data);
+    const response = await apiClient.post('/daily-prices', data);
     return response.data;
 };

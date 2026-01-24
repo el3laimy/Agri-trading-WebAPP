@@ -22,7 +22,7 @@ export function PurchasesTrendChart({ purchases = [] }) {
                 if (!dailyData[date]) {
                     dailyData[date] = { total: 0, count: 0 };
                 }
-                dailyData[date].total += purchase.total_purchase_amount || 0;
+                dailyData[date].total += parseFloat(purchase.total_cost) || 0;
                 dailyData[date].count += 1;
             }
         });
@@ -134,7 +134,7 @@ export function PurchasesByStatusChart({ purchases = [] }) {
         purchases.forEach(purchase => {
             const status = purchase.payment_status || 'PENDING';
             counts[status] = (counts[status] || 0) + 1;
-            amounts[status] = (amounts[status] || 0) + (purchase.total_purchase_amount || 0);
+            amounts[status] = (amounts[status] || 0) + (parseFloat(purchase.total_cost) || 0);
         });
 
         return { counts, amounts };
@@ -237,7 +237,7 @@ export function TopSuppliersChart({ purchases = [] }) {
             if (!suppliers[supplierName]) {
                 suppliers[supplierName] = { total: 0, count: 0 };
             }
-            suppliers[supplierName].total += purchase.total_purchase_amount || 0;
+            suppliers[supplierName].total += parseFloat(purchase.total_cost) || 0;
             suppliers[supplierName].count += 1;
         });
 
@@ -337,10 +337,10 @@ export function TopSuppliersChart({ purchases = [] }) {
  */
 export function PurchasesStatsCards({ purchases = [] }) {
     const stats = useMemo(() => {
-        const totalExpense = purchases.reduce((sum, p) => sum + (p.total_purchase_amount || 0), 0);
-        const totalPaid = purchases.reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+        const totalExpense = purchases.reduce((sum, p) => sum + (parseFloat(p.total_cost) || 0), 0);
+        const totalPaid = purchases.reduce((sum, p) => sum + (parseFloat(p.amount_paid) || 0), 0);
         const totalPending = totalExpense - totalPaid;
-        const totalQuantity = purchases.reduce((sum, p) => sum + (p.quantity_kg || 0), 0);
+        const totalQuantity = purchases.reduce((sum, p) => sum + (parseFloat(p.quantity_kg) || 0), 0);
 
         return {
             totalExpense,

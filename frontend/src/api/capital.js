@@ -1,6 +1,6 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = '/api/v1/capital';
+const API_URL = '/capital';
 
 const capitalAPI = {
     /**
@@ -9,7 +9,7 @@ const capitalAPI = {
      */
     createTransaction: async (transactionData) => {
         try {
-            const response = await axios.post(`${API_URL}/transaction`, transactionData);
+            const response = await apiClient.post(`${API_URL}/transaction`, transactionData);
             return response.data;
         } catch (error) {
             console.error('Error creating capital transaction:', error);

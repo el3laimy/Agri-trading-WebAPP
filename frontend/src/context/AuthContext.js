@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
         const initAuth = async () => {
             if (token) {
                 try {
-                    const userData = await getCurrentUser(token);
+                    const userData = await getCurrentUser();
                     setUser(userData);
                 } catch (err) {
                     console.error('Failed to get user:', err);
@@ -38,15 +38,27 @@ export const AuthProvider = ({ children }) => {
         setError(null);
         try {
             const data = await apiLogin(username, password);
-            // In session auth, we get 'session_token' (and 'access_token' for compat)
+            // Backend returns { access_token, token_type }
             const newToken = data.session_token || data.access_token;
-            const userData = data.user;
 
+            if (!newToken) {
+                throw new Error('No token received from server');
+            }
+
+            // Save token first so apiClient can use it for subsequent requests
             localStorage.setItem('token', newToken);
-            localStorage.setItem('user', JSON.stringify(userData)); // Store user data for offline/quick access
-
             setToken(newToken);
-            setUser(userData);
+
+            // Now fetch user data using the new token
+            try {
+                const userData = await getCurrentUser();
+                localStorage.setItem('user', JSON.stringify(userData));
+                setUser(userData);
+            } catch (userErr) {
+                console.error('Failed to fetch user data after login:', userErr);
+                // If we can't get user data, still proceed (user will be fetched on next page load)
+                // Don't fail the login - the token is valid
+            }
 
             return true;
         } catch (err) {
@@ -77,7 +89,7 @@ export const AuthProvider = ({ children }) => {
         if (token) {
             try {
                 // Call backend logout
-                await import('../api/auth').then(mod => mod.logout(token));
+                await import('../api/auth').then(mod => mod.logout());
             } catch (e) {
                 console.warn("Backend logout failed", e);
             }
@@ -107,7 +119,7 @@ export const AuthProvider = ({ children }) => {
 
         // Update backend
         try {
-            await import('../api/auth').then(mod => mod.updateDashboardConfig(token, newConfig));
+            await import('../api/auth').then(mod => mod.updateDashboardConfig(newConfig));
         } catch (err) {
             console.error("Failed to save dashboard config:", err);
             // Optionally revert local state here if strict consistency needed

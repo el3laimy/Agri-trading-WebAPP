@@ -26,7 +26,7 @@ const NotificationCenter = () => {
 
     const loadUnreadCount = React.useCallback(async () => {
         try {
-            const data = await notifApi.getUnreadCount(token);
+            const data = await notifApi.getUnreadCount();
             setUnreadCount(data.count);
         } catch (err) {
             console.error("Failed to load notification count", err);
@@ -49,8 +49,8 @@ const NotificationCenter = () => {
     const loadNotifications = async () => {
         setLoading(true);
         try {
-            await notifApi.checkAlerts(token);
-            const data = await notifApi.getNotifications(token);
+            await notifApi.checkAlerts();
+            const data = await notifApi.getNotifications();
             setNotifications(data);
 
             const unread = data.filter(n => !n.is_read).length;
@@ -72,7 +72,7 @@ const NotificationCenter = () => {
     const handleMarkAsRead = async (details, e) => {
         e && e.stopPropagation();
         try {
-            await notifApi.markAsRead(token, details.id);
+            await notifApi.markAsRead(details.id);
             setNotifications(prev => prev.map(n =>
                 n.id === details.id ? { ...n, is_read: true } : n
             ));
@@ -84,7 +84,7 @@ const NotificationCenter = () => {
 
     const handleMarkAllRead = async () => {
         try {
-            await notifApi.markAllAsRead(token);
+            await notifApi.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (err) {

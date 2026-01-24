@@ -1,10 +1,10 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = '/api/v1/contacts/';
+const API_URL = '/contacts/';
 
 export const getContacts = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await apiClient.get(API_URL);
         return response.data;
     } catch (error) {
         console.error("Error fetching contacts:", error);
@@ -14,7 +14,7 @@ export const getContacts = async () => {
 
 export const createContact = async (contactData) => {
     try {
-        const response = await axios.post(API_URL, contactData);
+        const response = await apiClient.post(API_URL, contactData);
         return response.data;
     } catch (error) {
         console.error("Error creating contact:", error);
@@ -24,7 +24,7 @@ export const createContact = async (contactData) => {
 
 export const updateContact = async (contactId, contactData) => {
     try {
-        const response = await axios.put(`${API_URL}${contactId}`, contactData);
+        const response = await apiClient.put(`${API_URL}${contactId}`, contactData);
         return response.data;
     } catch (error) {
         console.error("Error updating contact:", error);
@@ -34,7 +34,7 @@ export const updateContact = async (contactId, contactData) => {
 
 export const deleteContact = async (contactId) => {
     try {
-        const response = await axios.delete(`${API_URL}${contactId}`);
+        const response = await apiClient.delete(`${API_URL}${contactId}`);
         return response.data;
     } catch (error) {
         console.error("Error deleting contact:", error);
@@ -46,7 +46,7 @@ export const deleteContact = async (contactId) => {
 
 export const getContactSummary = async (contactId) => {
     try {
-        const response = await axios.get(`${API_URL}${contactId}/summary`);
+        const response = await apiClient.get(`${API_URL}${contactId}/summary`);
         return response.data;
     } catch (error) {
         console.error("Error fetching contact summary:", error);
@@ -62,7 +62,7 @@ export const getContactStatement = async (contactId, startDate = null, endDate =
         if (endDate) params.append('end_date', endDate);
         if (params.toString()) url += `?${params.toString()}`;
 
-        const response = await axios.get(url);
+        const response = await apiClient.get(url);
         return response.data;
     } catch (error) {
         console.error("Error fetching contact statement:", error);
@@ -72,7 +72,7 @@ export const getContactStatement = async (contactId, startDate = null, endDate =
 
 export const getCustomersBalances = async () => {
     try {
-        const response = await axios.get(`${API_URL}customers/balances`);
+        const response = await apiClient.get(`${API_URL}customers/balances`);
         return response.data;
     } catch (error) {
         console.error("Error fetching customers balances:", error);
@@ -82,7 +82,7 @@ export const getCustomersBalances = async () => {
 
 export const getSuppliersBalances = async () => {
     try {
-        const response = await axios.get(`${API_URL}suppliers/balances`);
+        const response = await apiClient.get(`${API_URL}suppliers/balances`);
         return response.data;
     } catch (error) {
         console.error("Error fetching suppliers balances:", error);
@@ -94,7 +94,7 @@ export const getSuppliersBalances = async () => {
 
 export const migrateAndDeleteContact = async (contactId, targetContactId) => {
     try {
-        const response = await axios.post(`${API_URL}${contactId}/migrate-and-delete`, {
+        const response = await apiClient.post(`${API_URL}${contactId}/migrate-and-delete`, {
             target_contact_id: targetContactId
         });
         return response.data;
@@ -106,11 +106,10 @@ export const migrateAndDeleteContact = async (contactId, targetContactId) => {
 
 export const forceDeleteContact = async (contactId) => {
     try {
-        const response = await axios.delete(`${API_URL}${contactId}/force`);
+        const response = await apiClient.delete(`${API_URL}${contactId}/force`);
         return response.data;
     } catch (error) {
         console.error("Error force deleting contact:", error);
         throw error;
     }
 };
-

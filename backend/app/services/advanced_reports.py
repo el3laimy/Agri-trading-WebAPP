@@ -2,7 +2,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, case
 from datetime import date, timedelta
 from typing import List, Dict, Any
+from decimal import Decimal
 from app.models import Sale, Purchase, Crop, Contact, Season, GeneralLedger, InventoryBatch, Expense
+from app.core.settings import get_setting
 from sqlalchemy import extract
 
 def get_crop_profitability(db: Session, season_id: int):
@@ -91,6 +93,8 @@ def get_debt_report(db: Session):
     """
     from app.models import SaleReturn, PurchaseReturn, Payment
 
+    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID") or 0)
+
     # 1. Customers (Receivables)
     # Total Sales per Customer
     customers_sales = db.query(
@@ -105,10 +109,18 @@ def get_debt_report(db: Session):
     ).join(Sale, SaleReturn.sale_id == Sale.sale_id)\
      .group_by(Sale.customer_id).subquery()
     
-    # Total Payments per Customer (Linked + General)
+    # Net Cash In from Customer (Receipts - Payments)
+    # If Debit=Cash -> Receipt (+)
+    # If Credit=Cash -> Payment (-)
     customers_payments = db.query(
         Payment.contact_id,
-        func.sum(Payment.amount).label('total_paid')
+        func.sum(
+            case(
+                (Payment.debit_account_id == cash_id, Payment.amount),
+                (Payment.credit_account_id == cash_id, -Payment.amount),
+                else_=0
+            )
+        ).label('total_paid')
     ).join(Contact, Payment.contact_id == Contact.contact_id)\
      .filter(Contact.is_customer == True)\
      .group_by(Payment.contact_id).subquery()
@@ -129,8 +141,13 @@ def get_debt_report(db: Session):
     receivables = []
     for c in customers:
         # Balance = Sales - Returns - Payments
-        net_sales = c.total_sales - c.total_returns
-        balance = net_sales - c.total_paid
+        # Ensure Decimal type for all operands
+        sales = Decimal(str(c.total_sales or 0)) 
+        returns = Decimal(str(c.total_returns or 0))
+        paid = Decimal(str(c.total_paid or 0))
+        
+        net_sales = sales - returns
+        balance = net_sales - paid
         
         # Only show if there is significant balance (> 1 or < -1)
         if abs(balance) > 1:
@@ -139,7 +156,7 @@ def get_debt_report(db: Session):
                  "name": c.name,
                  "phone": c.phone,
                  "total_amount": net_sales,
-                 "paid_amount": c.total_paid,
+                 "paid_amount": paid,
                  "balance_due": balance
              })
 
@@ -157,10 +174,18 @@ def get_debt_report(db: Session):
     ).join(Purchase, PurchaseReturn.purchase_id == Purchase.purchase_id)\
      .group_by(Purchase.supplier_id).subquery()
 
-    # Total Payments (Paid to Supplier)
+    # Net Cash Out to Supplier (Payments - Receipts)
+    # If Credit=Cash -> Payment (+)
+    # If Debit=Cash -> Receipt/Refund (-)
     suppliers_payments = db.query(
         Payment.contact_id,
-        func.sum(Payment.amount).label('total_paid')
+        func.sum(
+            case(
+                (Payment.credit_account_id == cash_id, Payment.amount),
+                (Payment.debit_account_id == cash_id, -Payment.amount),
+                else_=0
+            )
+        ).label('total_paid')
     ).join(Contact, Payment.contact_id == Contact.contact_id)\
      .filter(Contact.is_supplier == True)\
      .group_by(Payment.contact_id).subquery()
@@ -179,8 +204,13 @@ def get_debt_report(db: Session):
 
     payables = []
     for s in suppliers:
-        net_purchases = s.total_purchases - s.total_returns
-        balance = net_purchases - s.total_paid
+        # Ensure Decimal type for all operands
+        purchases = Decimal(str(s.total_purchases or 0))
+        returns = Decimal(str(s.total_returns or 0))
+        paid = Decimal(str(s.total_paid or 0))
+
+        net_purchases = purchases - returns
+        balance = net_purchases - paid
         
         if abs(balance) > 1:
             payables.append({
@@ -188,7 +218,7 @@ def get_debt_report(db: Session):
                 "name": s.name,
                 "phone": s.phone,
                 "total_amount": net_purchases,
-                "paid_amount": s.total_paid,
+                "paid_amount": paid,
                 "balance_due": balance
             })
             

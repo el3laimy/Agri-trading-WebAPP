@@ -10,8 +10,8 @@ const JournalEntryForm = ({ onSave, onCancel }) => {
     useEffect(() => {
         const fetchAccounts = async () => {
             try {
-                const response = await fetch('http://localhost:8000/api/v1/financial-accounts/');
-                const data = await response.json();
+                const { getFinancialAccounts } = await import('../api/financialAccounts');
+                const data = await getFinancialAccounts();
                 setAccounts(data);
             } catch (err) {
                 console.error("Failed to fetch accounts", err);

@@ -23,7 +23,7 @@ export function SalesTrendChart({ sales = [] }) {
                 if (!dailyData[date]) {
                     dailyData[date] = { total: 0, count: 0 };
                 }
-                dailyData[date].total += sale.total_sale_amount || 0;
+                dailyData[date].total += parseFloat(sale.total_sale_amount) || 0;
                 dailyData[date].count += 1;
             }
         });
@@ -136,7 +136,7 @@ export function SalesByStatusChart({ sales = [] }) {
         sales.forEach(sale => {
             const status = sale.payment_status || 'PENDING';
             counts[status] = (counts[status] || 0) + 1;
-            amounts[status] = (amounts[status] || 0) + (sale.total_sale_amount || 0);
+            amounts[status] = (amounts[status] || 0) + (parseFloat(sale.total_sale_amount) || 0);
         });
 
         return { counts, amounts };
@@ -239,7 +239,7 @@ export function TopCropsChart({ sales = [] }) {
             if (!crops[cropName]) {
                 crops[cropName] = { total: 0, count: 0 };
             }
-            crops[cropName].total += sale.total_sale_amount || 0;
+            crops[cropName].total += parseFloat(sale.total_sale_amount) || 0;
             crops[cropName].count += 1;
         });
 
@@ -339,10 +339,10 @@ export function TopCropsChart({ sales = [] }) {
  */
 export function SalesStatsCards({ sales = [] }) {
     const stats = useMemo(() => {
-        const totalRevenue = sales.reduce((sum, s) => sum + (s.total_sale_amount || 0), 0);
-        const totalPaid = sales.reduce((sum, s) => sum + (s.amount_received || 0), 0);
+        const totalRevenue = sales.reduce((sum, s) => sum + (parseFloat(s.total_sale_amount) || 0), 0);
+        const totalPaid = sales.reduce((sum, s) => sum + (parseFloat(s.amount_received) || 0), 0);
         const totalPending = totalRevenue - totalPaid;
-        const totalQuantity = sales.reduce((sum, s) => sum + (s.quantity_sold_kg || 0), 0);
+        const totalQuantity = sales.reduce((sum, s) => sum + (parseFloat(s.quantity_sold_kg) || 0), 0);
 
         return {
             totalRevenue,

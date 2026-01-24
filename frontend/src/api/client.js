@@ -24,10 +24,11 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
     (config) => {
-        // Get session token if exists
-        const sessionToken = localStorage.getItem('session_token');
-        if (sessionToken) {
-            config.headers['X-Session-Token'] = sessionToken;
+        // Get token if exists (stored as 'token' by AuthContext)
+        const token = localStorage.getItem('token');
+        if (token) {
+            // Use standard OAuth2 Bearer token format
+            config.headers['Authorization'] = `Bearer ${token}`;
         }
         return config;
     },
@@ -45,11 +46,12 @@ apiClient.interceptors.response.use(
         // Handle common errors
         if (error.response) {
             const status = error.response.status;
+            const requestUrl = error.config?.url || '';
 
-            // Handle authentication errors
-            if (status === 401) {
+            // Handle authentication errors - but NOT during login attempts
+            if (status === 401 && !requestUrl.includes('/auth/login')) {
                 // Clear session and redirect to login
-                localStorage.removeItem('session_token');
+                localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 window.location.href = '/login';
             }

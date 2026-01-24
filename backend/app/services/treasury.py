@@ -54,6 +54,7 @@ def get_treasury_summary(db: Session, target_date: date = None):
     )
 
 def get_treasury_transactions(db: Session, target_date: date = None, limit: int = 100):
+    from sqlalchemy.orm import joinedload
     cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
 
     # Get all ledger entries affecting Cash accounts
@@ -67,10 +68,14 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
         .limit(limit)\
         .all()
     
-    # ✅ Fix N+1: Batch load all payments at once
+    # ✅ Fix N+1: Batch load all payments and expenses at once
     payment_source_ids = [
         t.source_id for t in transactions 
         if t.source_type in ['CASH_RECEIPT', 'CASH_PAYMENT'] and t.source_id
+    ]
+    expense_source_ids = [
+        t.source_id for t in transactions 
+        if t.source_type == 'QUICK_EXPENSE' and t.source_id
     ]
     
     payments_map = {}
@@ -81,6 +86,14 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
             .filter(models.Payment.payment_id.in_(payment_source_ids))\
             .all()
         payments_map = {p.payment_id: p for p in payments}
+        
+    expenses_map = {}
+    if expense_source_ids:
+        expenses = db.query(models.Expense)\
+            .options(joinedload(models.Expense.debit_account))\
+            .filter(models.Expense.expense_id.in_(expense_source_ids))\
+            .all()
+        expenses_map = {e.expense_id: e for e in expenses}
     
     result = []
     for t in transactions:
@@ -88,10 +101,19 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
         amount = t.debit if t.debit > 0 else t.credit
         
         contact_name = None
+        account_name = None
+        
         if t.source_type in ['CASH_RECEIPT', 'CASH_PAYMENT'] and t.source_id:
             payment = payments_map.get(t.source_id)
             if payment and payment.contact:
                 contact_name = payment.contact.name
+                # For payments/receipts, the "Account" is essentially the Contact
+                account_name = contact_name 
+                
+        elif t.source_type == 'QUICK_EXPENSE' and t.source_id:
+            expense = expenses_map.get(t.source_id)
+            if expense and expense.debit_account:
+                account_name = expense.debit_account.account_name
 
         result.append(schemas.TreasuryTransaction(
             transaction_id=t.entry_id,
@@ -100,7 +122,8 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
             amount=amount,
             type=t_type,
             source=t.source_type,
-            contact_name=contact_name
+            contact_name=contact_name,
+            account_name=account_name
         ))
         
     return result

@@ -1,8 +1,8 @@
-import axios from 'axios';
+import apiClient from './client';
 import { PurchaseSchema, BasePurchaseSchema } from '../schemas/purchases';
 import { idSchema } from '../schemas/common';
 
-const API_URL = '/api/v1/purchases/';
+const API_URL = '/purchases/';
 
 /**
  * دالة لجلب قائمة المشتريات من الخادم
@@ -10,7 +10,7 @@ const API_URL = '/api/v1/purchases/';
  */
 export const getPurchases = async () => {
     try {
-        const response = await axios.get(API_URL);
+        const response = await apiClient.get(API_URL);
         return response.data;
     } catch (error) {
         console.error("Error fetching purchases:", error);
@@ -26,7 +26,7 @@ export const getPurchases = async () => {
 export const createPurchase = async (purchaseData) => {
     try {
         const validatedData = PurchaseSchema.parse(purchaseData);
-        const response = await axios.post(API_URL, validatedData);
+        const response = await apiClient.post(API_URL, validatedData);
         return response.data;
     } catch (error) {
         console.error("Error creating purchase:", error);
@@ -37,7 +37,7 @@ export const createPurchase = async (purchaseData) => {
 export const updatePurchase = async (purchaseId, purchaseData) => {
     try {
         const validatedData = BasePurchaseSchema.partial().parse(purchaseData);
-        const response = await axios.put(`${API_URL}${purchaseId}`, validatedData);
+        const response = await apiClient.put(`${API_URL}${purchaseId}`, validatedData);
         return response.data;
     } catch (error) {
         console.error("Error updating purchase:", error);
@@ -47,7 +47,7 @@ export const updatePurchase = async (purchaseId, purchaseData) => {
 
 export const deletePurchase = async (purchaseId) => {
     try {
-        const response = await axios.delete(`${API_URL}${purchaseId}`);
+        const response = await apiClient.delete(`${API_URL}${purchaseId}`);
         return response.data;
     } catch (error) {
         console.error("Error deleting purchase:", error);
@@ -68,7 +68,7 @@ export const getLastPurchasePrice = async (cropId, supplierId) => {
         idSchema.parse(cropId);
         idSchema.parse(supplierId);
 
-        const response = await axios.get(`${API_URL}last-price/${cropId}/${supplierId}`);
+        const response = await apiClient.get(`${API_URL}last-price/${cropId}/${supplierId}`);
         return response.data;
     } catch (error) {
         console.error("Error fetching last price:", error);

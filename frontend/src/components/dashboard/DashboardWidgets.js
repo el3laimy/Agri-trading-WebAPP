@@ -433,7 +433,7 @@ export function HeroSection({
                                                 : 'bi-exclamation-triangle-fill text-red-300'
                                             }`} />
                                         <span className="text-xs font-medium text-white">
-                                            {balanceCheck.is_balanced ? 'متوازن' : `فرق: ${balanceCheck.difference?.toLocaleString()}`}
+                                            {balanceCheck.is_balanced ? 'متوازن' : `فرق: ${(parseFloat(balanceCheck.difference) || 0).toLocaleString()}`}
                                         </span>
                                     </div>
                                     {/* مؤشر فرق المخزون */}
@@ -445,7 +445,7 @@ export function HeroSection({
                                         >
                                             <i className="bi bi-box-seam text-amber-300" />
                                             <span className="text-xs font-medium text-white">
-                                                مخزون: {balanceCheck.inventory_discrepancy?.amount?.toLocaleString()}
+                                                مخزون: {(parseFloat(balanceCheck.inventory_discrepancy?.amount) || 0).toLocaleString()}
                                             </span>
                                         </div>
                                     )}

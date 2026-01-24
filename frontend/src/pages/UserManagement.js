@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common';
 
@@ -38,9 +38,7 @@ function UserManagement() {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('http://localhost:8000/api/v1/auth/users', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await apiClient.get('/auth/users');
             setUsers(response.data);
         } catch (err) {
             console.error(err);
@@ -51,7 +49,7 @@ function UserManagement() {
 
     useEffect(() => {
         fetchUsers();
-    }, [token]);
+    }, []);
 
     const stats = useMemo(() => {
         const active = users.filter(u => u.is_active).length;
@@ -70,9 +68,7 @@ function UserManagement() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:8000/api/v1/auth/users', formData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await apiClient.post('/auth/users', formData);
             setShowModal(false);
             setFormData({ username: '', full_name: '', email: '', password: '', role_id: 2, phone: '' });
             fetchUsers();
@@ -85,9 +81,7 @@ function UserManagement() {
     const handleDelete = async (userId) => {
         if (window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
             try {
-                await axios.delete(`http://localhost:8000/api/v1/auth/users/${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await apiClient.delete(`/auth/users/${userId}`);
                 fetchUsers();
                 showSuccess('تم حذف المستخدم');
             } catch (err) {

@@ -3,7 +3,7 @@ Capital Distribution Service
 خدمة تقرير توزيع رأس المال
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from datetime import date
 from typing import Optional
 
@@ -62,8 +62,18 @@ def generate_capital_distribution(
     sale_returns = db.query(func.sum(models.SaleReturn.refund_amount)).scalar() or 0.0
     sale_returns = float(sale_returns)
     
-    # المدفوعات المستلمة من العملاء (من جدول Payments للعملاء)
-    customer_payments = db.query(func.sum(models.Payment.amount)).join(
+    # المدفوعات المستلمة من العملاء (صافي التدفق النقدي الوارد)
+    # نعتمد على حركة الخزينة: دخلت (+) - خرجت (-)
+    c_id_val = int(cash_id) if cash_id else 0
+    customer_payments = db.query(
+        func.sum(
+            case(
+                (models.Payment.debit_account_id == c_id_val, models.Payment.amount),   # استلام (يقلل الدين)
+                (models.Payment.credit_account_id == c_id_val, -models.Payment.amount), # دفع (يزيد الدين)
+                else_=0
+            )
+        )
+    ).join(
         models.Contact, models.Payment.contact_id == models.Contact.contact_id
     ).filter(models.Contact.is_customer == True).scalar() or 0.0
     customer_payments = float(customer_payments)
@@ -102,8 +112,17 @@ def generate_capital_distribution(
     purchase_returns = db.query(func.sum(models.PurchaseReturn.returned_cost)).scalar() or 0.0
     purchase_returns = float(purchase_returns)
     
-    # المدفوعات للموردين (من جدول Payments للموردين)
-    supplier_payments = db.query(func.sum(models.Payment.amount)).join(
+    # المدفوعات للموردين (صافي التدفق النقدي الصادر)
+    # نعتمد على حركة الخزينة: خرجت (+) - دخلت (-)
+    supplier_payments = db.query(
+        func.sum(
+            case(
+                (models.Payment.credit_account_id == c_id_val, models.Payment.amount),  # دفع (يقلل الدين)
+                (models.Payment.debit_account_id == c_id_val, -models.Payment.amount),  # استرداد (يزيد الدين)
+                else_=0
+            )
+        )
+    ).join(
         models.Contact, models.Payment.contact_id == models.Contact.contact_id
     ).filter(models.Contact.is_supplier == True).scalar() or 0.0
     supplier_payments = float(supplier_payments)

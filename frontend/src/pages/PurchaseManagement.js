@@ -7,6 +7,7 @@ import PaymentForm from '../components/PaymentForm';
 import { PurchaseForm, PurchasesTable } from '../components/purchases';
 import { validatePurchaseForm } from '../utils/formValidation';
 import { useToast } from '../components/common';
+import { safeParseFloat, safeParseInt } from '../utils/mathUtils';
 
 // Import new components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
@@ -218,17 +219,13 @@ function PurchaseManagement() {
 
     const handleSavePayment = async (paymentData) => {
         try {
-            const response = await fetch('http://localhost:8000/api/v1/payments/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(paymentData)
-            });
-            if (!response.ok) throw new Error('Failed to save payment.');
+            const apiClient = (await import('../api/client')).default;
+            await apiClient.post('/payments/', paymentData);
             handleCancelPayment();
             refetchPurchases();
         } catch (err) {
             console.error("Payment error:", err);
-            setError(err.message);
+            setError(err.response?.data?.detail || err.message);
         }
     };
 
@@ -327,10 +324,10 @@ function PurchaseManagement() {
         });
     }, [purchases, searchTerm, selectedCropFilter]);
 
-    // Calculate totals
-    const calculatedQtyUnit = parseFloat(formState.quantity_input || 0) / parseFloat(formState.conversion_factor || 1);
-    const calculatedTotal = calculatedQtyUnit * parseFloat(formState.price_input || 0);
-    const calculatedQtyKg = parseFloat(formState.quantity_input || 0);
+    // Calculate totals - SAFE PARSING
+    const calculatedQtyKg = safeParseFloat(formState.quantity_input);
+    const calculatedQtyUnit = calculatedQtyKg / safeParseFloat(formState.conversion_factor, 1);
+    const calculatedTotal = calculatedQtyUnit * safeParseFloat(formState.price_input);
 
     // Loading state
     if (isLoading) {

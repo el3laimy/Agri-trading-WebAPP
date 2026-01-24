@@ -1,39 +1,30 @@
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = '/api/v1/notifications';
+const API_URL = '/notifications';
 
-export const getNotifications = async (token, unreadOnly = false) => {
-    const response = await axios.get(`${API_URL}/`, {
-        params: { unread_only: unreadOnly },
-        headers: { Authorization: `Bearer ${token}` }
+export const getNotifications = async (unreadOnly = false) => {
+    const response = await apiClient.get(`${API_URL}/`, {
+        params: { unread_only: unreadOnly }
     });
     return response.data;
 };
 
-export const getUnreadCount = async (token) => {
-    const response = await axios.get(`${API_URL}/count`, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+export const getUnreadCount = async () => {
+    const response = await apiClient.get(`${API_URL}/count`);
     return response.data;
 };
 
-export const markAsRead = async (token, notificationId) => {
-    const response = await axios.put(`${API_URL}/${notificationId}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+export const markAsRead = async (notificationId) => {
+    const response = await apiClient.put(`${API_URL}/${notificationId}/read`, {});
     return response.data;
 };
 
-export const markAllAsRead = async (token) => {
-    const response = await axios.put(`${API_URL}/read-all`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+export const markAllAsRead = async () => {
+    const response = await apiClient.put(`${API_URL}/read-all`, {});
     return response.data;
 };
 
-export const checkAlerts = async (token) => {
-    const response = await axios.post(`${API_URL}/check`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
+export const checkAlerts = async () => {
+    const response = await apiClient.post(`${API_URL}/check`, {});
     return response.data;
 };

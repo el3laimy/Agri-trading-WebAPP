@@ -29,16 +29,27 @@ function ContactDetails() {
             const startStr = startDate.toISOString().slice(0, 10);
             const endStr = endDate.toISOString().slice(0, 10);
             const data = await getContactStatement(contactId, startStr, endStr);
+            console.log("Statement Data:", data); // DEBUG
+            if (!data || !data.contact || !data.summary || !data.entries) {
+                throw new Error("بيانات كشف الحساب غير مكتملة");
+            }
             setStatement(data);
         } catch (err) {
-            setError("فشل تحميل كشف الحساب");
+            console.error("Statement Error:", err);
+            setError("فشل تحميل كشف الحساب - تأكد من الاتصال بالخادم");
         } finally {
             setLoading(false);
         }
     };
 
-    const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP' }).format(amount || 0);
-    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('ar-EG');
+    const formatCurrency = (amount) => {
+        const val = parseFloat(amount);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP' }).format(isNaN(val) ? 0 : val);
+    };
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleDateString('ar-EG');
+    };
 
     const getContactTypeLabel = (type) => {
         switch (type) {
@@ -254,8 +265,11 @@ function ContactDetails() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {entries.map((entry, idx) => {
-                                        const amount = entry.debit > 0 ? entry.debit : entry.credit;
-                                        const isDebit = entry.debit > 0;
+                                        const debit = parseFloat(entry.debit || 0);
+                                        const credit = parseFloat(entry.credit || 0);
+                                        const balance = parseFloat(entry.balance || 0);
+                                        const amount = debit > 0 ? debit : credit;
+                                        const isDebit = debit > 0;
                                         return (
                                             <tr key={idx} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
                                                 <td className="px-4 py-4 text-center">
@@ -265,15 +279,15 @@ function ContactDetails() {
                                                 </td>
                                                 <td className="px-4 py-4 text-gray-700 dark:text-gray-300">{entry.description}</td>
                                                 <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-400">{entry.crop_name || '-'}</td>
-                                                <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-400">{entry.quantity ? entry.quantity.toFixed(0) : '-'}</td>
-                                                <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-400">{entry.unit_price ? entry.unit_price.toLocaleString('en-US') : '-'}</td>
+                                                <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-400">{entry.quantity ? parseFloat(entry.quantity).toFixed(0) : '-'}</td>
+                                                <td className="px-4 py-4 text-center text-gray-600 dark:text-gray-400">{entry.unit_price ? parseFloat(entry.unit_price).toLocaleString('en-US') : '-'}</td>
                                                 <td className="px-4 py-4 text-center"><span className="px-2 py-1 rounded-lg text-xs bg-gray-100 dark:bg-slate-600">{formatDate(entry.date)}</span></td>
                                                 <td className="px-4 py-4 text-center">
-                                                    <span className={`font-bold ${entry.balance >= 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                                                        {Math.abs(entry.balance)?.toLocaleString('en-US') || 0}
+                                                    <span className={`font-bold ${balance >= 0 ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                                        {Math.abs(balance).toLocaleString('en-US')}
                                                     </span>
-                                                    <span className={`block text-xs ${entry.balance >= 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                                        {entry.balance >= 0 ? 'عليه' : 'له'}
+                                                    <span className={`block text-xs ${balance >= 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                                        {balance >= 0 ? 'عليه' : 'له'}
                                                     </span>
                                                 </td>
                                             </tr>

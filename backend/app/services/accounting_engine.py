@@ -10,7 +10,7 @@ Features:
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, datetime
 from typing import List, Dict, Optional, Tuple
@@ -247,75 +247,55 @@ class AccountingEngine:
     
     def validate_system_balance(self) -> BalanceReport:
         """
-        التحقق من توازن النظام الكلي
+        التحقق من توازن النظام الكلي (Dynamic & Comprehensive)
         
-        المعادلة: الأصول = الخصوم + حقوق الملكية
+        يعتمد على تجميع الأرصدة الحالية لجميع الحسابات حسب نوعها.
+        المعادلة المحاسبية: الأصول = الخصوم + حقوق الملكية + (الإيرادات - المصروفات)
         """
         checked_at = datetime.now()
         
-        # حساب الأصول
-        cash_id = get_setting(self.db, "CASH_ACCOUNT_ID")
-        cash_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(cash_id) if cash_id else 0
-        ).first()
-        cash_balance = self._to_decimal(cash_account.current_balance) if cash_account else Decimal("0")
+        # 1. الأصول (Assets)
+        # تشمل: ASSET, CASH, INVENTORY, RECEIVABLE
+        # ملاحظة: المخزون هنا يؤخذ من القيمة الدفترية للحساب لغرض توازن الميزانية العمومية.
+        # إذا أردنا مقارنة المخزون الفعلي (الكمية * التكلفة)، فهذا يتم في validate_dual_balance.
+        total_assets = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type.in_(['ASSET', 'CASH', 'INVENTORY', 'RECEIVABLE']))\
+            .scalar() or Decimal("0")
+            
+        # 2. الخصوم (Liabilities)
+        # تشمل: LIABILITY, PAYABLE
+        total_liabilities = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type.in_(['LIABILITY', 'PAYABLE']))\
+            .scalar() or Decimal("0")
+            
+        # 3. حقوق الملكية (Equity - Capital)
+        total_equity_capital = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type == 'EQUITY')\
+            .scalar() or Decimal("0")
+            
+        # 4. صافي الربح (Net Profit)
+        # الإيرادات (REVENUE) - المصروفات (EXPENSE)
+        total_revenue = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type == 'REVENUE')\
+            .scalar() or Decimal("0")
+            
+        total_expense = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type == 'EXPENSE')\
+            .scalar() or Decimal("0")
+            
+        net_profit = self._to_decimal(total_revenue) - self._to_decimal(total_expense)
         
-        # قيمة المخزون
-        inventory_value = self.db.query(
-            func.sum(models.Inventory.current_stock_kg * models.Inventory.average_cost_per_kg)
-        ).scalar() or Decimal("0")
-        inventory_value = self._to_decimal(inventory_value)
-        
-        # الذمم المدينة (من العملاء)
-        total_sales = self._to_decimal(
-            self.db.query(func.sum(models.Sale.total_sale_amount)).scalar() or 0
-        )
-        sale_returns = self._to_decimal(
-            self.db.query(func.sum(models.SaleReturn.refund_amount)).scalar() or 0
-        )
-        customer_payments = self._to_decimal(
-            self.db.query(func.sum(models.Payment.amount)).join(
-                models.Contact, models.Payment.contact_id == models.Contact.contact_id
-            ).filter(models.Contact.is_customer == True).scalar() or 0
-        )
-        accounts_receivable = total_sales - sale_returns - customer_payments
-        
-        total_assets = cash_balance + inventory_value + accounts_receivable
-        
-        # حساب الخصوم وحقوق الملكية
-        equity_id = get_setting(self.db, "OWNER_EQUITY_ID")
-        equity_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(equity_id) if equity_id else 0
-        ).first()
-        owner_capital = abs(self._to_decimal(equity_account.current_balance)) if equity_account else Decimal("0")
-        
-        # صافي الربح
-        from app.services.reporting import generate_income_statement
-        try:
-            income_stmt = generate_income_statement(self.db, date(2000, 1, 1), date.today())
-            net_profit = self._to_decimal(income_stmt.get('net_income', 0))
-        except:
-            net_profit = Decimal("0")
-        
-        # الذمم الدائنة (للموردين)
-        total_purchases = self._to_decimal(
-            self.db.query(func.sum(models.Purchase.total_cost)).scalar() or 0
-        )
-        purchase_returns = self._to_decimal(
-            self.db.query(func.sum(models.PurchaseReturn.returned_cost)).scalar() or 0
-        )
-        supplier_payments = self._to_decimal(
-            self.db.query(func.sum(models.Payment.amount)).join(
-                models.Contact, models.Payment.contact_id == models.Contact.contact_id
-            ).filter(models.Contact.is_supplier == True).scalar() or 0
-        )
-        accounts_payable = total_purchases - purchase_returns - supplier_payments
-        
-        total_liabilities_and_equity = owner_capital + net_profit + accounts_payable
+        # معادلة الميزانية:
+        # Assets = Liabilities + Equity + Net Profit
+        total_liabilities_and_equity = self._to_decimal(total_liabilities) + \
+                                       self._to_decimal(total_equity_capital) + \
+                                       net_profit
+                                       
+        total_assets = self._to_decimal(total_assets)
         
         # حساب الفرق
         difference = total_assets - total_liabilities_and_equity
-        is_balanced = abs(difference) < Decimal("1.00")  # هامش 1 جنيه
+        is_balanced = abs(difference) < Decimal("1.00")
         
         return BalanceReport(
             is_balanced=is_balanced,
@@ -324,12 +304,12 @@ class AccountingEngine:
             total_liabilities_and_equity=total_liabilities_and_equity.quantize(Decimal("0.01")),
             checked_at=checked_at,
             details={
-                "cash": float(cash_balance),
-                "inventory": float(inventory_value),
-                "receivables": float(accounts_receivable),
-                "capital": float(owner_capital),
-                "profit": float(net_profit),
-                "payables": float(accounts_payable)
+                "assets": float(total_assets),
+                "liabilities": float(total_liabilities),
+                "capital": float(total_equity_capital),
+                "revenue": float(total_revenue),
+                "expense": float(total_expense),
+                "net_profit": float(net_profit)
             },
             report_type="physical"
         )
@@ -337,71 +317,56 @@ class AccountingEngine:
     def validate_ledger_balance(self) -> BalanceReport:
         """
         التحقق من التوازن الدفتري (من أرصدة الحسابات)
-        
-        يستخدم رصيد حساب المخزون في دفتر الأستاذ بدلاً من القيمة الفعلية
-        هذا يضمن التطابق مع ميزان المراجعة
         """
         checked_at = datetime.now()
         
         # حساب الأصول من أرصدة الحسابات
-        cash_id = get_setting(self.db, "CASH_ACCOUNT_ID")
-        cash_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(cash_id) if cash_id else 0
-        ).first()
-        cash_balance = self._to_decimal(cash_account.current_balance) if cash_account else Decimal("0")
+        # Sum of all ASSET + CASH + INVENTORY + RECEIVABLE accounts
+        total_assets = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type.in_(['ASSET', 'CASH', 'INVENTORY', 'RECEIVABLE']))\
+            .scalar() or Decimal("0")
         
-        # قيمة المخزون من رصيد الحساب (للتطابق مع ميزان المراجعة)
-        inventory_id = get_setting(self.db, "INVENTORY_ACCOUNT_ID")
-        inventory_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(inventory_id) if inventory_id else 0
-        ).first()
-        inventory_ledger = self._to_decimal(inventory_account.current_balance) if inventory_account else Decimal("0")
+        # الذمم الدائنة و الخصوم
+        # Sum of LIABILITY + PAYABLE accounts (Credit balance is positive in report but negative in DB? 
+        # Wait, usually Credit balances are stored positive? Or negative?
+        # Based on _update_account_balance:
+        # Liabilities: Credit increases -> stored positive?
+        # Let's check implementation: 
+        #   if is_debit_nature: change = debit - credit
+        #   else: change = credit - debit
+        # So ALL balances are stored POSITIVE.
         
-        # الذمم المدينة من رصيد الحساب
-        receivables_id = get_setting(self.db, "ACCOUNTS_RECEIVABLE_ID")
-        receivables_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(receivables_id) if receivables_id else 0
-        ).first()
-        accounts_receivable = self._to_decimal(receivables_account.current_balance) if receivables_account else Decimal("0")
+        total_liabilities = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type.in_(['LIABILITY', 'PAYABLE']))\
+            .scalar() or Decimal("0")
+            
+        # حقوق الملكية (Capital)
+        total_equity_capital = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type == 'EQUITY')\
+            .scalar() or Decimal("0")
+            
+        # صافي الربح = الإيرادات - المصروفات
+        total_revenue = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type == 'REVENUE')\
+            .scalar() or Decimal("0")
+            
+        total_expense = self.db.query(func.sum(models.FinancialAccount.current_balance))\
+            .filter(models.FinancialAccount.account_type == 'EXPENSE')\
+            .scalar() or Decimal("0")
+            
+        net_profit = total_revenue - total_expense
         
-        total_assets = cash_balance + inventory_ledger + accounts_receivable
+        total_liabilities_and_equity = total_liabilities + total_equity_capital + net_profit
         
-        # حساب الخصوم وحقوق الملكية من أرصدة الحسابات
-        equity_id = get_setting(self.db, "OWNER_EQUITY_ID")
-        equity_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(equity_id) if equity_id else 0
-        ).first()
-        owner_capital = abs(self._to_decimal(equity_account.current_balance)) if equity_account else Decimal("0")
-        
-        # الذمم الدائنة من رصيد الحساب
-        payables_id = get_setting(self.db, "ACCOUNTS_PAYABLE_ID")
-        payables_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(payables_id) if payables_id else 0
-        ).first()
-        accounts_payable = abs(self._to_decimal(payables_account.current_balance)) if payables_account else Decimal("0")
-        
-        # إيرادات المبيعات
-        revenue_id = get_setting(self.db, "SALES_REVENUE_ACCOUNT_ID")
-        revenue_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(revenue_id) if revenue_id else 0
-        ).first()
-        revenue = abs(self._to_decimal(revenue_account.current_balance)) if revenue_account else Decimal("0")
-        
-        # تكلفة البضاعة المباعة
-        cogs_id = get_setting(self.db, "COGS_ACCOUNT_ID")
-        cogs_account = self.db.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_id == int(cogs_id) if cogs_id else 0
-        ).first()
-        cogs = self._to_decimal(cogs_account.current_balance) if cogs_account else Decimal("0")
-        
-        # صافي الربح = الإيرادات - التكاليف
-        net_profit = revenue - cogs
-        
-        total_liabilities_and_equity = owner_capital + net_profit + accounts_payable
+        # تحويل القيم ل Decimal للعرض
+        total_assets = self._to_decimal(total_assets)
+        total_liabilities_and_equity = self._to_decimal(total_liabilities_and_equity)
+        difference = total_assets - total_liabilities_and_equity
+        is_balanced = abs(difference) < Decimal("1.00")
         
         # حساب الفرق
         difference = total_assets - total_liabilities_and_equity
-        is_balanced = abs(difference) < Decimal("1.00")  # هامش 1 جنيه
+        is_balanced = abs(difference) < Decimal("1.00")
         
         return BalanceReport(
             is_balanced=is_balanced,
@@ -410,12 +375,12 @@ class AccountingEngine:
             total_liabilities_and_equity=total_liabilities_and_equity.quantize(Decimal("0.01")),
             checked_at=checked_at,
             details={
-                "cash": float(cash_balance),
-                "inventory": float(inventory_ledger),
-                "receivables": float(accounts_receivable),
-                "capital": float(owner_capital),
-                "profit": float(net_profit),
-                "payables": float(accounts_payable)
+                "assets": float(total_assets),
+                "liabilities": float(total_liabilities),
+                "capital": float(total_equity_capital),
+                "revenue": float(total_revenue),
+                "expense": float(total_expense),
+                "net_profit": float(net_profit)
             },
             report_type="ledger"
         )
