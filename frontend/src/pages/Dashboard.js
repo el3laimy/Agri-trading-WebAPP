@@ -23,6 +23,16 @@ import AdvancedChartWidget from '../components/dashboard/charts/AdvancedChartWid
 import SalesDistributionWidget from '../components/dashboard/charts/SalesDistributionWidget';
 import CommandPalette from '../components/dashboard/CommandPalette';
 
+// Extracted Widget Components
+import {
+    MainKpisWidget,
+    SecondaryKpisWidget,
+    RecentActivityWidget,
+    AlertsWidget,
+    QuickActionsWidget,
+    TopCustomersWidget
+} from '../components/dashboard/widgets';
+
 /* --- Widget Definitions --- */
 const WIDGETS = [
     { id: 'quick_stats', label: 'إحصائيات اليوم (الشريط العلوي)' },
@@ -197,10 +207,9 @@ function Dashboard() {
         );
     }
 
-    /* Render Functions based on ID */
+    /* Render Functions based on ID - Refactored to use extracted components */
     const renderWidget = (id) => {
         switch (id) {
-            // =============== HERO HEADER ===============
             case 'quick_stats':
                 return (
                     <HeroSection
@@ -222,51 +231,9 @@ function Dashboard() {
                     />
                 );
 
-            // =============== MAIN KPIs ===============
             case 'main_kpis':
-                return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" key={id}>
-                        <GlassKpiCard
-                            title="إجمالي الإيرادات"
-                            value={kpis.total_revenue}
-                            icon="bi-cash-stack"
-                            gradient="from-emerald-500 to-teal-500"
-                            onClick={() => navigate('/sales')}
-                            formatValue={(v) => formatCurrency(v, true)}
-                            delay={0}
-                        />
-                        <GlassKpiCard
-                            title="صافي الربح"
-                            value={kpis.net_profit}
-                            icon="bi-graph-up-arrow"
-                            gradient="from-green-500 to-emerald-500"
-                            onClick={() => navigate('/reports/income-statement')}
-                            formatValue={(v) => formatCurrency(v, true)}
-                            delay={100}
-                        />
-                        <GlassKpiCard
-                            title="قيمة المخزون"
-                            value={kpis.inventory_value}
-                            icon="bi-box-seam"
-                            gradient="from-amber-500 to-orange-500"
-                            subtitle={`${formatNumber(kpis.total_stock_kg)} كجم`}
-                            onClick={() => navigate('/inventory')}
-                            formatValue={(v) => formatCurrency(v, true)}
-                            delay={200}
-                        />
-                        <GlassKpiCard
-                            title="رصيد الخزينة"
-                            value={kpis.cash_balance}
-                            icon="bi-wallet2"
-                            gradient="from-blue-500 to-cyan-500"
-                            onClick={() => navigate('/treasury')}
-                            formatValue={(v) => formatCurrency(v, true)}
-                            delay={300}
-                        />
-                    </div>
-                );
+                return <MainKpisWidget key={id} kpis={kpis} formatCurrency={formatCurrency} formatNumber={formatNumber} />;
 
-            // =============== CHARTS ===============
             case 'charts':
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
@@ -274,326 +241,34 @@ function Dashboard() {
                             <AdvancedChartWidget />
                         </div>
                         <div className="h-full">
-                            <SalesDistributionWidget
-                                salesByCrop={salesByCrop}
-                                loading={loading}
-                            />
+                            <SalesDistributionWidget salesByCrop={salesByCrop} loading={loading} />
                         </div>
                     </div>
                 );
 
-            // =============== SECONDARY KPIs ===============
             case 'secondary_kpis':
-                return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" key={id}>
-                        <GlassKpiCard
-                            title="مستحقات من العملاء"
-                            value={kpis.total_receivables}
-                            icon="bi-person-check"
-                            gradient="from-yellow-500 to-amber-500"
-                            onClick={() => navigate('/debtors?type=receivables')}
-                            subtitle="عملاء مدينين"
-                            formatValue={(v) => formatCurrency(v, true)}
-                            delay={0}
-                        />
-                        <GlassKpiCard
-                            title="مستحقات للموردين"
-                            value={kpis.total_payables}
-                            icon="bi-truck"
-                            gradient="from-red-500 to-rose-500"
-                            onClick={() => navigate('/debtors?type=payables')}
-                            subtitle="موردين دائنين"
-                            formatValue={(v) => formatCurrency(v, true)}
-                            delay={100}
-                        />
-                        <GlassKpiCard
-                            title="عدد المبيعات"
-                            value={kpis.sales_count}
-                            icon="bi-receipt"
-                            gradient="from-purple-500 to-violet-500"
-                            subtitle="عملية"
-                            formatValue={formatNumber}
-                            delay={200}
-                        />
-                        <GlassKpiCard
-                            title="عدد المشتريات"
-                            value={kpis.purchases_count}
-                            icon="bi-bag"
-                            gradient="from-teal-500 to-cyan-500"
-                            subtitle="عملية"
-                            formatValue={formatNumber}
-                            delay={300}
-                        />
-                    </div>
-                );
+                return <SecondaryKpisWidget key={id} kpis={kpis} formatCurrency={formatCurrency} formatNumber={formatNumber} />;
 
-            // =============== RECENT ACTIVITY ===============
             case 'recent_activity':
                 return (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
-                        {/* Activity Timeline */}
-                        <div className="lg:col-span-2 neumorphic overflow-hidden animate-fade-in">
-                            <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
-                                        <i className="bi bi-activity text-white text-xl" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                                            النشاط الأخير
-                                        </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">آخر العمليات المسجلة</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => navigate('/sales')}
-                                    className="px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-xl transition-colors"
-                                >
-                                    عرض الكل
-                                </button>
-                            </div>
-                            <div className="p-4 max-h-96 overflow-y-auto">
-                                {recentActivities.length > 0 ? (
-                                    recentActivities.map((activity) => (
-                                        <ActivityItem
-                                            key={activity.id}
-                                            activity={activity}
-                                            formatCurrency={(v) => formatCurrency(v, true)}
-                                            formatRelativeTime={formatRelativeTime}
-                                        />
-                                    ))
-                                ) : (
-                                    <EmptyState icon="bi-clock-history" title="لا توجد عمليات حديثة" />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Season Progress */}
-                        <div className="animate-fade-in">
-                            <SeasonProgressCard
-                                season={seasonSummary}
-                                formatDate={formatDate}
-                            />
-                        </div>
-                    </div>
+                    <RecentActivityWidget
+                        key={id}
+                        recentActivities={recentActivities}
+                        seasonSummary={seasonSummary}
+                        formatCurrency={formatCurrency}
+                        formatRelativeTime={formatRelativeTime}
+                        formatDate={formatDate}
+                    />
                 );
 
-            // =============== TOP CUSTOMERS ===============
             case 'top_customers':
-                return (
-                    <div className="mb-8" key={id}>
-                        <div className="neumorphic overflow-hidden animate-fade-in">
-                            <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center shadow-lg">
-                                        <i className="bi bi-trophy text-white text-xl" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                                            أفضل العملاء
-                                        </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">حسب حجم المشتريات</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => navigate('/contacts')}
-                                    className="px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-xl transition-colors"
-                                >
-                                    عرض الكل
-                                </button>
-                            </div>
-                            {topCustomers.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-right">
-                                        <thead className="bg-gray-50 dark:bg-slate-700/50 text-gray-600 dark:text-gray-300 text-sm font-semibold">
-                                            <tr>
-                                                <th className="px-6 py-4 w-16">#</th>
-                                                <th className="px-6 py-4">العميل</th>
-                                                <th className="px-6 py-4 text-left">إجمالي المشتريات</th>
-                                                <th className="px-6 py-4 text-left">عدد العمليات</th>
-                                                <th className="px-6 py-4 text-center">الحالة</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                                            {topCustomers.map((customer, index) => (
-                                                <tr
-                                                    key={customer.contact_id}
-                                                    className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
-                                                    onClick={() => navigate(`/contacts/${customer.contact_id}`)}
-                                                >
-                                                    <td className="px-6 py-4">
-                                                        {index === 0 && <span className="text-2xl">🥇</span>}
-                                                        {index === 1 && <span className="text-2xl">🥈</span>}
-                                                        {index === 2 && <span className="text-2xl">🥉</span>}
-                                                        {index > 2 && <span className="text-gray-400 font-medium">{index + 1}</span>}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div
-                                                                className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
-                                                                style={{
-                                                                    backgroundColor: theme === 'dark' ? `hsl(${customer.contact_id * 40}, 50%, 25%)` : `hsl(${customer.contact_id * 40}, 70%, 90%)`,
-                                                                    color: theme === 'dark' ? `hsl(${customer.contact_id * 40}, 70%, 75%)` : `hsl(${customer.contact_id * 40}, 70%, 35%)`
-                                                                }}
-                                                            >
-                                                                {customer.name?.charAt(0)}
-                                                            </div>
-                                                            <span className="font-medium text-gray-700 dark:text-gray-200">{customer.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-left font-bold text-emerald-600 dark:text-emerald-400">
-                                                        {formatCurrency(customer.total_purchases)}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-left">
-                                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200">
-                                                            {customer.transaction_count || '-'} عملية
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        {customer.outstanding > 0 ? (
-                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                                                                مدين: {formatCurrency(customer.outstanding, true)}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                                                                مسدد
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="p-8">
-                                    <EmptyState icon="bi-people" title="لا توجد بيانات عملاء" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
+                return <TopCustomersWidget key={id} topCustomers={topCustomers} formatCurrency={formatCurrency} />;
 
-            // =============== ALERTS ===============
             case 'alerts':
-                const getAlertStyle = (type) => {
-                    const styles = {
-                        success: 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800/50',
-                        danger: 'bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800/50',
-                        warning: 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
-                        info: 'bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800/50'
-                    };
-                    return styles[type] || styles.info;
-                };
+                return <AlertsWidget key={id} alerts={alerts} />;
 
-                return (
-                    <div className="mb-8" key={id}>
-                        <div className="neumorphic animate-fade-in">
-                            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg">
-                                        <i className="bi bi-bell text-white text-xl" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                                            التنبيهات الذكية
-                                            {alerts.length > 0 && (
-                                                <span className="bg-red-500 text-white text-xs px-2.5 py-1 rounded-full font-medium animate-pulse">
-                                                    {alerts.length}
-                                                </span>
-                                            )}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">تنبيهات تلقائية للمتابعة</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {alerts.length > 0 ? alerts.map((alert, index) => (
-                                        <div key={index} className={`p-4 rounded-xl border-2 flex items-start gap-3 hover-lift ${getAlertStyle(alert.type)}`}>
-                                            <div className="w-10 h-10 rounded-lg bg-current bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                                                <i className={`bi ${alert.icon} text-xl`} />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-sm mb-1">{alert.title}</p>
-                                                <p className="text-sm opacity-80">{alert.message}</p>
-                                            </div>
-                                        </div>
-                                    )) : (
-                                        <div className="col-span-full text-center py-12">
-                                            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                                                <i className="bi bi-check-circle text-4xl text-emerald-500" />
-                                            </div>
-                                            <p className="text-gray-500 dark:text-gray-400 font-medium">لا توجد تنبيهات - كل شيء على ما يرام!</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-
-            // =============== QUICK ACTIONS ===============
             case 'quick_actions':
-                const actions = [
-                    { label: 'بيع جديد', icon: 'bi-cart-plus', gradient: 'from-emerald-500 to-teal-500', path: '/sales' },
-                    { label: 'شراء جديد', icon: 'bi-bag-plus', gradient: 'from-blue-500 to-cyan-500', path: '/purchases' },
-                    { label: 'الخزينة', icon: 'bi-safe2', gradient: 'from-amber-500 to-orange-500', path: '/treasury' },
-                    { label: 'مصروف جديد', icon: 'bi-receipt', gradient: 'from-red-500 to-rose-500', path: '/expenses' },
-                    { label: 'تقرير الأرباح', icon: 'bi-graph-up', gradient: 'from-cyan-500 to-blue-500', path: '/reports/income-statement' },
-                    { label: 'جهات التعامل', icon: 'bi-people', gradient: 'from-gray-500 to-slate-500', path: '/contacts' },
-                    { label: 'المخزون', icon: 'bi-box-seam', gradient: 'from-indigo-500 to-purple-500', path: '/inventory' },
-                    { label: 'دفتر الأستاذ', icon: 'bi-journal-bookmark', gradient: 'from-purple-500 to-pink-500', path: '/reports/general-ledger' }
-                ];
-
-                return (
-                    <div className="mb-8" key={id}>
-                        <div className="neumorphic animate-fade-in">
-                            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
-                                            <i className="bi bi-lightning-charge text-white text-xl" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-                                                إجراءات سريعة
-                                            </h3>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">وصول سريع للعمليات الأساسية</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowCommandPalette(true)}
-                                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-colors flex items-center gap-2"
-                                    >
-                                        <i className="bi bi-search" />
-                                        <span>بحث سريع</span>
-                                        <kbd className="text-xs px-1.5 py-0.5 bg-white dark:bg-slate-600 rounded border border-gray-200 dark:border-slate-500 font-mono">
-                                            Ctrl+K
-                                        </kbd>
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="p-6">
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                                    {actions.map((action, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => navigate(action.path)}
-                                            className="group flex flex-col items-center justify-center p-5 rounded-2xl bg-gray-50 dark:bg-slate-700/50 hover:bg-white dark:hover:bg-slate-700 hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-gray-100 dark:hover:border-slate-600"
-                                        >
-                                            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300`}>
-                                                <i className={`bi ${action.icon} text-white text-2xl`} />
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">{action.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
+                return <QuickActionsWidget key={id} onOpenCommandPalette={() => setShowCommandPalette(true)} />;
 
             default:
                 return null;
