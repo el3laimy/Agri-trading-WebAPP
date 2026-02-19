@@ -21,9 +21,14 @@ const apiClient = axios.create({
     },
 });
 
+
+
 // Request interceptor
 apiClient.interceptors.request.use(
     (config) => {
+        // Track start time for performance monitoring
+        config.metadata = { startTime: new Date() };
+
         // Get token if exists (stored as 'token' by AuthContext)
         const token = localStorage.getItem('token');
         if (token) {
@@ -40,6 +45,14 @@ apiClient.interceptors.request.use(
 // Response interceptor
 apiClient.interceptors.response.use(
     (response) => {
+        // Calculate request duration
+        const duration = new Date() - response.config.metadata.startTime;
+
+        // Log slow requests (e.g., > 800ms)
+        if (duration > 800) {
+            console.warn(`⚠️ Slow API Call: ${response.config.url} took ${duration}ms`);
+        }
+
         return response;
     },
     (error) => {
@@ -50,10 +63,8 @@ apiClient.interceptors.response.use(
 
             // Handle authentication errors - but NOT during login attempts
             if (status === 401 && !requestUrl.includes('/auth/login')) {
-                // Clear session and redirect to login
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
+                // Dispatch custom event for AuthContext to handle
+                window.dispatchEvent(new Event('auth:unauthorized'));
             }
 
             // Handle forbidden errors

@@ -23,6 +23,7 @@ export const createSale = async (saleData) => {
 };
 
 export const downloadInvoice = async (saleId) => {
+    if (!saleId) throw new Error('Sale ID is required');
     try {
         const response = await apiClient.get(`${API_URL}${saleId}/invoice`, {
             responseType: 'blob', // Important for handling binary data (PDF)
@@ -35,6 +36,7 @@ export const downloadInvoice = async (saleId) => {
 };
 
 export const updateSale = async (saleId, saleData) => {
+    if (!saleId) throw new Error('Sale ID is required');
     try {
         const response = await apiClient.put(`${API_URL}${saleId}`, saleData);
         return response.data;
@@ -45,6 +47,7 @@ export const updateSale = async (saleId, saleData) => {
 };
 
 export const deleteSale = async (saleId) => {
+    if (!saleId) throw new Error('Sale ID is required');
     try {
         const response = await apiClient.delete(`${API_URL}${saleId}`);
         return response.data;
@@ -61,6 +64,7 @@ export const deleteSale = async (saleId) => {
  * @returns {Promise<object>}
  */
 export const getLastSalePrice = async (cropId, customerId) => {
+    if (!cropId || !customerId) throw new Error('Crop ID and Customer ID are required');
     try {
         const response = await apiClient.get(`${API_URL}last-price/${cropId}/${customerId}`);
         return response.data;

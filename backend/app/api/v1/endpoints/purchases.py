@@ -6,6 +6,7 @@ import json
 from app import crud, schemas
 from app.api.v1.endpoints.crops import get_db # Reuse the get_db dependency
 from app.services import purchasing
+from app.core.idempotency import check_idempotency
 
 router = APIRouter()
 
@@ -29,13 +30,13 @@ def get_last_purchase_price(
     
     if last_purchase:
         return {
-            "unit_price": float(last_purchase.unit_price),
+            "unit_price": str(last_purchase.unit_price),
             "purchase_date": last_purchase.purchase_date.isoformat() if last_purchase.purchase_date else None,
-            "quantity_kg": float(last_purchase.quantity_kg) if last_purchase.quantity_kg else None
+            "quantity_kg": str(last_purchase.quantity_kg) if last_purchase.quantity_kg else None
         }
     return {"unit_price": None, "purchase_date": None, "quantity_kg": None}
 
-@router.post("/", response_model=schemas.PurchaseRead)
+@router.post("/", response_model=schemas.PurchaseRead, dependencies=[Depends(check_idempotency)])
 def create_purchase(
     purchase: schemas.PurchaseCreate, 
     db: Session = Depends(get_db),
@@ -44,6 +45,7 @@ def create_purchase(
     """
     Create a new purchase.
     The business logic is handled by the purchasing service.
+    Protected by Idempotency Key to prevent duplicate entries.
     """
     return purchasing.create_new_purchase(db=db, purchase=purchase, user_id=current_user.user_id)
 
@@ -120,10 +122,25 @@ def delete_purchase(
     if not db_purchase:
         raise HTTPException(status_code=404, detail="عملية الشراء غير موجودة")
     
-    # Delete related journal entries
-    db.query(models.JournalEntry).filter(
-        models.JournalEntry.reference_type == 'PURCHASE',
-        models.JournalEntry.reference_id == purchase_id
+    # Delete related dependencies to avoid Foreign Key violations
+    
+    # 1. Delete Inventory Batches derived from this purchase
+    db.query(models.InventoryBatch).filter(models.InventoryBatch.purchase_id == purchase_id).delete()
+    
+    # 2. Delete Purchase Returns linked to this purchase
+    db.query(models.PurchaseReturn).filter(models.PurchaseReturn.purchase_id == purchase_id).delete()
+    
+    # 3. Delete related Payments (Optional: depends on business logic, but safer to clean uporphan payments)
+    # Note: Payment has no FK to purchase, but we should clean it up to avoid data inconsistencies
+    db.query(models.Payment).filter(
+        models.Payment.transaction_type == 'PURCHASE', 
+        models.Payment.transaction_id == purchase_id
+    ).delete()
+
+    # 4. Delete related General Ledger entries (General Ledger)
+    db.query(models.GeneralLedger).filter(
+        models.GeneralLedger.source_type == 'PURCHASE',
+        models.GeneralLedger.source_id == purchase_id
     ).delete()
     
     # Delete the purchase

@@ -1,36 +1,35 @@
 /**
  * PageHeader.js
- * Reusable page header component with gradient background, animations, and stats
+ * Reusable page header component with LiquidGlass design system
  */
 
 import React, { useEffect, useState } from 'react';
-
-// Import CSS animations
+import '../../styles/liquidglass.css';
 import '../../styles/dashboardAnimations.css';
 
 /**
- * Floating Decorative Element
+ * Floating Decorative Element - Glass refraction blobs
  */
 function FloatingBlob({ className, delay = 0 }) {
     return (
         <div
-            className={`absolute rounded-full bg-white/10 blur-3xl animate-blob pointer-events-none ${className}`} // Added pointer-events-none
-            style={{ animationDelay: `${delay}s` }}
+            className={`absolute rounded-full bg-white/10 blur-3xl pointer-events-none ${className}`}
+            style={{ animationDelay: `${delay}s`, animation: 'lg-liquid-float 8s ease-in-out infinite' }}
         />
     );
 }
 
 /**
- * Animated Particles Background
+ * Animated Particles Background - Subtle glass sparkle effect
  */
 function ParticlesEffect() {
-    const particles = Array.from({ length: 20 }, (_, i) => ({
+    const particles = Array.from({ length: 15 }, (_, i) => ({
         id: i,
-        size: Math.random() * 4 + 2,
+        size: Math.random() * 3 + 1.5,
         left: Math.random() * 100,
         top: Math.random() * 100,
         delay: Math.random() * 5,
-        duration: Math.random() * 3 + 3
+        duration: Math.random() * 3 + 4
     }));
 
     return (
@@ -38,7 +37,7 @@ function ParticlesEffect() {
             {particles.map(p => (
                 <div
                     key={p.id}
-                    className="absolute rounded-full bg-white/20 animate-float"
+                    className="absolute rounded-full bg-white/15 lg-animate-float"
                     style={{
                         width: `${p.size}px`,
                         height: `${p.size}px`,
@@ -54,15 +53,7 @@ function ParticlesEffect() {
 }
 
 /**
- * PageHeader - Header component for all pages with advanced animations
- * @param {string} title - Page title
- * @param {string} subtitle - Page description
- * @param {string} icon - Bootstrap icon class
- * @param {string} gradient - Tailwind gradient classes
- * @param {React.ReactNode} actions - Action buttons
- * @param {React.ReactNode} children - Additional content (stats, etc.)
- * @param {boolean} showParticles - Show particle effects
- * @param {boolean} showBlobs - Show floating blobs
+ * PageHeader - LiquidGlass page header with translucent gradient
  */
 export function PageHeader({
     title,
@@ -81,9 +72,9 @@ export function PageHeader({
     }, []);
 
     return (
-        <div className={`neumorphic overflow-hidden mb-6 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            {/* Animated Gradient Header */}
-            <div className={`relative bg-gradient-to-br ${gradient} p-6 overflow-hidden animate-gradient`} style={{ backgroundSize: '200% 200%' }}>
+        <div className={`lg-page-header transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            {/* Glass-layered Gradient Header */}
+            <div className={`lg-page-header-bg relative bg-gradient-to-br ${gradient} overflow-hidden`}>
 
                 {/* Floating Blobs */}
                 {showBlobs && (
@@ -98,24 +89,33 @@ export function PageHeader({
                 {showParticles && <ParticlesEffect />}
 
                 {/* Content */}
-                <div className="relative z-20"> {/* INCREASED Z-INDEX to be above particles/blobs */}
+                <div className="lg-page-header-content">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         {/* Title Section */}
-                        <div className="flex items-center gap-4 animate-fade-in-up">
-                            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm hover-scale transition-transform animate-float" style={{ animationDuration: '4s' }}>
-                                <i className={`bi ${icon} text-white text-3xl`} />
+                        <div className="flex items-center gap-4 lg-animate-in">
+                            <div
+                                className="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center lg-animate-float"
+                                style={{
+                                    background: 'rgba(255,255,255,0.15)',
+                                    backdropFilter: 'blur(12px)',
+                                    WebkitBackdropFilter: 'blur(12px)',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    animationDuration: '4s'
+                                }}
+                            >
+                                <i className={`bi ${icon} text-white text-2xl md:text-3xl`} />
                             </div>
                             <div className="text-white">
                                 <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
                                 {subtitle && (
-                                    <p className="text-white/80 mt-1 animate-fade-in stagger-2">{subtitle}</p>
+                                    <p className="text-white/80 mt-1 lg-animate-in lg-stagger-2">{subtitle}</p>
                                 )}
                             </div>
                         </div>
 
                         {/* Actions */}
                         {actions && (
-                            <div className="flex items-center gap-3 animate-fade-in-up stagger-3 relative z-30"> {/* EXTRA Z-INDEX validity */}
+                            <div className="flex items-center gap-2 md:gap-3 flex-wrap lg-animate-in lg-stagger-3 relative z-30">
                                 {actions}
                             </div>
                         )}
@@ -123,13 +123,13 @@ export function PageHeader({
 
                     {/* Children (Stats, etc.) */}
                     {children && (
-                        <div className="mt-6 animate-fade-in-up stagger-4 relative z-20">
+                        <div className="mt-6 lg-animate-in lg-stagger-4 relative z-20">
                             {children}
                         </div>
                     )}
                 </div>
 
-                {/* Decorative Corner Shapes - Added pointer-events-none */}
+                {/* Decorative Corner Shapes */}
                 <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-br-full pointer-events-none" />
                 <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-tl from-black/10 to-transparent rounded-tl-full pointer-events-none" />
             </div>
@@ -138,7 +138,7 @@ export function PageHeader({
 }
 
 /**
- * StatsBar - Mini stats bar for quick overview with staggered animations
+ * StatsBar - Glass stat cards for page headers
  */
 export function StatsBar({ stats = [] }) {
     return (
@@ -146,9 +146,18 @@ export function StatsBar({ stats = [] }) {
             {stats.map((stat, index) => (
                 <div
                     key={index}
-                    className={`glass-premium px-4 py-3 rounded-xl flex items-center gap-3 hover-lift hover-shine transition-all animate-fade-in-up stagger-${index + 1}`}
+                    className={`lg-stat-glass px-4 py-3 rounded-xl flex items-center gap-3 lg-hover-lift lg-animate-in lg-stagger-${Math.min(index + 1, 8)}`}
+                    style={{
+                        background: 'rgba(255,255,255,0.12)',
+                        backdropFilter: 'blur(16px)',
+                        WebkitBackdropFilter: 'blur(16px)',
+                        border: '1px solid rgba(255,255,255,0.18)'
+                    }}
                 >
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient || 'from-white/20 to-white/10'} flex items-center justify-center animate-float`} style={{ animationDelay: `${index * 0.2}s` }}>
+                    <div
+                        className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient || 'from-white/20 to-white/10'} flex items-center justify-center lg-animate-float`}
+                        style={{ animationDelay: `${index * 0.2}s` }}
+                    >
                         <i className={`bi ${stat.icon} text-white text-lg`} />
                     </div>
                     <div>
@@ -156,7 +165,7 @@ export function StatsBar({ stats = [] }) {
                         <p className="text-lg font-bold text-white number-counter">{stat.value}</p>
                     </div>
                     {stat.trend !== undefined && (
-                        <div className={`ml-auto text-xs font-medium px-2 py-1 rounded-lg animate-bounce-in ${stat.trend >= 0
+                        <div className={`ml-auto text-xs font-medium px-2 py-1 rounded-lg lg-animate-scale ${stat.trend >= 0
                             ? 'bg-green-500/30 text-green-200'
                             : 'bg-red-500/30 text-red-200'
                             }`}>
@@ -171,7 +180,7 @@ export function StatsBar({ stats = [] }) {
 }
 
 /**
- * ActionButton - Styled action button for page headers
+ * ActionButton - LiquidGlass action button
  */
 export function ActionButton({
     label,
@@ -181,10 +190,10 @@ export function ActionButton({
     disabled = false
 }) {
     const variants = {
-        primary: 'bg-white text-emerald-600 hover:bg-emerald-50 shadow-lg hover:shadow-xl',
-        secondary: 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm',
-        danger: 'bg-red-500 text-white hover:bg-red-600 shadow-lg',
-        ghost: 'bg-transparent text-white hover:bg-white/20'
+        primary: 'lg-btn lg-btn-primary',
+        secondary: 'lg-btn lg-btn-secondary',
+        danger: 'lg-btn lg-btn-danger',
+        ghost: 'lg-btn lg-btn-ghost text-white'
     };
 
     return (
@@ -192,11 +201,11 @@ export function ActionButton({
             onClick={onClick}
             disabled={disabled}
             className={`
-                inline-flex items-center px-5 py-2.5 rounded-xl font-medium
-                transition-all duration-300 hover-scale btn-ripple
+                inline-flex items-center px-5 py-2.5 font-medium
                 disabled:opacity-50 disabled:cursor-not-allowed
                 ${variants[variant]}
             `}
+            style={{ borderRadius: 'var(--lg-radius-sm)' }}
         >
             {icon && <i className={`bi ${icon} mr-2`} />}
             {label}
@@ -205,7 +214,7 @@ export function ActionButton({
 }
 
 /**
- * SearchBox - Enhanced search input with animations
+ * SearchBox - LiquidGlass search input
  */
 export function SearchBox({
     value,
@@ -214,30 +223,24 @@ export function SearchBox({
     className = ''
 }) {
     return (
-        <div className={`relative animate-fade-in ${className}`}>
+        <div className={`relative lg-animate-fade ${className}`}>
             <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                <i className="bi bi-search text-gray-400 animate-pulse" style={{ animationDuration: '2s' }} />
+                <i className="bi bi-search" style={{ color: 'var(--lg-text-muted)' }} />
             </div>
             <input
                 type="text"
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
-                className="
-                    w-full pr-12 pl-4 py-3 
-                    neumorphic-inset rounded-xl
-                    text-gray-900 dark:text-gray-100
-                    placeholder-gray-400 dark:placeholder-gray-500
-                    focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                    transition-all duration-300 hover:shadow-lg
-                "
+                className="lg-input w-full pr-12 pl-4"
+                style={{ borderRadius: 'var(--lg-radius-sm)' }}
             />
         </div>
     );
 }
 
 /**
- * FilterChip - Filter chips/pills for filtering data with animations
+ * FilterChip - LiquidGlass filter chips with glass effect when active
  */
 export function FilterChip({
     label,
@@ -247,39 +250,58 @@ export function FilterChip({
     onClick,
     color = 'emerald'
 }) {
+    const inactiveStyle = {
+        background: 'var(--lg-glass-bg)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1.5px solid var(--lg-glass-border-subtle)',
+        color: 'var(--lg-text-secondary)'
+    };
+
     const colors = {
         emerald: active
             ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700 shadow-lg'
-            : 'bg-gray-50 dark:bg-slate-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700',
+            : '',
         blue: active
             ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700 shadow-lg'
-            : 'bg-gray-50 dark:bg-slate-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700',
+            : '',
         amber: active
             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 shadow-lg'
-            : 'bg-gray-50 dark:bg-slate-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700'
+            : '',
+        rose: active
+            ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-700 shadow-lg'
+            : '',
+        red: active
+            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-300 dark:border-red-700 shadow-lg'
+            : '',
+        indigo: active
+            ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700 shadow-lg'
+            : '',
     };
 
     return (
         <button
             onClick={onClick}
             className={`
-                inline-flex items-center gap-2 px-4 py-2 rounded-xl
-                border-2 font-medium text-sm
-                transition-all duration-300 hover-scale hover-shine
-                ${colors[color]}
+                lg-btn inline-flex items-center gap-2 px-4 py-2
+                font-medium text-sm
+                ${active ? `border-2 ${colors[color]}` : ''}
             `}
+            style={{
+                borderRadius: 'var(--lg-radius-pill)',
+                ...(active ? {} : inactiveStyle)
+            }}
         >
-            {icon && <i className={`bi ${icon} ${active ? 'animate-bounce-in' : ''}`} />}
+            {icon && <i className={`bi ${icon} ${active ? 'lg-animate-scale' : ''}`} />}
             <span>{label}</span>
             {count !== undefined && (
-                <span className={`
-                    px-2 py-0.5 rounded-full text-xs font-bold
-                    transition-all duration-300
-                    ${active
-                        ? 'bg-white/50 dark:bg-white/20 animate-count-up'
-                        : 'bg-gray-200 dark:bg-slate-600'
+                <span
+                    className="px-2 py-0.5 rounded-full text-xs font-bold"
+                    style={active
+                        ? { background: 'rgba(255,255,255,0.5)' }
+                        : { background: 'var(--lg-glass-bg-hover)' }
                     }
-                `}>
+                >
                     {count}
                 </span>
             )}
@@ -288,7 +310,7 @@ export function FilterChip({
 }
 
 /**
- * EmptyStateCard - Beautiful empty state display with animations
+ * EmptyStateCard - LiquidGlass empty state
  */
 export function EmptyStateCard({
     icon = 'bi-inbox',
@@ -297,15 +319,25 @@ export function EmptyStateCard({
     action
 }) {
     return (
-        <div className="text-center py-16 animate-fade-in">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center animate-float hover-lift transition-all">
-                <i className={`bi ${icon} text-5xl text-gray-400 dark:text-gray-500`} />
+        <div className="text-center py-16 lg-animate-fade">
+            <div
+                className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float lg-hover-lift"
+                style={{
+                    borderRadius: 'var(--lg-radius-lg)',
+                    background: 'var(--lg-glass-bg)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid var(--lg-glass-border)',
+                    boxShadow: 'var(--lg-glass-shadow)'
+                }}
+            >
+                <i className={`bi ${icon} text-5xl`} style={{ color: 'var(--lg-text-muted)' }} />
             </div>
-            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2 animate-fade-in-up stagger-1">{title}</h4>
+            <h4 className="font-semibold text-lg mb-2 lg-animate-in lg-stagger-1" style={{ color: 'var(--lg-text-primary)' }}>{title}</h4>
             {description && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto animate-fade-in-up stagger-2">{description}</p>
+                <p className="text-sm mb-6 max-w-sm mx-auto lg-animate-in lg-stagger-2" style={{ color: 'var(--lg-text-muted)' }}>{description}</p>
             )}
-            <div className="animate-fade-in-up stagger-3">
+            <div className="lg-animate-in lg-stagger-3">
                 {action}
             </div>
         </div>
@@ -313,22 +345,23 @@ export function EmptyStateCard({
 }
 
 /**
- * LoadingCard - Skeleton loading state with shimmer
+ * LoadingCard - LiquidGlass skeleton loading
  */
 export function LoadingCard({ rows = 5 }) {
     return (
-        <div className="animate-pulse">
+        <div>
             {[...Array(rows)].map((_, i) => (
                 <div
                     key={i}
-                    className={`p-4 border-b border-gray-100 dark:border-slate-700 flex items-center gap-4 animate-fade-in stagger-${Math.min(i + 1, 8)}`}
+                    className={`p-4 flex items-center gap-4 lg-animate-fade lg-stagger-${Math.min(i + 1, 8)}`}
+                    style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)' }}
                 >
-                    <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-slate-700 animate-shimmer" />
+                    <div className="lg-skeleton lg-skeleton-avatar" />
                     <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-1/3 animate-shimmer" style={{ animationDelay: `${i * 0.1}s` }} />
-                        <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/2 animate-shimmer" style={{ animationDelay: `${i * 0.15}s` }} />
+                        <div className="lg-skeleton lg-skeleton-title" style={{ animationDelay: `${i * 0.1}s` }} />
+                        <div className="lg-skeleton lg-skeleton-text w-1/2" style={{ animationDelay: `${i * 0.15}s` }} />
                     </div>
-                    <div className="h-8 w-20 bg-gray-200 dark:bg-slate-700 rounded-lg animate-shimmer" style={{ animationDelay: `${i * 0.2}s` }} />
+                    <div className="lg-skeleton" style={{ width: '80px', height: '32px', animationDelay: `${i * 0.2}s` }} />
                 </div>
             ))}
         </div>

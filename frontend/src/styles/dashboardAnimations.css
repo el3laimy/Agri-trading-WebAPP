@@ -211,16 +211,16 @@
 }
 
 .animate-pulse-glow {
-    animation: pulseGlow 2s ease-in-out infinite;
+    animation: pulseGlow 3s ease-in-out infinite;
 }
 
 .animate-float {
-    animation: float 3s ease-in-out infinite;
+    animation: float 6s ease-in-out infinite;
 }
 
 .animate-gradient {
     background-size: 200% 200%;
-    animation: gradientFlow 5s ease infinite;
+    animation: gradientFlow 15s ease infinite;
 }
 
 .animate-shimmer {
@@ -241,11 +241,11 @@
 }
 
 .animate-wave {
-    animation: wave 8s ease-in-out infinite;
+    animation: wave 10s ease-in-out infinite;
 }
 
 .animate-blob {
-    animation: blob 8s ease-in-out infinite;
+    animation: blob 15s ease-in-out infinite;
 }
 
 .animate-bounce-in {
@@ -339,35 +339,7 @@
     left: 100%;
 }
 
-/* ===== Neumorphic Styles ===== */
 
-.neumorphic {
-    background: var(--bg-card);
-    border-radius: 20px;
-    box-shadow:
-        8px 8px 16px rgba(0, 0, 0, 0.1),
-        -8px -8px 16px rgba(255, 255, 255, 0.7);
-}
-
-.neumorphic-inset {
-    background: var(--bg-card);
-    border-radius: 16px;
-    box-shadow:
-        inset 4px 4px 8px rgba(0, 0, 0, 0.08),
-        inset -4px -4px 8px rgba(255, 255, 255, 0.5);
-}
-
-[data-theme="dark"] .neumorphic {
-    box-shadow:
-        8px 8px 16px rgba(0, 0, 0, 0.4),
-        -8px -8px 16px rgba(255, 255, 255, 0.03);
-}
-
-[data-theme="dark"] .neumorphic-inset {
-    box-shadow:
-        inset 4px 4px 8px rgba(0, 0, 0, 0.3),
-        inset -4px -4px 8px rgba(255, 255, 255, 0.02);
-}
 
 /* ===== Hero Section Styles ===== */
 
@@ -420,20 +392,7 @@
     animation: float 4s ease-in-out infinite;
 }
 
-/* ===== Glassmorphism Premium ===== */
 
-.glass-premium {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="dark"] .glass-premium {
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
 
 /* ===== Sparkline Container ===== */
 

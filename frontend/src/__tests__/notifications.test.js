@@ -18,7 +18,7 @@ import {
 } from '../api/notifications';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -35,17 +35,15 @@ describe('Notifications Operations', () => {
         axios.get.mockResolvedValue({ data: mockData });
 
         // Test with default param (unreadOnly = false)
-        await getNotifications('token');
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/notifications/', {
-            params: { unread_only: false },
-            headers: { Authorization: 'Bearer token' }
+        await getNotifications();
+        expect(axios.get).toHaveBeenCalledWith('/notifications/', {
+            params: { unread_only: false }
         });
 
         // Test with unreadOnly = true
-        await getNotifications('token', true);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/notifications/', {
-            params: { unread_only: true },
-            headers: { Authorization: 'Bearer token' }
+        await getNotifications(true);
+        expect(axios.get).toHaveBeenCalledWith('/notifications/', {
+            params: { unread_only: true }
         });
     });
 
@@ -53,23 +51,20 @@ describe('Notifications Operations', () => {
         const mockData = { count: 5 };
         axios.get.mockResolvedValue({ data: mockData });
 
-        const result = await getUnreadCount('token');
+        const result = await getUnreadCount();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/notifications/count', {
-            headers: { Authorization: 'Bearer token' }
-        });
+        expect(axios.get).toHaveBeenCalledWith('/notifications/count');
     });
 
     test('markAsRead should put update', async () => {
         const mockData = { success: true };
         axios.put.mockResolvedValue({ data: mockData });
 
-        const result = await markAsRead('token', 123);
+        const result = await markAsRead(123);
         expect(result).toEqual(mockData);
         expect(axios.put).toHaveBeenCalledWith(
-            '/api/v1/notifications/123/read',
-            {},
-            { headers: { Authorization: 'Bearer token' } }
+            '/notifications/123/read',
+            {}
         );
     });
 
@@ -77,12 +72,11 @@ describe('Notifications Operations', () => {
         const mockData = { count: 10 };
         axios.put.mockResolvedValue({ data: mockData });
 
-        const result = await markAllAsRead('token');
+        const result = await markAllAsRead();
         expect(result).toEqual(mockData);
         expect(axios.put).toHaveBeenCalledWith(
-            '/api/v1/notifications/read-all',
-            {},
-            { headers: { Authorization: 'Bearer token' } }
+            '/notifications/read-all',
+            {}
         );
     });
 
@@ -90,17 +84,16 @@ describe('Notifications Operations', () => {
         const mockData = { triggered: true };
         axios.post.mockResolvedValue({ data: mockData });
 
-        const result = await checkAlerts('token');
+        const result = await checkAlerts();
         expect(result).toEqual(mockData);
         expect(axios.post).toHaveBeenCalledWith(
-            '/api/v1/notifications/check',
-            {},
-            { headers: { Authorization: 'Bearer token' } }
+            '/notifications/check',
+            {}
         );
     });
 
     test('should propagate errors', async () => {
         axios.get.mockRejectedValue(new Error('Auth Error'));
-        await expect(getUnreadCount('token')).rejects.toThrow('Auth Error');
+        await expect(getUnreadCount()).rejects.toThrow('Auth Error');
     });
 });

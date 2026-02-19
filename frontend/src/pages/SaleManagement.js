@@ -1,25 +1,27 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getLastSalePrice } from '../api/sales';
 import { useSales, useCreateSale, useUpdateSale, useDeleteSale } from '../hooks/useSales';
-import { useData } from '../context/DataContext';
+import { useCrops, useCustomers } from '../hooks/useQueries';
 import { useAuth } from '../context/AuthContext';
 import SalePaymentForm from '../components/SalePaymentForm';
 import { EmptySales, EmptySearch } from '../components/EmptyState';
 import { SaleForm, SalesTable, CropFilterTabs } from '../components/sales';
 import { validateSaleForm } from '../utils/formValidation';
-import { useToast } from '../components/common';
+import { useToast, ConfirmationModal } from '../components/common';
 
 // Import shared utilities and components
-import { usePageState } from '../hooks';
-import { formatPhoneForWhatsApp } from '../utils';
+import { usePageState, useDebounce } from '../hooks';
+import { formatPhoneForWhatsApp, handleApiError, VALIDATION_MESSAGES } from '../utils';
 import { safeParseFloat, safeParseInt } from '../utils/mathUtils';
 
 // Import new components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+import { ManagementPageSkeleton } from '../components/common';
 import { SalesTrendChart, SalesByStatusChart, TopCropsChart, SalesStatsCards } from '../components/sales/charts/SalesCharts';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 // Initial form state
 const getInitialFormState = () => ({
@@ -38,7 +40,8 @@ const getInitialFormState = () => ({
 });
 
 function SaleManagement() {
-    const { crops, customers } = useData();
+    const { data: crops = [], isLoading: cropsLoading } = useCrops();
+    const { data: customers = [], isLoading: customersLoading } = useCustomers();
     const { hasPermission } = useAuth();
     const { showSuccess } = useToast();
 
@@ -55,6 +58,8 @@ function SaleManagement() {
     const [validationErrors, setValidationErrors] = useState({});
     const [lastPriceHint, setLastPriceHint] = useState(null);
 
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
     // Charts visibility toggle
     const [showCharts, setShowCharts] = useState(true);
 
@@ -64,6 +69,11 @@ function SaleManagement() {
     // Payment modal state
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [payingSale, setPayingSale] = useState(null);
+
+    // Delete confirmation modal state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingSale, setDeletingSale] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Form state
     const [currentCrop, setCurrentCrop] = useState(null);
@@ -201,7 +211,7 @@ function SaleManagement() {
             setLastPriceHint(null);
         } catch (err) {
             console.error("Failed to create sale:", err);
-            showError(err.response?.data?.detail || "An unexpected error occurred.");
+            showError(handleApiError(err, 'sale_create'));
         }
     };
 
@@ -224,7 +234,7 @@ function SaleManagement() {
             refetchSales();
         } catch (err) {
             console.error("Payment error:", err);
-            showError(err.response?.data?.detail || err.message);
+            showError(handleApiError(err, 'sale_payment'));
         }
     };
 
@@ -275,19 +285,44 @@ function SaleManagement() {
         });
         setCurrentCrop(crops.find(c => c.crop_id === sale.crop_id) || null);
         setShowAddForm(true);
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Delete handler
-    const handleDelete = async (sale) => {
-        if (!window.confirm(`هل أنت متأكد من حذف عملية البيع رقم ${sale.sale_id}؟`)) {
-            return;
-        }
+    // Delete handler - opens confirmation modal
+    const handleDelete = (sale) => {
+        setDeletingSale(sale);
+        setShowDeleteConfirm(true);
+    };
+
+    // Confirm delete - executes after user confirms
+    const confirmDelete = async () => {
+        if (!deletingSale) return;
+        setIsDeleting(true);
         try {
-            await deleteMutation.mutateAsync(sale.sale_id);
+            await deleteMutation.mutateAsync(deletingSale.sale_id);
+            // Success message is usually handled by the mutation onSuccess, 
+            // but we can add an explicit one here if not covered there.
+            // Assuming deleteMutation uses standard hooks that might generic toasts, 
+            // but let's be explicit as requested.
+            showSuccess('تم حذف عملية البيع بنجاح');
+
+            setShowDeleteConfirm(false);
+            setDeletingSale(null);
         } catch (err) {
             console.error("Failed to delete sale:", err);
-            showError(err.response?.data?.detail || "فشل في حذف عملية البيع");
+            // Explicit Error Message
+            const reason = err.response?.data?.detail || 'حدث خطأ غير متوقع أثناء الحذف';
+            showError(`فشل حذف عملية البيع: ${reason}`);
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    // Cancel delete
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false);
+        setDeletingSale(null);
     };
 
     // Status badge
@@ -339,16 +374,16 @@ function SaleManagement() {
     const filteredSales = useMemo(() => {
         return sales.filter(sale => {
             const matchesSearch = (
-                sale.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                sale.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                sale.sale_id?.toString().includes(searchTerm)
+                sale.customer?.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                sale.crop?.crop_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                sale.sale_id?.toString().includes(debouncedSearchTerm)
             );
             const matchesCrop = selectedCropFilter === 'all' || selectedCropFilter === null
                 ? true
                 : sale.crop?.crop_id === selectedCropFilter;
             return matchesSearch && matchesCrop;
         });
-    }, [sales, searchTerm, selectedCropFilter]);
+    }, [sales, debouncedSearchTerm, selectedCropFilter]);
 
     // Calculate totals - SAFE PARSING
     const calculatedQtyKg = safeParseFloat(formState.quantity_input);
@@ -357,33 +392,33 @@ function SaleManagement() {
 
     // Loading state
     if (isLoading) {
-        return (
-            <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
-                    <div className="h-40 bg-gradient-to-br from-emerald-200 to-teal-200 dark:from-emerald-800/30 dark:to-teal-800/30" />
-                </div>
-                <div className="neumorphic p-6">
-                    <LoadingCard rows={6} />
-                </div>
-            </div>
-        );
+        return <ManagementPageSkeleton showStats={true} showFilters={true} tableRows={8} tableColumns={8} />;
     }
 
     return (
         <div className="p-6 max-w-full mx-auto">
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                title="تأكيد حذف عملية البيع"
+                message={`هل أنت متأكد من حذف عملية البيع رقم ${deletingSale?.sale_id}؟ لا يمكن التراجع عن هذا الإجراء.`}
+                confirmText="حذف"
+                cancelText="إلغاء"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
             {/* Payment Form Modal */}
             {showPaymentForm && payingSale && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={handleCancelPayment}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-200 dark:border-slate-700 animate-fade-in-scale">
-                            <SalePaymentForm
-                                sale={payingSale}
-                                onSave={handleSavePayment}
-                                onCancel={handleCancelPayment}
-                            />
-                        </div>
+                <div className="lg-modal-overlay" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="lg-modal" style={{ maxWidth: '520px' }}>
+                        <SalePaymentForm
+                            sale={payingSale}
+                            onSave={handleSavePayment}
+                            onCancel={handleCancelPayment}
+                        />
                     </div>
                 </div>
             )}
@@ -420,7 +455,7 @@ function SaleManagement() {
 
             {/* Error Alert */}
             {error && (
-                <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-fade-in">
+                <div className="mb-6 p-4 rounded-xl border-2 border-red-200 dark:border-red-800 lg-animate-fade" style={{ background: 'var(--lg-glass-bg)' }}>
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
                             <i className="bi bi-exclamation-triangle-fill text-red-500" />
@@ -438,10 +473,10 @@ function SaleManagement() {
 
             {/* Charts Section */}
             {showCharts && sales.length > 0 && !showAddForm && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 lg-animate-fade">
                     {/* Trend Chart */}
-                    <div className="lg:col-span-2 neumorphic p-6">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <div className="lg:col-span-2 lg-card p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                             <i className="bi bi-graph-up text-emerald-500" />
                             اتجاه المبيعات
                         </h3>
@@ -449,8 +484,8 @@ function SaleManagement() {
                     </div>
 
                     {/* Status Chart */}
-                    <div className="neumorphic p-6">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <div className="lg-card p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                             <i className="bi bi-pie-chart text-blue-500" />
                             حالة الدفع
                         </h3>
@@ -495,7 +530,7 @@ function SaleManagement() {
 
             {/* Add Sale Form */}
             {showAddForm && (
-                <div className="mb-6 animate-fade-in">
+                <div className="mb-6 lg-animate-fade">
                     <SaleForm
                         formState={formState}
                         onInputChange={handleInputChange}
@@ -509,17 +544,18 @@ function SaleManagement() {
                         calculatedQtyUnit={calculatedQtyUnit}
                         validationErrors={validationErrors}
                         lastPriceHint={lastPriceHint}
+                        isSubmitting={createMutation.isPending || updateMutation.isPending}
                     />
                 </div>
             )}
 
             {/* Sales Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-emerald-500" />
                         سجل المبيعات
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(16,185,129,0.15)', color: 'rgb(5,150,105)' }}>
                             {filteredSales.length}
                         </span>
                     </h5>

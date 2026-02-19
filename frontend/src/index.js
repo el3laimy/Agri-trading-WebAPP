@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import axios from 'axios';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { queryClient } from './api/queryClient';
+import { queryClient } from './lib/queryClient';
 // Bootstrap CSS removed - using Tailwind CSS only
 import './index.css';
 import App from './App';

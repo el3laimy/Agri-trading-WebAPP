@@ -23,6 +23,7 @@ export const createContact = async (contactData) => {
 };
 
 export const updateContact = async (contactId, contactData) => {
+    if (!contactId) throw new Error('Contact ID is required');
     try {
         const response = await apiClient.put(`${API_URL}${contactId}`, contactData);
         return response.data;
@@ -33,6 +34,7 @@ export const updateContact = async (contactId, contactData) => {
 };
 
 export const deleteContact = async (contactId) => {
+    if (!contactId) throw new Error('Contact ID is required');
     try {
         const response = await apiClient.delete(`${API_URL}${contactId}`);
         return response.data;
@@ -42,9 +44,10 @@ export const deleteContact = async (contactId) => {
     }
 };
 
-// --- كشوفات الحسابات ---
+// ... كشوفات الحسابات ...
 
 export const getContactSummary = async (contactId) => {
+    if (!contactId) throw new Error('Contact ID is required');
     try {
         const response = await apiClient.get(`${API_URL}${contactId}/summary`);
         return response.data;
@@ -55,6 +58,7 @@ export const getContactSummary = async (contactId) => {
 };
 
 export const getContactStatement = async (contactId, startDate = null, endDate = null) => {
+    if (!contactId) throw new Error('Contact ID is required');
     try {
         let url = `${API_URL}${contactId}/statement`;
         const params = new URLSearchParams();
@@ -93,6 +97,8 @@ export const getSuppliersBalances = async () => {
 // --- حذف جهات التعامل المرتبطة بعمليات ---
 
 export const migrateAndDeleteContact = async (contactId, targetContactId) => {
+    if (!contactId) throw new Error('Contact ID is required');
+    if (!targetContactId) throw new Error('Target Contact ID is required');
     try {
         const response = await apiClient.post(`${API_URL}${contactId}/migrate-and-delete`, {
             target_contact_id: targetContactId
@@ -105,6 +111,7 @@ export const migrateAndDeleteContact = async (contactId, targetContactId) => {
 };
 
 export const forceDeleteContact = async (contactId) => {
+    if (!contactId) throw new Error('Contact ID is required');
     try {
         const response = await apiClient.delete(`${API_URL}${contactId}/force`);
         return response.data;

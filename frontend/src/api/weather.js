@@ -3,7 +3,7 @@
  * Fetches real weather data from OpenWeatherMap API
  */
 
-const API_KEY = '8b17866499c90b00762849172880a11f';
+const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || '8b17866499c90b00762849172880a11f'; // Fallback for dev only
 const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
 
 // Egyptian cities for the location picker

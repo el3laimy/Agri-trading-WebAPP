@@ -24,12 +24,6 @@ class Crop(Base):
     conversion_factors = Column(Text, nullable=False)
     
     is_active = Column(Boolean, default=True)
-    
-    # [DEPRECATED] الحقول المعقدة - للتوافق مع البيانات القديمة فقط
-    # سيتم حذفها في migration مستقبلي
-    is_complex_unit = Column(Boolean, default=False)  # DEPRECATED
-    default_tare_per_bag = Column(Numeric(18, 4), default=0.0)  # DEPRECATED
-    standard_unit_weight = Column(Numeric(18, 4), nullable=True)  # DEPRECATED
 
 class Contact(Base):
     __tablename__ = "contacts"
@@ -556,3 +550,27 @@ class Settings(Base):
     value = Column(String, nullable=False)
     description = Column(String, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class IdempotencyKey(Base):
+    """
+    نموذج مفاتيح Idempotency - لمنع تكرار العمليات المالية
+    
+    يخزن كل مفتاح مستخدم مع نتيجة العملية لإعادتها في حالة التكرار
+    """
+    __tablename__ = "idempotency_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(36), unique=True, nullable=False, index=True)  # UUID
+    endpoint = Column(String, nullable=False)  # e.g., "/purchases/", "/sales/"
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
+    
+    # نتيجة العملية (للإرجاع في حالة التكرار)
+    response_status = Column(Integer, nullable=True)  # HTTP status code
+    response_body = Column(Text, nullable=True)  # JSON response
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)  # تنتهي بعد 24 ساعة
+    
+    user = relationship("User")
+

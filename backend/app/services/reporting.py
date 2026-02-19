@@ -5,25 +5,35 @@ from decimal import Decimal
 
 from app import models
 
-def get_general_ledger_entries(db: Session):
-    return db.query(models.GeneralLedger).options(joinedload(models.GeneralLedger.account)).order_by(models.GeneralLedger.entry_date.desc(), models.GeneralLedger.entry_id.desc()).all()
+def get_general_ledger_entries(db: Session, start_date: date = None, end_date: date = None, account_id: int = None):
+    query = db.query(models.GeneralLedger).options(joinedload(models.GeneralLedger.account))
+    
+    if start_date:
+        query = query.filter(models.GeneralLedger.entry_date >= start_date)
+    if end_date:
+        query = query.filter(models.GeneralLedger.entry_date <= end_date)
+    if account_id:
+        query = query.filter(models.GeneralLedger.account_id == account_id)
+        
+    return query.order_by(models.GeneralLedger.entry_date.desc(), models.GeneralLedger.entry_id.desc()).all()
 
-def generate_trial_balance(db: Session):
+def generate_trial_balance(db: Session, end_date: date = None):
     """
-    Calculates the trial balance by summing debits and credits for each account.
+    Calculates the trial balance by summing debits and credits for each account up to a specific date.
     """
-    trial_balance_query = (
-        db.query(
-            models.FinancialAccount.account_id,
-            models.FinancialAccount.account_name,
-            func.sum(models.GeneralLedger.debit).label('total_debit'),
-            func.sum(models.GeneralLedger.credit).label('total_credit')
-        )
-        .join(models.GeneralLedger, models.FinancialAccount.account_id == models.GeneralLedger.account_id)
-        .group_by(models.FinancialAccount.account_id, models.FinancialAccount.account_name)
-        .order_by(models.FinancialAccount.account_id)
-    )
-    return trial_balance_query.all()
+    query = db.query(
+        models.FinancialAccount.account_id,
+        models.FinancialAccount.account_name,
+        func.sum(models.GeneralLedger.debit).label('total_debit'),
+        func.sum(models.GeneralLedger.credit).label('total_credit')
+    ).join(models.GeneralLedger, models.FinancialAccount.account_id == models.GeneralLedger.account_id)
+
+    if end_date:
+        query = query.filter(models.GeneralLedger.entry_date <= end_date)
+
+    query = query.group_by(models.FinancialAccount.account_id, models.FinancialAccount.account_name).order_by(models.FinancialAccount.account_id)
+    
+    return query.all()
 
 def generate_balance_sheet(db: Session, end_date: date):
     """

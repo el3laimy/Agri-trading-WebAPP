@@ -32,7 +32,7 @@ import {
 } from '../api/reports';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -55,7 +55,7 @@ describe('Financial Statements', () => {
         const result = await getGeneralLedger();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/general-ledger');
+        expect(axios.get).toHaveBeenCalledWith('/reports/general-ledger');
     });
 
     test('getTrialBalance should fetch data successfully', async () => {
@@ -65,7 +65,7 @@ describe('Financial Statements', () => {
         const result = await getTrialBalance();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/trial-balance');
+        expect(axios.get).toHaveBeenCalledWith('/reports/trial-balance');
     });
 
     test('getIncomeStatement should fetch with date range', async () => {
@@ -77,7 +77,7 @@ describe('Financial Statements', () => {
         const result = await getIncomeStatement(startDate, endDate);
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/income-statement', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/income-statement', {
             params: { start_date: startDate, end_date: endDate }
         });
     });
@@ -90,7 +90,7 @@ describe('Financial Statements', () => {
         const result = await getBalanceSheet(endDate);
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/balance-sheet', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/balance-sheet', {
             params: { end_date: endDate }
         });
     });
@@ -102,7 +102,7 @@ describe('Financial Statements', () => {
         const result = await getEquityStatement('2024-01-01', '2024-12-31');
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/equity-statement', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/equity-statement', {
             params: { start_date: '2024-01-01', end_date: '2024-12-31' }
         });
     });
@@ -114,7 +114,7 @@ describe('Financial Statements', () => {
         const result = await getCashFlowReport('2024-01-01', '2024-12-31');
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/cash-flow', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/cash-flow', {
             params: { start_date: '2024-01-01', end_date: '2024-12-31' }
         });
     });
@@ -125,13 +125,13 @@ describe('Financial Statements', () => {
 
         // With category
         await getCashFlowDetails('2024-01-01', '2024-12-31', 'OPERATING');
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/cash-flow-details', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/cash-flow-details', {
             params: { start_date: '2024-01-01', end_date: '2024-12-31', category: 'OPERATING' }
         });
 
         // Without category (null)
         await getCashFlowDetails('2024-01-01', '2024-12-31', null);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/cash-flow-details', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/cash-flow-details', {
             params: { start_date: '2024-01-01', end_date: '2024-12-31', category: null }
         });
     });
@@ -149,7 +149,7 @@ describe('Dashboard & Analytics', () => {
 
         const result = await getDashboardKpis();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/dashboard-kpis');
+        expect(axios.get).toHaveBeenCalledWith('/reports/dashboard-kpis');
     });
 
     test('getDashboardAlerts should fetch alerts', async () => {
@@ -158,7 +158,7 @@ describe('Dashboard & Analytics', () => {
 
         const result = await getDashboardAlerts();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/dashboard-alerts');
+        expect(axios.get).toHaveBeenCalledWith('/reports/dashboard-alerts');
     });
 
     test('getRecentActivities should handle limit parameter', async () => {
@@ -166,13 +166,13 @@ describe('Dashboard & Analytics', () => {
         axios.get.mockResolvedValue({ data: mockData });
 
         await getRecentActivities(5);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/dashboard/recent-activities', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/dashboard/recent-activities', {
             params: { limit: 5 }
         });
 
         // Default limit
         await getRecentActivities();
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/dashboard/recent-activities', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/dashboard/recent-activities', {
             params: { limit: 10 }
         });
     });
@@ -183,7 +183,7 @@ describe('Dashboard & Analytics', () => {
 
         const result = await getSeasonSummary();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/dashboard/season-summary');
+        expect(axios.get).toHaveBeenCalledWith('/reports/dashboard/season-summary');
     });
 
     test('getAdvancedChartData should pass params correctly', async () => {
@@ -194,7 +194,7 @@ describe('Dashboard & Analytics', () => {
         const result = await getAdvancedChartData(params);
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/dashboard/advanced-chart', { params });
+        expect(axios.get).toHaveBeenCalledWith('/reports/dashboard/advanced-chart', { params });
     });
 });
 
@@ -210,11 +210,11 @@ describe('Capital & Analytical Reports', () => {
 
         // No params
         await getCapitalDistribution();
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/capital-distribution', { params: {} });
+        expect(axios.get).toHaveBeenCalledWith('/reports/capital-distribution', { params: {} });
 
         // Both params
         await getCapitalDistribution('2024-12-31', '2024-01-01');
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/capital-distribution', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/capital-distribution', {
             params: { report_date: '2024-12-31', start_date: '2024-01-01' }
         });
     });
@@ -225,7 +225,7 @@ describe('Capital & Analytical Reports', () => {
 
         const result = await getCapitalBreakdown();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/capital-breakdown');
+        expect(axios.get).toHaveBeenCalledWith('/reports/capital-breakdown');
     });
 
     test('getSalesByCrop should fetch sales analysis', async () => {
@@ -234,7 +234,7 @@ describe('Capital & Analytical Reports', () => {
 
         const result = await getSalesByCrop();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/sales-by-crop');
+        expect(axios.get).toHaveBeenCalledWith('/reports/sales-by-crop');
     });
 
     test('getCropProfitability should handle seasonId parameter', async () => {
@@ -243,13 +243,13 @@ describe('Capital & Analytical Reports', () => {
 
         // With seasonId
         await getCropProfitability(1);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/crop-profitability', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/crop-profitability', {
             params: { season_id: 1 }
         });
 
         // Without seasonId
         await getCropProfitability();
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/crop-profitability', { params: {} });
+        expect(axios.get).toHaveBeenCalledWith('/reports/crop-profitability', { params: {} });
     });
 
     test('getTopCustomers should handle limit parameter', async () => {
@@ -257,7 +257,7 @@ describe('Capital & Analytical Reports', () => {
         axios.get.mockResolvedValue({ data: mockData });
 
         await getTopCustomers(5);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/top-customers', {
+        expect(axios.get).toHaveBeenCalledWith('/reports/top-customers', {
             params: { limit: 5 }
         });
     });
@@ -268,7 +268,7 @@ describe('Capital & Analytical Reports', () => {
 
         const result = await getDebtAnalysis();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/debt-analysis');
+        expect(axios.get).toHaveBeenCalledWith('/reports/debt-analysis');
     });
 
     test('getBalanceCheck should fetch system balance status', async () => {
@@ -277,7 +277,7 @@ describe('Capital & Analytical Reports', () => {
 
         const result = await getBalanceCheck();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/reports/balance-check');
+        expect(axios.get).toHaveBeenCalledWith('/reports/balance-check');
     });
 });
 

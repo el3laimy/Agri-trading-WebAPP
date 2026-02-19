@@ -94,19 +94,21 @@ def test_financial_accounts(db_session):
     """التأكد من وجود الحسابات المالية الأساسية"""
     from app.core.bootstrap import bootstrap_financial_accounts
     bootstrap_financial_accounts(db_session)
+    print("DEBUG: Fetching Financial Accounts...")
+    cash = db_session.query(models.FinancialAccount).filter(models.FinancialAccount.account_name == "الخزنة الرئيسية").first()
+    print(f"DEBUG: Cash: {cash}")
+    inventory = db_session.query(models.FinancialAccount).filter(models.FinancialAccount.account_name == "المخزون").first()
+    print(f"DEBUG: Inventory: {inventory}")
+    receivables = db_session.query(models.FinancialAccount).filter(models.FinancialAccount.account_name == "الذمم المدينة (العملاء)").first()
+    print(f"DEBUG: Receivables: {receivables}")
+    payables = db_session.query(models.FinancialAccount).filter(models.FinancialAccount.account_name == "الذمم الدائنة (الموردين)").first()
+    print(f"DEBUG: Payables: {payables}")
+
     accounts = {
-        "cash": db_session.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_name == "الخزينة الرئيسية"
-        ).first(),
-        "inventory": db_session.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_name == "المخزون"
-        ).first(),
-        "receivables": db_session.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_name == "العملاء"
-        ).first(),
-        "payables": db_session.query(models.FinancialAccount).filter(
-            models.FinancialAccount.account_name == "الموردين"
-        ).first(),
+        "cash": cash,
+        "inventory": inventory,
+        "receivables": receivables,
+        "payables": payables,
     }
     return accounts
 

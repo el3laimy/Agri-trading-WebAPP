@@ -16,7 +16,8 @@ function PurchaseForm({
     calculatedQtyKg,
     calculatedQtyUnit,
     validationErrors = {},  // New prop for validation errors
-    lastPriceHint = null    // New prop for last price suggestion
+    lastPriceHint = null,   // New prop for last price suggestion
+    isSubmitting = false    // Disable button during submission
 }) {
     // Check if field has error
     const hasError = (field) => !!validationErrors[field];
@@ -313,10 +314,20 @@ function PurchaseForm({
                     </button>
                     <button
                         type="submit"
-                        className="px-8 py-2.5 bg-emerald-600 dark:bg-emerald-500 border border-transparent text-white text-sm font-bold rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-md transition-all transform hover:scale-[1.02]"
+                        disabled={isSubmitting}
+                        className={`px-8 py-2.5 border border-transparent text-white text-sm font-bold rounded-lg shadow-md transition-all ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transform hover:scale-[1.02]'}`}
                     >
-                        <i className="bi bi-check-lg ml-2"></i>
-                        حفظ العملية
+                        {isSubmitting ? (
+                            <>
+                                <i className="bi bi-arrow-repeat animate-spin ml-2"></i>
+                                جاري الحفظ...
+                            </>
+                        ) : (
+                            <>
+                                <i className="bi bi-check-lg ml-2"></i>
+                                حفظ العملية
+                            </>
+                        )}
                     </button>
                 </div>
             </form>

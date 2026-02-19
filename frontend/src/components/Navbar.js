@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import { useSeason } from '../context/SeasonContext';
 
 function Navbar() {
+    const { activeSeason, loading } = useSeason();
+
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
             <div className="container-fluid">
@@ -10,7 +13,7 @@ function Navbar() {
                     <span className="navbar-toggler-icon"></span>
                 </button>
                 <div className="collapse navbar-collapse" id="navbarNav">
-                    <ul className="navbar-nav">
+                    <ul className="navbar-nav me-auto">
                         <li className="nav-item">
                             <NavLink className="nav-link" to="/dashboard">لوحة التحكم</NavLink>
                         </li>
@@ -55,6 +58,20 @@ function Navbar() {
                             </ul>
                         </li>
                     </ul>
+                    <div className="d-flex text-white align-items-center">
+                        {loading ? (
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        ) : activeSeason ? (
+                            <div className="bg-success bg-opacity-25 px-3 py-1 rounded-pill border border-success border-opacity-50">
+                                <small className="text-success-light me-1">الموسم الحالي:</small>
+                                <strong className="text-white">{activeSeason.name}</strong>
+                            </div>
+                        ) : (
+                            <div className="bg-warning bg-opacity-25 px-3 py-1 rounded-pill border border-warning border-opacity-50">
+                                <small className="text-warning-light">لا يوجد موسم نشط</small>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </nav>

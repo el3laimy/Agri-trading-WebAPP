@@ -5,7 +5,8 @@
  * هذه الاختبارات تمنع تكرار مشاكل مثل cropId vs crop_id
  */
 
-import { describe, test, expect, beforeAll } from 'vitest';
+import { describe, test, expect, beforeAll, vi } from 'vitest';
+vi.unmock('axios');
 import axios from 'axios';
 
 const API_BASE = 'http://localhost:8000/api/v1';

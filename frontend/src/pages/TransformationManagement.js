@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getTransformations, createTransformation, deleteTransformation } from '../api/transformations';
 import { getCrops } from '../api/crops';
 import { getInventory } from '../api/inventory';
-import { useToast } from '../components/common';
+import { useToast, ConfirmationModal } from '../components/common';
 import { PageHeader, ActionButton, SearchBox, LoadingCard } from '../components/common/PageHeader';
+import { handleApiError, VALIDATION_MESSAGES } from '../utils';
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function TransformationManagement() {
     const { showSuccess, showError } = useToast();
@@ -14,6 +16,11 @@ function TransformationManagement() {
     const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Delete confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -122,7 +129,7 @@ function TransformationManagement() {
             resetForm();
             fetchData();
         } catch (error) {
-            showError(error.response?.data?.detail || 'فشل إنشاء عملية التحويل');
+            showError(handleApiError(error, 'transformation_create'));
         }
     };
 
@@ -138,15 +145,33 @@ function TransformationManagement() {
         setShowAddForm(false);
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('هل أنت متأكد من حذف عملية التحويل؟')) return;
+    // Delete handler - opens confirmation modal
+    const handleDelete = (id) => {
+        setDeletingId(id);
+        setShowDeleteConfirm(true);
+    };
+
+    // Confirm delete
+    const confirmDelete = async () => {
+        if (!deletingId) return;
+        setIsDeleting(true);
         try {
-            await deleteTransformation(id);
+            await deleteTransformation(deletingId);
             showSuccess('تم حذف عملية التحويل');
+            setShowDeleteConfirm(false);
+            setDeletingId(null);
             fetchData();
         } catch (error) {
-            showError('فشل حذف عملية التحويل');
+            showError(handleApiError(error, 'transformation_delete'));
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    // Cancel delete
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false);
+        setDeletingId(null);
     };
 
     // Filter transformations
@@ -159,10 +184,10 @@ function TransformationManagement() {
     if (loading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                <div className="lg-card overflow-hidden mb-6 animate-pulse">
                     <div className="h-40 bg-gradient-to-br from-purple-200 to-indigo-200 dark:from-purple-800/30 dark:to-indigo-800/30" />
                 </div>
-                <div className="neumorphic p-6">
+                <div className="lg-card p-6">
                     <LoadingCard rows={6} />
                 </div>
             </div>
@@ -171,6 +196,19 @@ function TransformationManagement() {
 
     return (
         <div className="p-6 max-w-full mx-auto">
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                title="تأكيد حذف عملية التحويل"
+                message="هل أنت متأكد من حذف عملية التحويل؟ لا يمكن التراجع عن هذا الإجراء."
+                confirmText="حذف"
+                cancelText="إلغاء"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
             <PageHeader
                 title="عمليات التحويل"
                 subtitle="تحويل المحاصيل الخام إلى منتجات نهائية"
@@ -186,14 +224,14 @@ function TransformationManagement() {
                 }
             >
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
-                                <i className="bi bi-arrow-left-right text-lg" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.25)' }}>
+                                <i className="bi bi-arrow-left-right text-lg text-purple-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">إجمالي العمليات</p>
-                                <p className="text-lg font-bold">{transformations.length}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>إجمالي العمليات</p>
+                                <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{transformations.length}</p>
                             </div>
                         </div>
                     </div>
@@ -212,7 +250,7 @@ function TransformationManagement() {
 
             {/* Add Form */}
             {showAddForm && (
-                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
+                <div className="mb-6 lg-card overflow-hidden lg-animate-fade">
                     <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
                             <i className="bi bi-arrow-left-right ml-2 text-purple-600 dark:text-purple-400" />
@@ -230,7 +268,7 @@ function TransformationManagement() {
                                     value={formData.source_crop_id}
                                     onChange={(e) => handleFormChange('source_crop_id', e.target.value)}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 >
                                     <option value="">-- اختر المحصول --</option>
                                     {crops.map(crop => (
@@ -250,7 +288,7 @@ function TransformationManagement() {
                                     value={formData.source_quantity_kg}
                                     onChange={(e) => handleFormChange('source_quantity_kg', e.target.value)}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -262,7 +300,7 @@ function TransformationManagement() {
                                     step="0.01"
                                     value={formData.processing_cost}
                                     onChange={(e) => handleFormChange('processing_cost', e.target.value)}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                         </div>
@@ -277,7 +315,7 @@ function TransformationManagement() {
                                     value={formData.transformation_date}
                                     onChange={(e) => handleFormChange('transformation_date', e.target.value)}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -288,13 +326,13 @@ function TransformationManagement() {
                                     type="text"
                                     value={formData.notes}
                                     onChange={(e) => handleFormChange('notes', e.target.value)}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                         </div>
 
                         {/* Outputs Section */}
-                        <div className="neumorphic-inset p-4 rounded-xl">
+                        <div className="lg-card p-4 rounded-xl" style={{ background: 'var(--lg-glass-bg)', border: '1px solid var(--lg-glass-border)' }}>
                             <div className="flex justify-between items-center mb-4">
                                 <h4 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                     <i className="bi bi-box-arrow-in-down text-purple-500" />
@@ -315,7 +353,7 @@ function TransformationManagement() {
                                             value={output.output_crop_id}
                                             onChange={(e) => handleOutputChange(index, 'output_crop_id', e.target.value)}
                                             required
-                                            className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                            className="w-full p-2.5 lg-input rounded-xl"
                                         >
                                             <option value="">-- اختر --</option>
                                             {crops.map(crop => (
@@ -333,7 +371,7 @@ function TransformationManagement() {
                                             value={output.output_quantity_kg}
                                             onChange={(e) => handleOutputChange(index, 'output_quantity_kg', e.target.value)}
                                             required
-                                            className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                            className="w-full p-2.5 lg-input rounded-xl"
                                         />
                                     </div>
                                     <div className="col-span-2">
@@ -349,7 +387,7 @@ function TransformationManagement() {
                                             value={output.cost_allocation_ratio}
                                             onChange={(e) => handleOutputChange(index, 'cost_allocation_ratio', e.target.value)}
                                             required
-                                            className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                            className="w-full p-2.5 lg-input rounded-xl"
                                         />
                                     </div>
                                     <div className="col-span-2 flex items-center gap-2">
@@ -386,10 +424,10 @@ function TransformationManagement() {
                         </div>
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
-                            <button type="button" onClick={resetForm} className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300">
+                            <button type="button" onClick={resetForm} className="lg-btn lg-btn-secondary px-6 py-2.5">
                                 إلغاء
                             </button>
-                            <button type="submit" className="px-8 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 font-bold hover-scale">
+                            <button type="submit" className="lg-btn lg-btn-primary px-8 py-2.5 font-bold">
                                 <i className="bi bi-check-lg ml-2" />
                                 تنفيذ التحويل
                             </button>
@@ -399,25 +437,25 @@ function TransformationManagement() {
             )}
 
             {/* Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-purple-500" />
                         سجل عمليات التحويل
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(168,85,247,0.15)', color: 'rgb(147,51,234)' }}>
                             {filteredTransformations.length}
                         </span>
                     </h5>
                 </div>
                 <div>
                     {filteredTransformations.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-arrow-left-right text-5xl text-purple-400 dark:text-purple-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-arrow-left-right text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد عمليات تحويل</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">قم بإنشاء أول عملية تحويل</p>
-                            <button onClick={() => setShowAddForm(true)} className="inline-flex items-center px-5 py-2.5 rounded-xl font-medium bg-purple-600 text-white hover:bg-purple-700 hover-scale">
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد عمليات تحويل</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>قم بإنشاء أول عملية تحويل</p>
+                            <button onClick={() => setShowAddForm(true)} className="lg-btn lg-btn-primary px-5 py-2.5 font-medium">
                                 <i className="bi bi-plus-lg ml-2" />
                                 عملية تحويل جديدة
                             </button>
@@ -437,7 +475,7 @@ function TransformationManagement() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {filteredTransformations.map((t, idx) => (
-                                        <tr key={t.transformation_id} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
+                                        <tr key={t.transformation_id} className="transition-all lg-animate-in" style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
                                             <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{t.transformation_id}</td>
                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{t.transformation_date}</td>
                                             <td className="px-6 py-4">

@@ -16,7 +16,8 @@ function SaleForm({
     calculatedQtyKg,
     calculatedQtyUnit,
     validationErrors = {},  // New prop
-    lastPriceHint = null    // New prop
+    lastPriceHint = null,   // New prop
+    isSubmitting = false    // Disable button during submission
 }) {
     // Check if field has error
     const hasError = (field) => !!validationErrors[field];
@@ -295,10 +296,20 @@ function SaleForm({
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2.5 bg-emerald-600 border border-transparent text-white text-sm font-medium rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-sm transition-colors"
+                            disabled={isSubmitting}
+                            className={`px-6 py-2.5 border border-transparent text-white text-sm font-medium rounded-lg shadow-sm transition-all ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500'}`}
                         >
-                            <i className="bi bi-check-lg ml-2"></i>
-                            حفظ العملية
+                            {isSubmitting ? (
+                                <>
+                                    <i className="bi bi-arrow-repeat animate-spin ml-2"></i>
+                                    جاري الحفظ...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="bi bi-check-lg ml-2"></i>
+                                    حفظ العملية
+                                </>
+                            )}
                         </button>
                     </div>
                 </form>

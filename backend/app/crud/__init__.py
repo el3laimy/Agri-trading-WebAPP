@@ -36,8 +36,6 @@ from .finance import (
     create_financial_account,
     update_financial_account,
     delete_financial_account,
-    update_balance_by_nature,
-    update_account_balance,
     create_ledger_entry,
 )
 
@@ -56,6 +54,8 @@ from .operations import (
     create_sale_record,
     get_expenses,
     create_expense,
+    update_expense,
+    delete_expense,
 )
 
 # Returns CRUD
@@ -75,6 +75,8 @@ from .seasons import (
     delete_season,
     create_daily_price,
     get_daily_prices,
+    get_active_season,
+    activate_season,
 )
 
 # Export all for easy access
@@ -87,16 +89,15 @@ __all__ = [
     'get_contact_dependencies', 'migrate_contact_data', 'delete_contact_with_dependencies',
     # Finance
     'get_financial_account', 'get_financial_accounts', 'create_financial_account',
-    'update_financial_account', 'delete_financial_account',
-    'update_balance_by_nature', 'update_account_balance', 'create_ledger_entry',
+    'update_financial_account', 'delete_financial_account', 'create_ledger_entry',
     # Inventory
     'get_or_create_inventory', 'get_inventory_levels', 'create_inventory_adjustment',
     # Operations
     'get_purchases', 'create_purchase_record', 'get_sales', 'create_sale_record',
-    'get_expenses', 'create_expense',
+    'get_expenses', 'create_expense', 'update_expense', 'delete_expense',
     # Returns
     'create_sale_return', 'get_sale_returns', 'create_purchase_return', 'get_purchase_returns',
     # Seasons
     'get_seasons', 'get_season', 'create_season', 'update_season', 'delete_season',
-    'create_daily_price', 'get_daily_prices',
+    'create_daily_price', 'get_daily_prices', 'get_active_season', 'activate_season',
 ]

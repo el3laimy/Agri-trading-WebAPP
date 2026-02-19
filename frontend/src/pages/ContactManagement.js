@@ -1,18 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createContact, updateContact, deleteContact, migrateAndDeleteContact, forceDeleteContact } from '../api/contacts';
-import { useData } from '../context/DataContext';
+import { useContacts, useRefreshData } from '../hooks/useQueries';
 import { useToast } from '../components/common';
+import { handleApiError } from '../utils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function ContactManagement() {
     const navigate = useNavigate();
-    const { contacts, refreshData } = useData();
+
+    // TanStack Query hooks
+    const { data: contacts = [] } = useContacts();
+    const { refreshContacts: refreshData } = useRefreshData();
     const { showSuccess, showError } = useToast();
 
     const [formState, setFormState] = useState({
@@ -68,7 +73,7 @@ function ContactManagement() {
             resetForm();
         } catch (error) {
             console.error("Failed to save contact:", error);
-            showError(error.response?.data?.detail || "فشل حفظ جهة التعامل");
+            showError(handleApiError(error, editingContact ? 'contact_update' : 'contact_create'));
         }
     };
 
@@ -104,7 +109,7 @@ function ContactManagement() {
                 setShowDeleteModal(false);
                 setShowConflictModal(true);
             } else {
-                showError(error.response?.data?.detail || "فشل حذف جهة التعامل");
+                showError(handleApiError(error, 'contact_delete'));
                 setShowDeleteModal(false);
                 setContactToDelete(null);
             }
@@ -123,7 +128,7 @@ function ContactManagement() {
             setMigrationTarget('');
             showSuccess('تم نقل البيانات وحذف جهة التعامل بنجاح');
         } catch (error) {
-            showError(error.response?.data?.detail || "فشل نقل البيانات");
+            showError(handleApiError(error, 'update'));
         } finally {
             setIsProcessing(false);
         }
@@ -142,7 +147,7 @@ function ContactManagement() {
             setConflictData(null);
             showSuccess('تم حذف جهة التعامل وجميع السجلات المرتبطة');
         } catch (error) {
-            showError(error.response?.data?.detail || "فشل الحذف الإجباري");
+            showError(handleApiError(error, 'delete'));
         } finally {
             setIsProcessing(false);
         }
@@ -180,33 +185,20 @@ function ContactManagement() {
         <div className="p-6 max-w-full mx-auto">
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelDelete} />
-                        <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in-scale">
-                            <div className="text-center">
-                                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center animate-bounce-in">
-                                    <i className="bi bi-exclamation-triangle text-3xl text-red-500" />
-                                </div>
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">تأكيد الحذف</h3>
-                                <p className="text-gray-500 dark:text-gray-400 mb-6">
-                                    هل أنت متأكد من حذف <span className="font-bold text-gray-800 dark:text-gray-200">"{contactToDelete?.name}"</span>؟
-                                </p>
+                <div className="lg-modal-overlay">
+                    <div className="lg-modal" style={{ maxWidth: '420px' }}>
+                        <div className="p-6 text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center lg-animate-in" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                <i className="bi bi-exclamation-triangle text-3xl text-red-500" />
                             </div>
-                            <div className="flex gap-3 justify-center">
-                                <button
-                                    onClick={cancelDelete}
-                                    className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
-                                >
-                                    إلغاء
-                                </button>
-                                <button
-                                    onClick={confirmDelete}
-                                    className="px-6 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all hover-scale"
-                                >
-                                    حذف نهائياً
-                                </button>
-                            </div>
+                            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--lg-text-primary)' }}>تأكيد الحذف</h3>
+                            <p className="mb-6" style={{ color: 'var(--lg-text-muted)' }}>
+                                هل أنت متأكد من حذف <span className="font-bold" style={{ color: 'var(--lg-text-primary)' }}>"{contactToDelete?.name}"</span>؟
+                            </p>
+                        </div>
+                        <div className="px-6 py-4 flex gap-3 justify-center" style={{ borderTop: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                            <button onClick={cancelDelete} className="lg-btn lg-btn-secondary px-6 py-2.5">إلغاء</button>
+                            <button onClick={confirmDelete} className="lg-btn lg-btn-primary px-6 py-2.5" style={{ background: 'rgb(239,68,68)' }}>حذف نهائياً</button>
                         </div>
                     </div>
                 </div>
@@ -214,27 +206,26 @@ function ContactManagement() {
 
             {/* Conflict Resolution Modal */}
             {showConflictModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelDelete} />
-                        <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 animate-fade-in-scale">
-                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-700">
-                                <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                                    <i className="bi bi-diagram-3-fill text-2xl text-amber-500" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">لا يمكن الحذف المباشر</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">جهة التعامل مرتبطة بسجلات أخرى</p>
-                                </div>
+                <div className="lg-modal-overlay">
+                    <div className="lg-modal" style={{ maxWidth: '640px' }}>
+                        <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)' }}>
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                                <i className="bi bi-diagram-3-fill text-2xl text-amber-500" />
                             </div>
+                            <div>
+                                <h3 className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>لا يمكن الحذف المباشر</h3>
+                                <p className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>جهة التعامل مرتبطة بسجلات أخرى</p>
+                            </div>
+                        </div>
 
+                        <div className="p-6">
                             {conflictData && (
-                                <div className="grid grid-cols-3 gap-3 mb-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                                     {Object.entries(conflictData).map(([key, count]) => (
                                         count > 0 && (
-                                            <div key={key} className="neumorphic-inset p-3 rounded-xl flex justify-between items-center">
-                                                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{key.replace('_', ' ')}</span>
-                                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">{count}</span>
+                                            <div key={key} className="p-3 rounded-xl flex justify-between items-center" style={{ background: 'var(--lg-glass-bg)', border: '1px solid var(--lg-glass-border)' }}>
+                                                <span className="text-xs font-medium uppercase" style={{ color: 'var(--lg-text-muted)' }}>{key.replace('_', ' ')}</span>
+                                                <span className="lg-badge px-2 py-0.5 text-xs font-bold" style={{ background: 'rgba(245,158,11,0.15)', color: 'rgb(217,119,6)' }}>{count}</span>
                                             </div>
                                         )
                                     ))}
@@ -243,14 +234,14 @@ function ContactManagement() {
 
                             <div className="space-y-4">
                                 {/* Option 1: Migrate */}
-                                <div className="neumorphic p-4 rounded-xl">
-                                    <div className="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-bold">
+                                <div className="lg-card p-4">
+                                    <div className="flex items-center gap-2 mb-3 font-bold" style={{ color: 'var(--lg-primary)' }}>
                                         <i className="bi bi-arrow-left-right" />
                                         الخيار 1: نقل البيانات (موصى به)
                                     </div>
                                     <div className="flex gap-2">
                                         <select
-                                            className="flex-1 p-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                                            className="flex-1 lg-input p-2.5 rounded-xl"
                                             value={migrationTarget}
                                             onChange={(e) => setMigrationTarget(e.target.value)}
                                         >
@@ -260,7 +251,7 @@ function ContactManagement() {
                                             ))}
                                         </select>
                                         <button
-                                            className={`px-4 py-2.5 rounded-xl font-bold text-white transition-all ${!migrationTarget || isProcessing ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover-scale'}`}
+                                            className="lg-btn lg-btn-primary px-4 py-2.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                             onClick={handleMigrate}
                                             disabled={!migrationTarget || isProcessing}
                                         >
@@ -270,7 +261,7 @@ function ContactManagement() {
                                 </div>
 
                                 {/* Option 2: Force Delete */}
-                                <div className="neumorphic p-4 rounded-xl border-2 border-red-200 dark:border-red-800">
+                                <div className="lg-card p-4" style={{ border: '2px solid rgba(239,68,68,0.3)' }}>
                                     <div className="flex items-center gap-2 mb-3 text-red-600 dark:text-red-400 font-bold">
                                         <i className="bi bi-trash-fill" />
                                         الخيار 2: الحذف القسري (خطر)
@@ -285,16 +276,10 @@ function ContactManagement() {
                                     </button>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-end">
-                                <button
-                                    onClick={cancelDelete}
-                                    disabled={isProcessing}
-                                    className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
-                                >
-                                    إلغاء الأمر
-                                </button>
-                            </div>
+                        <div className="px-6 py-4 flex justify-end" style={{ borderTop: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                            <button onClick={cancelDelete} disabled={isProcessing} className="lg-btn lg-btn-secondary px-6 py-2.5">إلغاء الأمر</button>
                         </div>
                     </div>
                 </div>
@@ -317,9 +302,9 @@ function ContactManagement() {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-people text-lg" />
                             </div>
                             <div>
@@ -328,9 +313,9 @@ function ContactManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-person-check text-lg text-blue-300" />
                             </div>
                             <div>
@@ -339,9 +324,9 @@ function ContactManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-truck text-lg text-purple-300" />
                             </div>
                             <div>
@@ -350,9 +335,9 @@ function ContactManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-4">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '300ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-pink-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-pink-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-arrow-left-right text-lg text-pink-300" />
                             </div>
                             <div>
@@ -404,10 +389,10 @@ function ContactManagement() {
 
             {/* Add/Edit Form */}
             {showAddForm && (
-                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
-                    <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
-                            <i className={`bi ${editingContact ? 'bi-pencil-square' : 'bi-plus-circle-fill'} ml-2 text-purple-600 dark:text-purple-400`} />
+                <div className="mb-6 lg-card overflow-hidden lg-animate-fade">
+                    <div className="p-6" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                        <h3 className="text-lg font-bold flex items-center" style={{ color: 'var(--lg-text-primary)' }}>
+                            <i className={`bi ${editingContact ? 'bi-pencil-square' : 'bi-plus-circle-fill'} ml-2`} style={{ color: 'var(--lg-primary)' }} />
                             {editingContact ? 'تعديل بيانات جهة التعامل' : 'تسجيل جهة تعامل جديدة'}
                         </h3>
                     </div>
@@ -421,7 +406,7 @@ function ContactManagement() {
                                     value={formState.name}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -431,7 +416,7 @@ function ContactManagement() {
                                     name="phone"
                                     value={formState.phone}
                                     onChange={handleInputChange}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -441,7 +426,7 @@ function ContactManagement() {
                                     name="address"
                                     value={formState.address}
                                     onChange={handleInputChange}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -451,12 +436,12 @@ function ContactManagement() {
                                     name="email"
                                     value={formState.email}
                                     onChange={handleInputChange}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div className="md:col-span-2">
                                 <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">نوع جهة التعامل *</label>
-                                <div className="flex gap-6 p-4 neumorphic-inset rounded-xl">
+                                <div className="flex gap-6 p-4 rounded-xl" style={{ background: 'var(--lg-glass-bg)', border: '1px solid var(--lg-glass-border)' }}>
                                     <label className="inline-flex items-center cursor-pointer hover-scale">
                                         <input
                                             type="checkbox"
@@ -487,10 +472,10 @@ function ContactManagement() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100 dark:border-slate-700">
-                            <button type="button" onClick={resetForm} className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                            <button type="button" onClick={resetForm} className="lg-btn lg-btn-secondary px-6 py-2.5">
                                 إلغاء
                             </button>
-                            <button type="submit" className="px-8 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 font-bold hover-scale">
+                            <button type="submit" className="lg-btn lg-btn-primary px-8 py-2.5 font-bold">
                                 <i className="bi bi-check-lg ml-2" />
                                 {editingContact ? 'حفظ التعديلات' : 'حفظ'}
                             </button>
@@ -500,27 +485,27 @@ function ContactManagement() {
             )}
 
             {/* Contacts Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-purple-500" />
                         قائمة جهات التعامل
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(168,85,247,0.15)', color: 'rgb(147,51,234)' }}>
                             {filteredContacts.length}
                         </span>
                     </h5>
                 </div>
                 <div>
                     {filteredContacts.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-people text-5xl text-purple-400 dark:text-purple-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-people text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد جهات تعامل</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">أضف عملاء وموردين للبدء</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد جهات تعامل</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>أضف عملاء وموردين للبدء</p>
                             <button
                                 onClick={() => setShowAddForm(true)}
-                                className="inline-flex items-center px-5 py-2.5 rounded-xl font-medium bg-purple-600 text-white hover:bg-purple-700 transition-all hover-scale"
+                                className="lg-btn lg-btn-primary inline-flex items-center px-5 py-2.5 font-medium"
                             >
                                 <i className="bi bi-plus-lg ml-2" />
                                 إضافة جهة تعامل
@@ -540,14 +525,14 @@ function ContactManagement() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {filteredContacts.map((contact, idx) => (
-                                        <tr key={contact.contact_id} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
-                                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{contact.contact_id}</td>
+                                        <tr key={contact.contact_id} className={`transition-all lg-animate-in`} style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
+                                            <td className="px-6 py-4 font-medium" style={{ color: 'var(--lg-text-primary)' }}>{contact.contact_id}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/50 dark:to-pink-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400 ml-3 font-bold">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center ml-3 font-bold" style={{ background: 'var(--lg-glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--lg-glass-border)', color: 'var(--lg-primary)' }}>
                                                         {contact.name.charAt(0)}
                                                     </div>
-                                                    <span className="font-bold text-gray-800 dark:text-gray-200">{contact.name}</span>
+                                                    <span className="font-bold" style={{ color: 'var(--lg-text-primary)' }}>{contact.name}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">

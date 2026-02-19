@@ -1,18 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { CountUp, Sparkline, ProgressRing, TrendBadge, ParticlesBackground, WeatherWidget, RealTimeClock } from './AnimatedComponents';
+import '../../styles/liquidglass.css';
 
 /**
  * Glass Card Component - بطاقة بتأثير زجاجي محسّن
  */
 export function GlassCard({ children, className = '', hover = true }) {
     return (
-        <div className={`
-            bg-white/80 dark:bg-slate-800/80 backdrop-blur-md
-            rounded-2xl border border-white/50 dark:border-slate-700/50
-            shadow-lg transition-all duration-300
-            ${hover ? 'hover:shadow-xl hover:-translate-y-1' : ''}
-            ${className}
-        `}>
+        <div className={`lg-card ${hover ? 'lg-hover-lift' : ''} ${className}`}>
             {children}
         </div>
     );
@@ -38,9 +34,8 @@ export function NeumorphicKpiCard({
             onClick={onClick}
             style={{ animationDelay: `${delay}ms` }}
             className={`
-                group relative overflow-hidden rounded-2xl p-6 
-                neumorphic hover-lift hover-shine
-                animate-fade-in-up
+                lg-metric-card group relative overflow-hidden p-6
+                lg-animate-in
                 ${onClick ? 'cursor-pointer' : ''}
             `}
         >
@@ -73,8 +68,8 @@ export function NeumorphicKpiCard({
             </div>
 
             {/* Content */}
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 font-medium">{title}</p>
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <p className="text-sm mb-2 font-medium" style={{ color: 'var(--lg-text-secondary)' }}>{title}</p>
+            <h3 className="text-3xl font-bold mb-2" style={{ color: 'var(--lg-text-primary)' }}>
                 <CountUp
                     end={typeof value === 'number' ? value : parseFloat(String(value).replace(/[^\d.-]/g, '')) || 0}
                     duration={1500}
@@ -113,12 +108,6 @@ export function GlassKpiCard({
     delay = 0,
     formatValue = (v) => v
 }) {
-    // Generate fake sparkline data based on value
-    const generateSparkline = () => {
-        const base = typeof value === 'number' ? value : 0;
-        return Array.from({ length: 7 }, (_, i) => base * (0.7 + Math.random() * 0.6));
-    };
-
     return (
         <NeumorphicKpiCard
             title={title}
@@ -127,7 +116,7 @@ export function GlassKpiCard({
             gradient={gradient}
             trend={trend}
             subtitle={subtitle}
-            sparklineData={generateSparkline()}
+            sparklineData={[]}
             onClick={onClick}
             delay={delay}
             formatValue={formatValue}
@@ -140,8 +129,17 @@ export function GlassKpiCard({
  */
 export function MiniStatPill({ label, value, icon, trend }) {
     return (
-        <div className="glass-premium px-5 py-3 rounded-2xl text-white flex items-center gap-4 hover-scale cursor-default">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+        <div
+            className="px-5 py-3 rounded-2xl text-white flex items-center gap-4 cursor-default"
+            style={{
+                background: 'rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                transition: 'var(--lg-transition-fast)'
+            }}
+        >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
                 <i className={`bi ${icon} text-lg`} />
             </div>
             <div className="flex-grow">
@@ -164,7 +162,7 @@ export function MiniStatPill({ label, value, icon, trend }) {
 export function SectionHeader({ title, icon, action, badge }) {
     return (
         <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
+            <h3 className="text-lg font-bold flex items-center gap-3" style={{ color: 'var(--lg-text-primary)' }}>
                 {icon && (
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
                         <i className={`bi ${icon} text-white`} />
@@ -172,7 +170,7 @@ export function SectionHeader({ title, icon, action, badge }) {
                 )}
                 {title}
                 {badge && (
-                    <span className="bg-red-500 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                    <span className="lg-badge lg-badge--danger text-xs px-2.5 py-1 font-medium">
                         {badge}
                     </span>
                 )}
@@ -235,8 +233,8 @@ export function ActivityItem({ activity, formatCurrency, formatRelativeTime }) {
 export function SeasonProgressCard({ season, formatDate }) {
     if (!season) {
         return (
-            <div className="neumorphic p-6 animate-fade-in">
-                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+            <div className="lg-panel p-6 lg-animate-fade">
+                <div className="text-center py-8" style={{ color: 'var(--lg-text-muted)' }}>
                     <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 flex items-center justify-center">
                         <i className="bi bi-calendar-x text-4xl text-amber-500" />
                     </div>
@@ -247,7 +245,7 @@ export function SeasonProgressCard({ season, formatDate }) {
     }
 
     return (
-        <div className="neumorphic overflow-hidden animate-fade-in">
+        <div className="lg-card overflow-hidden lg-animate-fade">
             {/* Header with Gradient */}
             <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-6 text-white">
                 <div className="flex items-center gap-4">
@@ -305,12 +303,12 @@ export function SeasonProgressCard({ season, formatDate }) {
  */
 export function EmptyState({ icon, title, description, action }) {
     return (
-        <div className="text-center py-16 animate-fade-in">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
-                <i className={`bi ${icon} text-5xl text-gray-400 dark:text-gray-500`} />
+        <div className="text-center py-16 lg-animate-fade">
+            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid var(--lg-glass-border)' }}>
+                <i className={`bi ${icon} text-5xl`} style={{ color: 'var(--lg-text-muted)' }} />
             </div>
-            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">{title}</h4>
-            {description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{description}</p>}
+            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>{title}</h4>
+            {description && <p className="text-sm mb-4" style={{ color: 'var(--lg-text-muted)' }}>{description}</p>}
             {action}
         </div>
     );
@@ -321,27 +319,27 @@ export function EmptyState({ icon, title, description, action }) {
  */
 export function DashboardSkeleton() {
     return (
-        <div className="animate-pulse">
+        <div>
             {/* Hero Skeleton */}
-            <div className="h-52 bg-gradient-to-br from-emerald-200 to-teal-200 dark:from-emerald-800/30 dark:to-teal-800/30 rounded-3xl mb-8 animate-shimmer" />
+            <div className="lg-skeleton h-52 rounded-3xl mb-8" />
 
             {/* KPI Cards Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-44 neumorphic rounded-2xl animate-shimmer" style={{ animationDelay: `${i * 100}ms` }} />
+                    <div key={i} className="lg-skeleton h-44 rounded-2xl" style={{ animationDelay: `${i * 100}ms` }} />
                 ))}
             </div>
 
             {/* Charts Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="lg:col-span-2 h-96 neumorphic rounded-2xl animate-shimmer" />
-                <div className="h-96 neumorphic rounded-2xl animate-shimmer" style={{ animationDelay: '200ms' }} />
+                <div className="lg:col-span-2 lg-skeleton h-96 rounded-2xl" />
+                <div className="lg-skeleton h-96 rounded-2xl" style={{ animationDelay: '200ms' }} />
             </div>
 
             {/* Activity Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 h-80 neumorphic rounded-2xl animate-shimmer" />
-                <div className="h-80 neumorphic rounded-2xl animate-shimmer" style={{ animationDelay: '100ms' }} />
+                <div className="lg:col-span-2 lg-skeleton h-80 rounded-2xl" />
+                <div className="lg-skeleton h-80 rounded-2xl" style={{ animationDelay: '100ms' }} />
             </div>
         </div>
     );
@@ -355,7 +353,14 @@ export function RefreshButton({ onClick, isRefreshing }) {
         <button
             onClick={onClick}
             disabled={isRefreshing}
-            className="px-5 py-3 glass-premium text-white rounded-2xl hover:bg-white/30 transition-all flex items-center gap-2 disabled:opacity-50 hover-scale"
+            className="lg-btn px-5 py-3 text-white flex items-center gap-2 disabled:opacity-50"
+            style={{
+                background: 'rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 'var(--lg-radius-md)'
+            }}
         >
             <i className={`bi ${isRefreshing ? 'bi-arrow-repeat animate-spin' : 'bi-arrow-clockwise'} text-lg`} />
             <span className="text-sm font-medium">{isRefreshing ? 'جاري التحديث...' : 'تحديث'}</span>
@@ -377,18 +382,111 @@ export function HeroSection({
     isRefreshing,
     quickStats = []
 }) {
-    return (
-        <div className="mb-8 animate-fade-in">
-            <div className="relative overflow-hidden rounded-3xl hero-gradient p-8 shadow-2xl">
-                {/* Animated Background Elements */}
-                <ParticlesBackground count={15} />
-                <div className="hero-blob hero-blob-1" />
-                <div className="hero-blob hero-blob-2" />
+    const [showBalanceModal, setShowBalanceModal] = useState(false);
 
-                {/* Decorative Floating Shapes */}
-                <div className="absolute top-10 left-10 w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm rotate-12 animate-float" style={{ animationDelay: '0.5s' }} />
-                <div className="absolute bottom-10 right-20 w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm animate-float" style={{ animationDelay: '1s' }} />
-                <div className="absolute top-1/2 right-1/3 w-12 h-12 rounded-xl bg-teal-400/20 backdrop-blur-sm rotate-45 animate-float" style={{ animationDelay: '1.5s' }} />
+    return (
+        <div className="mb-8 lg-animate-fade">
+            {/* Balance Details Modal - Using Portal to escape overflow-hidden */}
+            {showBalanceModal && balanceCheck && ReactDOM.createPortal(
+                <div className="lg-modal-overlay" style={{ zIndex: 100 }} aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="lg-modal" style={{ maxWidth: '680px' }}>
+                        <div className="lg-modal-header flex justify-between items-center">
+                            <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
+                                <i className="bi bi-calculator" style={{ color: 'var(--lg-primary)' }} />
+                                تحليل توازن النظام
+                            </h3>
+                            <button onClick={() => setShowBalanceModal(false)} className="lg-btn lg-btn-ghost">
+                                <i className="bi bi-x-lg" />
+                            </button>
+                        </div>
+
+                        <div className="lg-modal-body">
+                            {/* Status Banner */}
+                            <div className={`p-4 rounded-xl mb-6 flex items-center gap-4 ${balanceCheck.is_balanced ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'}`}>
+                                <i className={`bi ${balanceCheck.is_balanced ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'} text-2xl`} />
+                                <div>
+                                    <h4 className="font-bold text-lg">{balanceCheck.status}</h4>
+                                    {!balanceCheck.is_balanced && <p className="text-sm opacity-80">يوجد فرق في القيد المحاسبي المزدوج. يرجى مراجعة التفاصيل أدناه.</p>}
+                                </div>
+                            </div>
+
+                            {/* Accounting Equation */}
+                            <div className="grid grid-cols-1 gap-4 mb-6">
+                                <h4 className="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b pb-2">المعادلة المحاسبية</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                    <div className="p-3 rounded-xl" style={{ background: 'var(--lg-glass-bg)' }}>
+                                        <p className="text-xs mb-1" style={{ color: 'var(--lg-text-muted)' }}>الأصول</p>
+                                        <p className="font-bold text-lg">{parseFloat(balanceCheck.details?.assets || 0).toLocaleString('en-US')}</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl" style={{ background: 'var(--lg-glass-bg)' }}>
+                                        <p className="text-xs mb-1" style={{ color: 'var(--lg-text-muted)' }}>الخصوم</p>
+                                        <p className="font-bold text-lg">{parseFloat(balanceCheck.details?.liabilities || 0).toLocaleString('en-US')}</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl" style={{ background: 'var(--lg-glass-bg)' }}>
+                                        <p className="text-xs mb-1" style={{ color: 'var(--lg-text-muted)' }}>حقوق الملكية + الأرباح</p>
+                                        <p className="font-bold text-lg">{(parseFloat(balanceCheck.details?.capital || 0) + parseFloat(balanceCheck.details?.net_profit || 0)).toLocaleString('en-US')}</p>
+                                    </div>
+                                    <div className={`p-3 rounded-xl border-2 ${balanceCheck.is_balanced ? 'border-green-100 bg-green-50' : 'border-red-100 bg-red-50'}`}>
+                                        <p className="text-xs text-gray-500 mb-1">الفرق</p>
+                                        <p className={`font-bold text-lg ${balanceCheck.is_balanced ? 'text-green-600' : 'text-red-600'}`}>
+                                            {parseFloat(balanceCheck.difference || 0).toLocaleString('en-US')}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Unbalanced Transactions List */}
+                            {balanceCheck.unbalanced_transactions && balanceCheck.unbalanced_transactions.length > 0 && (
+                                <div className="mb-6">
+                                    <h4 className="font-bold text-red-600 mb-2 border-b border-red-100 pb-2 flex items-center gap-2">
+                                        <i className="bi bi-bug-fill" />
+                                        المعاملات غير المتوازنة (المسبب)
+                                    </h4>
+                                    <div className="max-h-60 overflow-y-auto bg-red-50/50 rounded-xl border border-red-100">
+                                        <table className="w-full text-sm text-right">
+                                            <thead className="bg-red-100/50 text-red-700 font-medium">
+                                                <tr>
+                                                    <th className="p-2">نوع العملية</th>
+                                                    <th className="p-2">رقم المعاملة</th>
+                                                    <th className="p-2">مدين</th>
+                                                    <th className="p-2">دائن</th>
+                                                    <th className="p-2">الفرق</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-red-100">
+                                                {balanceCheck.unbalanced_transactions.map((tx, idx) => (
+                                                    <tr key={idx} className="hover:bg-red-100/30 transition-colors">
+                                                        <td className="p-2">{tx.source_type}</td>
+                                                        <td className="p-2 font-mono">{tx.source_id}</td>
+                                                        <td className="p-2">{parseFloat(tx.total_debit).toLocaleString('en-US')}</td>
+                                                        <td className="p-2">{parseFloat(tx.total_credit).toLocaleString('en-US')}</td>
+                                                        <td className="p-2 font-bold text-red-600">{parseFloat(tx.difference).toLocaleString('en-US')}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="lg-modal-footer">
+                            <button
+                                onClick={() => setShowBalanceModal(false)}
+                                className="lg-btn lg-btn-secondary px-6 py-2"
+                                style={{ borderRadius: 'var(--lg-radius-sm)' }}
+                            >
+                                إغلاق
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            <div className="relative overflow-hidden rounded-3xl hero-gradient p-8 shadow-2xl">
+                {/* Animated Background Elements - Removed for cleaner look */}
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/90 to-teal-800/90 dark:from-emerald-900/40 dark:to-teal-900/40 backdrop-blur-md" />
 
                 <div className="relative z-10">
                     {/* Top Row: Greeting & Actions */}
@@ -408,7 +506,7 @@ export function HeroSection({
                             <WeatherWidget />
 
                             {/* Real Time Clock */}
-                            <div className="glass-premium px-4 py-3 rounded-2xl">
+                            <div className="px-4 py-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
                                 <RealTimeClock />
                             </div>
 
@@ -417,14 +515,19 @@ export function HeroSection({
                                 <div className="flex items-center gap-2">
                                     {/* مؤشر التوازن الدفتري */}
                                     <div
-                                        onClick={() => onNavigate('/reports/capital-distribution')}
-                                        className={`glass-premium px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 hover-scale ${balanceCheck.is_balanced === null
+                                        onClick={() => setShowBalanceModal(true)}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => e.key === 'Enter' && setShowBalanceModal(true)}
+                                        className={`px-3 py-2 rounded-xl cursor-pointer flex items-center gap-2 ${balanceCheck.is_balanced === null
                                             ? ''
                                             : balanceCheck.is_balanced
                                                 ? 'ring-2 ring-green-400/50'
                                                 : 'ring-2 ring-red-400/50'
                                             }`}
+                                        style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', transition: 'var(--lg-transition-fast)' }}
                                         title={balanceCheck.status}
+                                        aria-label={balanceCheck.status}
                                     >
                                         <i className={`bi ${balanceCheck.is_balanced === null
                                             ? 'bi-question-circle'
@@ -433,19 +536,24 @@ export function HeroSection({
                                                 : 'bi-exclamation-triangle-fill text-red-300'
                                             }`} />
                                         <span className="text-xs font-medium text-white">
-                                            {balanceCheck.is_balanced ? 'متوازن' : `فرق: ${(parseFloat(balanceCheck.difference) || 0).toLocaleString()}`}
+                                            {balanceCheck.is_balanced ? 'متوازن' : `فرق: ${(parseFloat(balanceCheck.difference) || 0).toLocaleString('en-US')}`}
                                         </span>
                                     </div>
                                     {/* مؤشر فرق المخزون */}
                                     {balanceCheck.inventory_discrepancy?.has_discrepancy && (
                                         <div
                                             onClick={() => onNavigate('/inventory')}
-                                            className="glass-premium px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center gap-2 hover-scale ring-2 ring-amber-400/50"
-                                            title={`دفتري: ${balanceCheck.inventory_discrepancy?.ledger_inventory?.toLocaleString()} | فعلي: ${balanceCheck.inventory_discrepancy?.physical_inventory?.toLocaleString()}`}
+                                            role="button"
+                                            tabIndex={0}
+                                            onKeyDown={(e) => e.key === 'Enter' && onNavigate('/inventory')}
+                                            className="px-3 py-2 rounded-xl cursor-pointer flex items-center gap-2 ring-2 ring-amber-400/50"
+                                            style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', transition: 'var(--lg-transition-fast)' }}
+                                            title={`دفتري: ${balanceCheck.inventory_discrepancy?.ledger_inventory?.toLocaleString('en-US')} | فعلي: ${balanceCheck.inventory_discrepancy?.physical_inventory?.toLocaleString('en-US')}`}
+                                            aria-label="عرض تفاصيل المخزون"
                                         >
                                             <i className="bi bi-box-seam text-amber-300" />
                                             <span className="text-xs font-medium text-white">
-                                                مخزون: {(parseFloat(balanceCheck.inventory_discrepancy?.amount) || 0).toLocaleString()}
+                                                مخزون: {(parseFloat(balanceCheck.inventory_discrepancy?.amount) || 0).toLocaleString('en-US')}
                                             </span>
                                         </div>
                                     )}
@@ -455,8 +563,10 @@ export function HeroSection({
                             {/* Config Button */}
                             <button
                                 onClick={onConfigClick}
-                                className="p-3 glass-premium text-white rounded-2xl hover:bg-white/30 transition-all hover-scale"
+                                className="lg-btn p-3 text-white"
+                                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 'var(--lg-radius-md)' }}
                                 title="تخصيص"
+                                aria-label="تخصيص لوحة التحكم"
                             >
                                 <i className="bi bi-gear text-xl" />
                             </button>

@@ -1,20 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getLastPurchasePrice } from '../api/purchases';
 import { usePurchases, useCreatePurchase, useUpdatePurchase, useDeletePurchase } from '../hooks/usePurchases';
-import { useData } from '../context/DataContext';
+import { useCrops, useSuppliers } from '../hooks/useQueries';
+import { useDebounce } from '../hooks';
 import { useAuth } from '../context/AuthContext';
 import PaymentForm from '../components/PaymentForm';
 import { PurchaseForm, PurchasesTable } from '../components/purchases';
 import { validatePurchaseForm } from '../utils/formValidation';
-import { useToast } from '../components/common';
+import { useToast, ConfirmationModal } from '../components/common';
 import { safeParseFloat, safeParseInt } from '../utils/mathUtils';
+import { handleApiError, VALIDATION_MESSAGES } from '../utils';
 
 // Import new components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+import { ManagementPageSkeleton } from '../components/common';
 import { PurchasesTrendChart, PurchasesByStatusChart, TopSuppliersChart, PurchasesStatsCards } from '../components/purchases/charts/PurchasesCharts';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 // Initial form state
 const getInitialFormState = () => ({
@@ -34,7 +38,8 @@ const getInitialFormState = () => ({
 });
 
 function PurchaseManagement() {
-    const { crops, suppliers } = useData();
+    const { data: crops = [], isLoading: cropsLoading } = useCrops();
+    const { data: suppliers = [], isLoading: suppliersLoading } = useSuppliers();
     const { hasPermission } = useAuth();
     const { showSuccess, showError } = useToast();
 
@@ -52,12 +57,19 @@ function PurchaseManagement() {
     const [validationErrors, setValidationErrors] = useState({});
     const [lastPriceHint, setLastPriceHint] = useState(null);
 
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
     // Charts visibility toggle
     const [showCharts, setShowCharts] = useState(true);
 
     // Payment modal state
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [payingPurchase, setPayingPurchase] = useState(null);
+
+    // Delete confirmation modal state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingPurchase, setDeletingPurchase] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Form state
     const [currentCrop, setCurrentCrop] = useState(null);
@@ -201,8 +213,8 @@ function PurchaseManagement() {
             setLastPriceHint(null);
         } catch (err) {
             console.error("Failed to create purchase:", err);
-            setError("Failed to create purchase.");
-            showError("فشل في تسجيل العملية");
+            setError(handleApiError(err, 'purchase_create'));
+            showError(handleApiError(err, 'purchase_create'));
         }
     };
 
@@ -225,7 +237,7 @@ function PurchaseManagement() {
             refetchPurchases();
         } catch (err) {
             console.error("Payment error:", err);
-            setError(err.response?.data?.detail || err.message);
+            setError(handleApiError(err, 'purchase_payment'));
         }
     };
 
@@ -274,19 +286,41 @@ function PurchaseManagement() {
         });
         setCurrentCrop(crops.find(c => c.crop_id === purchase.crop_id) || null);
         setShowAddForm(true);
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Delete handler
-    const handleDelete = async (purchase) => {
-        if (!window.confirm(`هل أنت متأكد من حذف عملية الشراء رقم ${purchase.purchase_id}؟`)) {
-            return;
-        }
+    // Delete handler - opens confirmation modal
+    const handleDelete = (purchase) => {
+        setDeletingPurchase(purchase);
+        setShowDeleteConfirm(true);
+    };
+
+    // Confirm delete
+    const confirmDelete = async () => {
+        if (!deletingPurchase) return;
+        setIsDeleting(true);
         try {
-            await deleteMutation.mutateAsync(purchase.purchase_id);
+            await deleteMutation.mutateAsync(deletingPurchase.purchase_id);
+            // Explicit Success Message
+            showSuccess('تم حذف عملية الشراء بنجاح');
+
+            setShowDeleteConfirm(false);
+            setDeletingPurchase(null);
         } catch (err) {
             console.error("Failed to delete purchase:", err);
-            setError(err.response?.data?.detail || "فشل في حذف عملية الشراء");
+            // Explicit Error Message
+            const reason = err.response?.data?.detail || "فشل في حذف عملية الشراء";
+            showError(`فشل الحذف: ${reason}`);
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    // Cancel delete
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false);
+        setDeletingPurchase(null);
     };
 
     // Get unique crops for filter
@@ -313,16 +347,16 @@ function PurchaseManagement() {
     const filteredPurchases = useMemo(() => {
         return purchases.filter(purchase => {
             const matchesSearch = (
-                purchase.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                purchase.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                purchase.purchase_id?.toString().includes(searchTerm)
+                purchase.supplier?.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                purchase.crop?.crop_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                purchase.purchase_id?.toString().includes(debouncedSearchTerm)
             );
             const matchesCrop = selectedCropFilter === 'all' || selectedCropFilter === null
                 ? true
                 : purchase.crop?.crop_id === selectedCropFilter;
             return matchesSearch && matchesCrop;
         });
-    }, [purchases, searchTerm, selectedCropFilter]);
+    }, [purchases, debouncedSearchTerm, selectedCropFilter]);
 
     // Calculate totals - SAFE PARSING
     const calculatedQtyKg = safeParseFloat(formState.quantity_input);
@@ -331,33 +365,33 @@ function PurchaseManagement() {
 
     // Loading state
     if (isLoading) {
-        return (
-            <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
-                    <div className="h-40 bg-gradient-to-br from-blue-200 to-cyan-200 dark:from-blue-800/30 dark:to-cyan-800/30" />
-                </div>
-                <div className="neumorphic p-6">
-                    <LoadingCard rows={6} />
-                </div>
-            </div>
-        );
+        return <ManagementPageSkeleton showStats={true} showFilters={true} tableRows={8} tableColumns={8} />;
     }
 
     return (
         <div className="p-6 max-w-full mx-auto">
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                title="تأكيد حذف عملية الشراء"
+                message={`هل أنت متأكد من حذف عملية الشراء رقم ${deletingPurchase?.purchase_id}؟ لا يمكن التراجع عن هذا الإجراء.`}
+                confirmText="حذف"
+                cancelText="إلغاء"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
             {/* Payment Form Modal */}
             {showPaymentForm && payingPurchase && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={handleCancelPayment}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-200 dark:border-slate-700 animate-fade-in-scale">
-                            <PaymentForm
-                                purchase={payingPurchase}
-                                onSave={handleSavePayment}
-                                onCancel={handleCancelPayment}
-                            />
-                        </div>
+                <div className="lg-modal-overlay" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="lg-modal" style={{ maxWidth: '520px' }}>
+                        <PaymentForm
+                            purchase={payingPurchase}
+                            onSave={handleSavePayment}
+                            onCancel={handleCancelPayment}
+                        />
                     </div>
                 </div>
             )}
@@ -394,7 +428,7 @@ function PurchaseManagement() {
 
             {/* Error Alert */}
             {error && (
-                <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-fade-in">
+                <div className="mb-6 p-4 rounded-xl border-2 border-red-200 dark:border-red-800 lg-animate-fade" style={{ background: 'var(--lg-glass-bg)' }}>
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
                             <i className="bi bi-exclamation-triangle-fill text-red-500" />
@@ -412,10 +446,10 @@ function PurchaseManagement() {
 
             {/* Charts Section */}
             {showCharts && purchases.length > 0 && !showAddForm && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 lg-animate-fade">
                     {/* Trend Chart */}
-                    <div className="lg:col-span-2 neumorphic p-6">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <div className="lg:col-span-2 lg-card p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                             <i className="bi bi-graph-up text-blue-500" />
                             اتجاه المشتريات
                         </h3>
@@ -423,8 +457,8 @@ function PurchaseManagement() {
                     </div>
 
                     {/* Status Chart */}
-                    <div className="neumorphic p-6">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <div className="lg-card p-6">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                             <i className="bi bi-pie-chart text-cyan-500" />
                             حالة الدفع
                         </h3>
@@ -470,10 +504,10 @@ function PurchaseManagement() {
 
             {/* Add Purchase Form */}
             {showAddForm && (
-                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
-                    <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
-                            <i className="bi bi-plus-circle-fill ml-2 text-blue-600 dark:text-blue-400" />
+                <div className="mb-6 lg-card overflow-hidden lg-animate-fade">
+                    <div className="p-6" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                        <h3 className="text-lg font-bold flex items-center" style={{ color: 'var(--lg-text-primary)' }}>
+                            <i className="bi bi-plus-circle-fill ml-2" style={{ color: 'var(--lg-primary)' }} />
                             {editingPurchase ? 'تعديل عملية الشراء' : 'تسجيل عملية شراء جديدة'}
                         </h3>
                     </div>
@@ -491,18 +525,19 @@ function PurchaseManagement() {
                             calculatedQtyUnit={calculatedQtyUnit}
                             validationErrors={validationErrors}
                             lastPriceHint={lastPriceHint}
+                            isSubmitting={createMutation.isPending || updateMutation.isPending}
                         />
                     </div>
                 </div>
             )}
 
             {/* Purchases Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-blue-500" />
                         سجل المشتريات
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(59,130,246,0.15)', color: 'rgb(37,99,235)' }}>
                             {filteredPurchases.length}
                         </span>
                     </h5>
@@ -516,15 +551,15 @@ function PurchaseManagement() {
                 </div>
                 <div>
                     {filteredPurchases.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                                <i className="bi bi-inbox text-5xl text-blue-400 dark:text-blue-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-inbox text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد عمليات شراء</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">لم يتم تسجيل أي عمليات شراء بعد</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد عمليات شراء</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>لم يتم تسجيل أي عمليات شراء بعد</p>
                             <button
                                 onClick={() => setShowAddForm(true)}
-                                className="inline-flex items-center px-5 py-2.5 rounded-xl font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all hover-scale"
+                                className="lg-btn lg-btn-primary inline-flex items-center px-5 py-2.5 font-medium"
                             >
                                 <i className="bi bi-plus-lg ml-2" />
                                 إضافة أول عملية شراء

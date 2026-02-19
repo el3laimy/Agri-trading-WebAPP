@@ -18,7 +18,7 @@ export function RecentActivityWidget({
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             {/* Activity Timeline */}
-            <div className="lg:col-span-2 neumorphic overflow-hidden animate-fade-in">
+            <div className="lg:col-span-2 lg-card overflow-hidden lg-animate-fade">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">

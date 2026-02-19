@@ -98,12 +98,12 @@ def close_season(db: Session, season_id: int) -> dict:
         "season_name": season.name,
         "status": "COMPLETED",
         "summary": {
-            "total_revenue": float(total_revenue),
-            "total_cogs": float(total_cogs),
-            "gross_profit": float(gross_profit),
-            "total_expenses": float(total_expense_amount),
-            "net_profit": float(net_profit),
-            "total_purchases": float(total_purchase_amount)
+            "total_revenue": str(total_revenue),
+            "total_cogs": str(total_cogs),
+            "gross_profit": str(gross_profit),
+            "total_expenses": str(total_expense_amount),
+            "net_profit": str(net_profit),
+            "total_purchases": str(total_purchase_amount)
         },
         "message": "تم إغلاق الموسم بنجاح وترحيل الأرباح"
     }
@@ -135,11 +135,11 @@ def get_season_summary(db: Session, season_id: int) -> dict:
         "end_date": str(season.end_date),
         "statistics": {
             "sales_count": len(total_sales),
-            "total_revenue": float(total_revenue),
+            "total_revenue": str(total_revenue),
             "purchases_count": len(total_purchases),
-            "total_purchases": float(total_purchase_amount),
+            "total_purchases": str(total_purchase_amount),
             "expenses_count": len(total_expenses),
-            "total_expenses": float(total_expense_amount),
-            "estimated_profit": float(total_revenue - total_purchase_amount - total_expense_amount)
+            "total_expenses": str(total_expense_amount),
+            "estimated_profit": str(total_revenue - total_purchase_amount - total_expense_amount)
         }
     }

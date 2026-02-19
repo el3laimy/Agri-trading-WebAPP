@@ -17,7 +17,7 @@ const getAlertStyle = (type) => {
 export function AlertsWidget({ alerts }) {
     return (
         <div className="mb-8">
-            <div className="neumorphic animate-fade-in">
+            <div className="lg-card lg-animate-fade">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg">

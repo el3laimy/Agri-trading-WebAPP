@@ -1,19 +1,24 @@
 import React, { useState, useMemo } from 'react';
-import { useData } from '../context/DataContext';
+import { useInventory, useCrops } from '../hooks/useQueries';
+import { useDebounce } from '../hooks';
 import { useToast } from '../components/common';
 import { safeParseFloat } from '../utils/mathUtils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+import { InventorySkeleton } from '../components/common';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function InventoryView() {
-    const { inventory, crops } = useData();
+    const { data: inventory = [], isLoading: inventoryLoading } = useInventory();
+    const { data: crops = [], isLoading: cropsLoading } = useCrops();
     const { showSuccess, showError } = useToast();
 
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [selectedFilter, setSelectedFilter] = useState('all');
 
     // Stats
@@ -33,14 +38,19 @@ function InventoryView() {
     // Filter inventory
     const filteredInventory = useMemo(() => {
         return (inventory || []).filter(item => {
-            const matchesSearch = item.crop?.crop_name?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = item.crop?.crop_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
             const stockKg = safeParseFloat(item.current_stock_kg);
             const matchesFilter = selectedFilter === 'all' ? true :
                 selectedFilter === 'inStock' ? stockKg > 0 :
                     selectedFilter === 'outOfStock' ? stockKg <= 0 : true;
             return matchesSearch && matchesFilter;
         });
-    }, [inventory, searchTerm, selectedFilter]);
+    }, [inventory, debouncedSearchTerm, selectedFilter]);
+
+    // Loading state
+    if (inventoryLoading) {
+        return <InventorySkeleton cardCount={6} />;
+    }
 
     return (
         <div className="p-6 max-w-full mx-auto">
@@ -61,9 +71,9 @@ function InventoryView() {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-box-seam text-lg" />
                             </div>
                             <div>
@@ -72,9 +82,9 @@ function InventoryView() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-bar-chart text-lg text-indigo-300" />
                             </div>
                             <div>
@@ -83,9 +93,9 @@ function InventoryView() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-check-circle text-lg text-green-300" />
                             </div>
                             <div>
@@ -94,9 +104,9 @@ function InventoryView() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-4">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '300ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-exclamation-circle text-lg text-red-300" />
                             </div>
                             <div>
@@ -147,36 +157,36 @@ function InventoryView() {
             </div>
 
             {/* Inventory Cards */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-box-seam text-indigo-500" />
                         قائمة المخزون
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(99,102,241,0.15)', color: 'rgb(79,70,229)' }}>
                             {filteredInventory.length}
                         </span>
                     </h5>
                 </div>
                 <div className="p-6">
                     {filteredInventory.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-box-seam text-5xl text-indigo-400 dark:text-indigo-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-box-seam text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا يوجد مخزون</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">ابدأ بتسجيل عمليات الشراء لتظهر هنا</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا يوجد مخزون</h4>
+                            <p className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>ابدأ بتسجيل عمليات الشراء لتظهر هنا</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredInventory.map((item, idx) => (
-                                <div key={item.inventory_id || idx} className={`neumorphic p-4 rounded-xl hover-lift transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
+                                <div key={item.inventory_id || idx} className={`lg-card lg-hover-lift p-4 rounded-xl transition-all lg-animate-in`} style={{ animationDelay: `${Math.min(idx, 7) * 100}ms` }}>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/50 dark:to-violet-900/50 flex items-center justify-center">
-                                            <i className="bi bi-flower1 text-2xl text-indigo-600 dark:text-indigo-400" />
+                                        <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: 'var(--lg-glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--lg-glass-border)' }}>
+                                            <i className="bi bi-flower1 text-2xl" style={{ color: 'var(--lg-primary)' }} />
                                         </div>
                                         <div className="flex-1">
-                                            <h5 className="font-bold text-gray-800 dark:text-gray-200">{item.crop?.crop_name || 'غير محدد'}</h5>
-                                            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                                            <h5 className="font-bold" style={{ color: 'var(--lg-text-primary)' }}>{item.crop?.crop_name || 'غير محدد'}</h5>
+                                            <p className="text-2xl font-bold" style={{ color: 'var(--lg-primary)' }}>
                                                 {formatQuantity(parseFloat(item.current_stock_kg) || 0)}
                                             </p>
                                         </div>

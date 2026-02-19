@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { login as apiLogin, getCurrentUser } from '../api/auth';
+import { login as apiLogin, getCurrentUser, logout as apiLogout, updateDashboardConfig as apiUpdateConfig } from '../api/auth';
 
 const AuthContext = createContext(null);
 
@@ -33,6 +33,16 @@ export const AuthProvider = ({ children }) => {
 
         initAuth();
     }, [token]);
+
+    // Listen for 401 Unauthorized events from api client
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            logout();
+        };
+
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    }, []);
 
     const login = async (username, password) => {
         setError(null);
@@ -89,7 +99,7 @@ export const AuthProvider = ({ children }) => {
         if (token) {
             try {
                 // Call backend logout
-                await import('../api/auth').then(mod => mod.logout());
+                await apiLogout();
             } catch (e) {
                 console.warn("Backend logout failed", e);
             }
@@ -119,7 +129,7 @@ export const AuthProvider = ({ children }) => {
 
         // Update backend
         try {
-            await import('../api/auth').then(mod => mod.updateDashboardConfig(newConfig));
+            await apiUpdateConfig(newConfig);
         } catch (err) {
             console.error("Failed to save dashboard config:", err);
             // Optionally revert local state here if strict consistency needed

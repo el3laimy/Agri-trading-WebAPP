@@ -37,7 +37,8 @@ class TestAccountingEngineValidation:
         is_valid, error = engine.validate_entries(entries)
         
         assert is_valid == True
-        assert error is None
+        # Error field contains success message on success, not None
+        assert error == "✅ القيد متوازن وصحيح"
     
     def test_unbalanced_entries_are_rejected(self, db_session, test_financial_accounts):
         """التأكد من رفض القيود غير المتوازنة"""
@@ -96,9 +97,7 @@ class TestAccountingEngineOperations:
         assert result is not None
         assert len(result) == 2
         
-        # Cleanup - حذف القيود الاختبارية
-        for entry in result:
-            db_session.delete(entry)
+        # Cleanup handled by fixture transaction rollback
         db_session.commit()
     
     def test_create_balanced_entry_fails_when_unbalanced(self, db_session, test_financial_accounts):

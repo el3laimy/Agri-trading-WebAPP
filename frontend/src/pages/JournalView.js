@@ -8,6 +8,7 @@ import { PageHeader, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 const JournalView = () => {
     const { showSuccess, showError } = useToast();
@@ -44,36 +45,36 @@ const JournalView = () => {
             >
                 {/* Info Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
-                                <i className="bi bi-journal-plus text-lg" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                                <i className="bi bi-journal-plus text-lg text-violet-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">نوع العملية</p>
-                                <p className="text-sm font-bold">قيد يدوي</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>نوع العملية</p>
+                                <p className="text-sm font-bold" style={{ color: 'var(--lg-text-primary)' }}>قيد يدوي</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-calendar-date text-lg text-indigo-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                                <i className="bi bi-calendar-date text-lg text-indigo-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">التاريخ</p>
-                                <p className="text-sm font-bold">{new Date().toLocaleDateString('ar-EG')}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>التاريخ</p>
+                                <p className="text-sm font-bold" style={{ color: 'var(--lg-text-primary)' }}>{new Date().toLocaleDateString('en-US')}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '150ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-balance-scale text-lg text-purple-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.25)' }}>
+                                <i className="bi bi-balance-scale text-lg text-purple-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">المبدأ</p>
-                                <p className="text-sm font-bold">القيد المزدوج</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المبدأ</p>
+                                <p className="text-sm font-bold" style={{ color: 'var(--lg-text-primary)' }}>القيد المزدوج</p>
                             </div>
                         </div>
                     </div>
@@ -82,7 +83,7 @@ const JournalView = () => {
 
             {/* Notifications */}
             {success && (
-                <div className="neumorphic p-4 mb-6 border-r-4 border-green-500 animate-fade-in">
+                <div className="lg-card p-4 mb-6 border-r-4 border-green-500 lg-animate-fade">
                     <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
                         <i className="bi bi-check-circle-fill text-xl" />
                         <span className="font-medium">{success}</span>
@@ -91,7 +92,7 @@ const JournalView = () => {
             )}
 
             {error && (
-                <div className="neumorphic p-4 mb-6 border-r-4 border-red-500 animate-fade-in">
+                <div className="lg-card p-4 mb-6 border-r-4 border-red-500 lg-animate-fade">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
                             <i className="bi bi-exclamation-triangle-fill text-xl" />
@@ -105,7 +106,7 @@ const JournalView = () => {
             )}
 
             {/* Form */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
+            <div className="lg-card overflow-hidden lg-animate-fade">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
                         <i className="bi bi-pencil-square ml-2 text-indigo-600 dark:text-indigo-400" />
@@ -126,7 +127,7 @@ const JournalView = () => {
             </div>
 
             {/* Tips */}
-            <div className="neumorphic p-6 mt-6 animate-fade-in">
+            <div className="lg-card p-6 mt-6 lg-animate-fade">
                 <h6 className="font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
                     <i className="bi bi-lightbulb text-amber-500" />نصائح
                 </h6>

@@ -23,6 +23,7 @@ export const createCrop = async (cropData) => {
 };
 
 export const updateCrop = async (cropId, cropData) => {
+    if (!cropId) throw new Error('Crop ID is required');
     try {
         const response = await apiClient.put(`${API_URL}${cropId}`, cropData);
         return response.data;
@@ -33,6 +34,7 @@ export const updateCrop = async (cropId, cropData) => {
 };
 
 export const deleteCrop = async (cropId) => {
+    if (!cropId) throw new Error('Crop ID is required');
     try {
         const response = await apiClient.delete(`${API_URL}${cropId}`);
         return response.data;
@@ -43,6 +45,8 @@ export const deleteCrop = async (cropId) => {
 };
 
 export const migrateAndDeleteCrop = async (cropId, targetCropId) => {
+    if (!cropId) throw new Error('Crop ID is required');
+    if (!targetCropId) throw new Error('Target Crop ID is required');
     try {
         // We match schemas.CropMigrationRequest on backend: { target_crop_id: int }
         const response = await apiClient.post(`${API_URL}${cropId}/migrate-and-delete`, {
@@ -56,6 +60,7 @@ export const migrateAndDeleteCrop = async (cropId, targetCropId) => {
 };
 
 export const forceDeleteCrop = async (cropId) => {
+    if (!cropId) throw new Error('Crop ID is required');
     try {
         const response = await apiClient.delete(`${API_URL}${cropId}/force`);
         return response.data;

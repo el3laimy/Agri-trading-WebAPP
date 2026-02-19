@@ -46,7 +46,13 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
         sale_data = sale.model_dump()
         sale_data['total_sale_amount'] = total_sale_amount
         sale_data['created_by'] = user_id
-        db_sale = crud.create_sale_record(db, sale_data=sale_data)
+        # Assign Active Season
+        active_season = crud.get_active_season(db)
+        if active_season:
+            sale_data['season_id'] = active_season.season_id
+
+        # 4. Create Sale Record
+        db_sale = crud.create_sale_record(db, sale_data)
         db.flush() # Get the sale_id for the ledger entries
 
         # 3. Create General Ledger entries using AccountingEngine
@@ -89,10 +95,17 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
             created_by=user_id
         )
 
-        db.commit()
-        db.refresh(db_sale)
+        # 3. Reduce Physical Stock (Gross & Bags)
+        if sale.gross_quantity or sale.bag_count:
+            from app.services.inventory import reduce_physical_stock
+            reduce_physical_stock(
+                db, 
+                sale.crop_id, 
+                sale.gross_quantity or Decimal(0), 
+                sale.bag_count or 0
+            )
 
-        # 5. Handle immediate payment if provided
+        # 5. Handle immediate payment if provided (before commit for atomicity)
         if sale.amount_received and sale.amount_received > 0:
             payment_data = schemas.PaymentCreate(
                 payment_date=sale.sale_date,
@@ -105,10 +118,14 @@ def create_new_sale(db: Session, sale: schemas.SaleCreate, user_id: int = None):
                 transaction_id=db_sale.sale_id
             )
             payment_service.create_payment(db, payment_data, user_id=user_id)
-            db.refresh(db_sale) # Refresh to get updated payment status
+
+        # Commit everything atomically (sale + GL entries + payment)
+        db.commit()
+        db.refresh(db_sale)
 
         return db_sale
 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء تسجيل عملية البيع: {e}")
+

@@ -58,7 +58,7 @@ import {
 // MOCK AXIOS FOR API TESTS
 // =============================================================================
 
-vi.mock('axios');
+// vi.mock('axios'); // Removed to use global mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -626,7 +626,7 @@ describe('Crops API - Edge Cases', () => {
 
             const result = await getCrops();
             expect(result).toEqual(mockData);
-            expect(axios.get).toHaveBeenCalledWith('/api/v1/crops/');
+            expect(axios.get).toHaveBeenCalledWith('/crops/');
         });
 
         test('should throw error on network failure', async () => {
@@ -673,32 +673,29 @@ describe('Crops API - Edge Cases', () => {
 
     describe('updateCrop - Edge Cases', () => {
         test('should handle null cropId', async () => {
-            axios.put.mockRejectedValue({ response: { status: 404 } });
-
-            // null becomes string "null" in URL
-            await expect(updateCrop(null, { crop_name: 'Test' })).rejects.toBeDefined();
-            expect(axios.put).toHaveBeenCalledWith('/api/v1/crops/null', expect.anything());
+            // Should throw validation error before calling API
+            await expect(updateCrop(null, { crop_name: 'Test' })).rejects.toThrow('Crop ID is required');
+            expect(axios.put).not.toHaveBeenCalled();
         });
 
         test('should handle undefined cropId', async () => {
-            axios.put.mockRejectedValue({ response: { status: 404 } });
-
-            await expect(updateCrop(undefined, { crop_name: 'Test' })).rejects.toBeDefined();
-            expect(axios.put).toHaveBeenCalledWith('/api/v1/crops/undefined', expect.anything());
+            // Should throw validation error before calling API
+            await expect(updateCrop(undefined, { crop_name: 'Test' })).rejects.toThrow('Crop ID is required');
+            expect(axios.put).not.toHaveBeenCalled();
         });
 
         test('should handle negative cropId', async () => {
             axios.put.mockRejectedValue({ response: { status: 404 } });
 
             await expect(updateCrop(-1, { crop_name: 'Test' })).rejects.toBeDefined();
-            expect(axios.put).toHaveBeenCalledWith('/api/v1/crops/-1', expect.anything());
+            expect(axios.put).toHaveBeenCalledWith('/crops/-1', expect.anything());
         });
 
         test('should handle string cropId', async () => {
             axios.put.mockRejectedValue({ response: { status: 404 } });
 
             await expect(updateCrop('abc', { crop_name: 'Test' })).rejects.toBeDefined();
-            expect(axios.put).toHaveBeenCalledWith('/api/v1/crops/abc', expect.anything());
+            expect(axios.put).toHaveBeenCalledWith('/crops/abc', expect.anything());
         });
     });
 
@@ -797,7 +794,7 @@ describe('Contacts API - Edge Cases', () => {
             axios.get.mockResolvedValue({ data: { transactions: [] } });
 
             await getContactStatement(1, null, null);
-            expect(axios.get).toHaveBeenCalledWith('/api/v1/contacts/1/statement');
+            expect(axios.get).toHaveBeenCalledWith('/contacts/1/statement');
         });
 
         test('should include date parameters when provided', async () => {
@@ -805,7 +802,7 @@ describe('Contacts API - Edge Cases', () => {
 
             await getContactStatement(1, '2024-01-01', '2024-12-31');
             expect(axios.get).toHaveBeenCalledWith(
-                '/api/v1/contacts/1/statement?start_date=2024-01-01&end_date=2024-12-31'
+                '/contacts/1/statement?start_date=2024-01-01&end_date=2024-12-31'
             );
         });
     });
@@ -842,14 +839,9 @@ describe('Critical Vulnerabilities Summary', () => {
         expect(validationRules.positiveNumber('100abc', 'Field')).toBeNull();
     });
 
-    test('VULN-004: null/undefined become literal strings in API URLs', async () => {
-        axios.put.mockRejectedValue(new Error('Not found'));
-
-        try { await updateCrop(null, {}); } catch (e) { }
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/crops/null', {});
-
-        try { await updateCrop(undefined, {}); } catch (e) { }
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/crops/undefined', {});
+    test('VULN-004: null/undefined checks prevent bad API calls', async () => {
+        await expect(updateCrop(null, {})).rejects.toThrow();
+        await expect(updateCrop(undefined, {})).rejects.toThrow();
     });
 
     test('VULN-005: formatCurrency returns EGP∞ for Infinity', () => {

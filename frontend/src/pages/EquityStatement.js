@@ -11,6 +11,12 @@ const EquityStatement = () => {
     const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1));
     const [endDate, setEndDate] = useState(new Date());
 
+    // Import CSS animations
+    React.useEffect(() => {
+        import('../styles/dashboardAnimations.css');
+        import('../styles/liquidglass.css');
+    }, []);
+
     const {
         isLoading,
         startLoading,
@@ -49,14 +55,14 @@ const EquityStatement = () => {
             />
 
             {/* Filter Card */}
-            <Card className="mb-6 print:hidden">
+            <div className="lg-card p-6 mb-6 lg-animate-fade print:hidden">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div>
                         <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">من تاريخ</label>
                         <DatePicker
                             selected={startDate}
                             onChange={setStartDate}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
+                            className="w-full lg-input rounded-xl"
                             dateFormat="yyyy-MM-dd"
                         />
                     </div>
@@ -65,26 +71,26 @@ const EquityStatement = () => {
                         <DatePicker
                             selected={endDate}
                             onChange={setEndDate}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500"
+                            className="w-full lg-input rounded-xl"
                             dateFormat="yyyy-MM-dd"
                         />
                     </div>
                     <div className="flex gap-2">
                         <button
-                            className="flex-grow px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                            className="flex-grow px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 font-medium"
                             onClick={handleGenerateReport}
                             disabled={isLoading}
                         >
                             {isLoading ? 'جاري التحضير...' : 'عرض التقرير'}
                         </button>
                         {reportData && (
-                            <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors" onClick={handlePrint} title="طباعة">
+                            <button className="px-4 py-2 border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors" onClick={handlePrint} title="طباعة">
                                 <i className="bi bi-printer"></i>
                             </button>
                         )}
                     </div>
                 </div>
-            </Card>
+            </div>
 
             {error && (
                 <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4 mb-6">
@@ -95,26 +101,27 @@ const EquityStatement = () => {
             {isLoading && <PageLoading text="جاري إعداد بيان حقوق الملكية..." />}
 
             {reportData && !isLoading && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 print-section overflow-hidden">
-                    <div className="bg-gray-50 dark:bg-slate-700 text-center py-6 border-b border-gray-200 dark:border-slate-600">
+                <div className="lg-card overflow-hidden print-section lg-animate-fade">
+                    <div className="bg-gray-50 dark:bg-slate-700/50 text-center py-6 border-b border-gray-200 dark:border-slate-600">
                         <h3 className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mb-2">بيان حقوق الملكية</h3>
                         <p className="text-gray-500 dark:text-gray-400">للفترة من {reportData.start_date} إلى {reportData.end_date}</p>
                     </div>
                     <div className="p-6">
 
                         {/* Summary Cards */}
+                        {/* Summary Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-slate-700 text-center">
+                            <div className="p-4 lg-card lg-glass-thin text-center lg-animate-in">
                                 <small className="text-gray-500 dark:text-gray-400 block mb-1">رصيد بداية المدة</small>
                                 <h4 className="text-xl font-bold text-gray-800 dark:text-gray-200">{formatCurrency(reportData.beginning_equity)}</h4>
                             </div>
-                            <div className={`p-4 border rounded-lg text-center ${reportData.net_income >= 0 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+                            <div className={`p-4 lg-card text-center border lg-animate-in ${reportData.net_income >= 0 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`} style={{ animationDelay: '100ms' }}>
                                 <small className="text-gray-500 dark:text-gray-400 block mb-1">صافي نتيجة الأعمال</small>
                                 <h4 className={`text-xl font-bold ${reportData.net_income >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                     {formatCurrency(reportData.net_income)}
                                 </h4>
                             </div>
-                            <div className="p-4 border border-emerald-200 dark:border-emerald-800 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-center">
+                            <div className="p-4 lg-card text-center border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 lg-animate-in" style={{ animationDelay: '200ms' }}>
                                 <small className="text-gray-500 dark:text-gray-400 block mb-1">رصيد نهاية المدة</small>
                                 <h4 className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(reportData.ending_equity)}</h4>
                             </div>
@@ -130,7 +137,7 @@ const EquityStatement = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                                    <tr className="bg-white dark:bg-slate-800">
+                                    <tr className="bg-white dark:bg-slate-800/50">
                                         <td className="py-3 px-4 text-gray-800 dark:text-gray-200">
                                             <div className="flex items-center gap-2">
                                                 <i className="bi bi-hourglass-top text-gray-400"></i>
@@ -144,7 +151,7 @@ const EquityStatement = () => {
                                     <tr className="border-t-2 border-gray-300 dark:border-slate-600">
                                         <td colSpan="2" className="py-2 px-4 text-green-600 dark:text-green-400 text-sm font-bold uppercase bg-gray-50 dark:bg-slate-700">يضاف:</td>
                                     </tr>
-                                    <tr className="bg-white dark:bg-slate-800">
+                                    <tr className="bg-white dark:bg-slate-800/50">
                                         <td className="py-3 px-4 pr-8 text-gray-700 dark:text-gray-300">
                                             مساهمات وإضافات لرأس المال
                                             <small className="block text-gray-400 dark:text-gray-500">أموال تم ضخها من قبل الملاك</small>
@@ -152,7 +159,7 @@ const EquityStatement = () => {
                                         <td className="py-3 px-4 text-left text-green-600 dark:text-green-400">+{formatCurrency(reportData.owner_contributions)}</td>
                                     </tr>
                                     {reportData.net_income >= 0 && (
-                                        <tr className="bg-white dark:bg-slate-800">
+                                        <tr className="bg-white dark:bg-slate-800/50">
                                             <td className="py-3 px-4 pr-8 text-gray-700 dark:text-gray-300">
                                                 صافي الربح للفترة
                                                 <small className="block text-gray-400 dark:text-gray-500">أرباح النشاط المرحلة</small>
@@ -165,7 +172,7 @@ const EquityStatement = () => {
                                     <tr className="border-t-2 border-gray-300 dark:border-slate-600">
                                         <td colSpan="2" className="py-2 px-4 text-red-500 dark:text-red-400 text-sm font-bold uppercase bg-gray-50 dark:bg-slate-700">يخصم:</td>
                                     </tr>
-                                    <tr className="bg-white dark:bg-slate-800">
+                                    <tr className="bg-white dark:bg-slate-800/50">
                                         <td className="py-3 px-4 pr-8 text-gray-700 dark:text-gray-300">
                                             المسحوبات الشخصية
                                             <small className="block text-gray-400 dark:text-gray-500">مبالغ تم سحبها من قبل الملاك</small>
@@ -173,7 +180,7 @@ const EquityStatement = () => {
                                         <td className="py-3 px-4 text-left text-red-500 dark:text-red-400">({formatCurrency(reportData.owner_draws)})</td>
                                     </tr>
                                     {reportData.net_income < 0 && (
-                                        <tr className="bg-white dark:bg-slate-800">
+                                        <tr className="bg-white dark:bg-slate-800/50">
                                             <td className="py-3 px-4 pr-8 text-gray-700 dark:text-gray-300">
                                                 صافي الخسارة للفترة
                                                 <small className="block text-gray-400 dark:text-gray-500">خسائر النشاط المرحلة</small>

@@ -78,7 +78,7 @@ def get_top_customers(db: Session, limit: int = 10):
      .order_by(desc('total_sales'))\
      .limit(limit).all()
      
-    return [{"name": r.name, "transaction_count": r.transaction_count, "total_sales": float(r.total_sales or 0)} for r in results]
+    return [{"name": r.name, "transaction_count": r.transaction_count, "total_sales": str(r.total_sales or 0)} for r in results]
 
 def get_season_comparison(db: Session):
     """مقارنة أداء المواسم"""

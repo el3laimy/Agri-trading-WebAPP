@@ -45,7 +45,7 @@ const WIDGETS = [
     { id: 'quick_actions', label: 'الإجراءات السريعة' }
 ];
 
-const DEFAULT_LAYOUT = ['quick_stats', 'main_kpis', 'charts', 'secondary_kpis', 'recent_activity', 'top_customers', 'alerts', 'quick_actions'];
+const DEFAULT_LAYOUT = ['quick_stats', 'quick_actions', 'main_kpis', 'charts', 'secondary_kpis', 'recent_activity', 'top_customers', 'alerts'];
 
 function Dashboard() {
     const { user, updateConfig } = useAuth();
@@ -157,28 +157,28 @@ function Dashboard() {
     // Format Currency
     const formatCurrency = (amount, compact = false) => {
         if (compact && Math.abs(amount) >= 1000000) {
-            return new Intl.NumberFormat('ar-EG', {
+            return new Intl.NumberFormat('en-US', {
                 minimumFractionDigits: 1, maximumFractionDigits: 1
             }).format(amount / 1000000) + ' م';
         }
         if (compact && Math.abs(amount) >= 1000) {
-            return new Intl.NumberFormat('ar-EG', {
+            return new Intl.NumberFormat('en-US', {
                 minimumFractionDigits: 0, maximumFractionDigits: 0
             }).format(amount / 1000) + ' ك';
         }
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency', currency: 'EGP', minimumFractionDigits: 0, maximumFractionDigits: 0
         }).format(amount || 0);
     };
 
     const formatNumber = (num) => {
-        return new Intl.NumberFormat('ar-EG').format(num || 0);
+        return new Intl.NumberFormat('en-US').format(num || 0);
     };
 
     // Format Date
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+        return new Date(dateStr).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', numberingSystem: 'latn' });
     };
 
     // Format Relative Time
@@ -262,10 +262,20 @@ function Dashboard() {
                 );
 
             case 'top_customers':
-                return <TopCustomersWidget key={id} topCustomers={topCustomers} formatCurrency={formatCurrency} />;
+                return (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" key={id}>
+                        <div className="lg:col-span-2">
+                            <TopCustomersWidget topCustomers={topCustomers} formatCurrency={formatCurrency} />
+                        </div>
+                        <div>
+                            <AlertsWidget alerts={alerts} />
+                        </div>
+                    </div>
+                );
 
             case 'alerts':
-                return <AlertsWidget key={id} alerts={alerts} />;
+                // Alerts are now rendered inside top_customers row
+                return null;
 
             case 'quick_actions':
                 return <QuickActionsWidget key={id} onOpenCommandPalette={() => setShowCommandPalette(true)} />;
@@ -288,86 +298,93 @@ function Dashboard() {
 
             {/* Config Modal */}
             {showConfigModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setShowConfigModal(false)} />
+                <div className="lg-modal-overlay" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="lg-modal" style={{ maxWidth: '520px' }}>
+                        <div className="lg-modal-header">
+                            <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
+                                <i className="bi bi-gear" style={{ color: 'var(--lg-primary)' }} />
+                                تخصيص لوحة التحكم
+                            </h3>
+                            <p className="text-sm mt-1" style={{ color: 'var(--lg-text-muted)' }}>اختر العناصر وقم بترتيبها</p>
+                        </div>
 
-                        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-200 dark:border-slate-700 animate-fade-in-scale">
-                            <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                    <i className="bi bi-gear text-emerald-600 dark:text-emerald-400" />
-                                    تخصيص لوحة التحكم
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">اختر العناصر وقم بترتيبها</p>
-                            </div>
-
-                            <div className="p-6 max-h-96 overflow-y-auto">
-                                <ul className="space-y-2">
-                                    {tempLayout.map((id, index) => {
-                                        const widget = WIDGETS.find(w => w.id === id);
-                                        return (
-                                            <li key={id} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-xl flex justify-between items-center hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={true}
-                                                        onChange={() => toggleWidget(id)}
-                                                        className="w-4 h-4 text-emerald-600 rounded border-gray-300 dark:border-slate-600 focus:ring-emerald-500"
-                                                    />
-                                                    <span className="font-medium text-gray-900 dark:text-gray-100">{widget?.label || id}</span>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    <button
-                                                        type="button"
-                                                        disabled={index === 0}
-                                                        onClick={() => moveWidget(index, 'up')}
-                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30 transition-colors"
-                                                    >
-                                                        <i className="bi bi-arrow-up" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        disabled={index === tempLayout.length - 1}
-                                                        onClick={() => moveWidget(index, 'down')}
-                                                        className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg disabled:opacity-30 transition-colors"
-                                                    >
-                                                        <i className="bi bi-arrow-down" />
-                                                    </button>
-                                                </div>
-                                            </li>
-                                        );
-                                    })}
-                                    {WIDGETS.filter(w => !tempLayout.includes(w.id)).map(widget => (
-                                        <li key={widget.id} className="p-3 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center gap-3 opacity-60">
-                                            <input
-                                                type="checkbox"
-                                                checked={false}
-                                                onChange={() => toggleWidget(widget.id)}
-                                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 dark:border-slate-600 focus:ring-emerald-500"
-                                            />
-                                            <span className="text-gray-500 dark:text-gray-400">{widget.label}</span>
+                        <div className="lg-modal-body max-h-96 overflow-y-auto lg-scrollbar">
+                            <ul className="space-y-2">
+                                {tempLayout.map((id, index) => {
+                                    const widget = WIDGETS.find(w => w.id === id);
+                                    return (
+                                        <li key={id}
+                                            className="p-3 rounded-xl flex justify-between items-center"
+                                            style={{
+                                                background: 'var(--lg-glass-bg)',
+                                                border: '1px solid var(--lg-glass-border-subtle)',
+                                                transition: 'var(--lg-transition-fast)'
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={true}
+                                                    onChange={() => toggleWidget(id)}
+                                                    className="w-4 h-4 text-emerald-600 rounded border-gray-300 dark:border-slate-600 focus:ring-emerald-500"
+                                                />
+                                                <span className="font-medium" style={{ color: 'var(--lg-text-primary)' }}>{widget?.label || id}</span>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    type="button"
+                                                    disabled={index === 0}
+                                                    onClick={() => moveWidget(index, 'up')}
+                                                    className="lg-btn lg-btn-ghost p-2 disabled:opacity-30"
+                                                >
+                                                    <i className="bi bi-arrow-up" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={index === tempLayout.length - 1}
+                                                    onClick={() => moveWidget(index, 'down')}
+                                                    className="lg-btn lg-btn-ghost p-2 disabled:opacity-30"
+                                                >
+                                                    <i className="bi bi-arrow-down" />
+                                                </button>
+                                            </div>
                                         </li>
-                                    ))}
-                                </ul>
-                            </div>
+                                    );
+                                })}
+                                {WIDGETS.filter(w => !tempLayout.includes(w.id)).map(widget => (
+                                    <li key={widget.id}
+                                        className="p-3 rounded-xl flex items-center gap-3 opacity-60"
+                                        style={{ background: 'var(--lg-glass-bg)' }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={false}
+                                            onChange={() => toggleWidget(widget.id)}
+                                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 dark:border-slate-600 focus:ring-emerald-500"
+                                        />
+                                        <span style={{ color: 'var(--lg-text-muted)' }}>{widget.label}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
 
-                            <div className="p-4 bg-gray-50 dark:bg-slate-700/50 flex gap-3 justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfigModal(false)}
-                                    className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                                >
-                                    إلغاء
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSaveConfig}
-                                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-colors flex items-center gap-2 shadow-lg hover:shadow-xl"
-                                >
-                                    <i className="bi bi-check-lg" />
-                                    حفظ التغييرات
-                                </button>
-                            </div>
+                        <div className="lg-modal-footer">
+                            <button
+                                type="button"
+                                onClick={() => setShowConfigModal(false)}
+                                className="lg-btn lg-btn-secondary px-4 py-2"
+                                style={{ borderRadius: 'var(--lg-radius-sm)' }}
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveConfig}
+                                className="lg-btn lg-btn-primary px-4 py-2 flex items-center gap-2"
+                            >
+                                <i className="bi bi-check-lg" />
+                                حفظ التغييرات
+                            </button>
                         </div>
                     </div>
                 </div>

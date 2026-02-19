@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getFinancialAccounts, createFinancialAccount, updateFinancialAccount, deleteFinancialAccount } from '../api/financialAccounts';
 import FinancialAccountForm from '../components/FinancialAccountForm';
 import { useToast } from '../components/common';
+import { handleApiError } from '../utils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 const FinancialAccountManagement = () => {
     const { showSuccess, showError } = useToast();
@@ -61,7 +63,7 @@ const FinancialAccountManagement = () => {
             setEditingAccount(null);
             fetchAccounts();
         } catch (error) {
-            showError('فشل في حفظ الحساب');
+            showError(handleApiError(error, 'account_create'));
         }
     };
 
@@ -80,7 +82,7 @@ const FinancialAccountManagement = () => {
             setAccountToDelete(null);
             showSuccess('تم حذف الحساب بنجاح');
         } catch (error) {
-            showError('فشل في حذف الحساب (قد يكون مرتبط بمعاملات)');
+            showError(handleApiError(error, 'account_delete'));
             setShowDeleteModal(false);
         }
     };
@@ -88,10 +90,10 @@ const FinancialAccountManagement = () => {
     if (loading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                <div className="lg-card overflow-hidden mb-6 animate-pulse">
                     <div className="h-40 bg-gradient-to-br from-violet-200 to-purple-200 dark:from-violet-800/30 dark:to-purple-800/30" />
                 </div>
-                <div className="neumorphic p-6"><LoadingCard rows={6} /></div>
+                <div className="lg-card p-6"><LoadingCard rows={6} /></div>
             </div>
         );
     }
@@ -100,23 +102,20 @@ const FinancialAccountManagement = () => {
         <div className="p-6 max-w-full mx-auto">
             {/* Delete Modal */}
             {showDeleteModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelDelete} />
-                        <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in-scale">
-                            <div className="text-center">
-                                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center animate-bounce-in">
-                                    <i className="bi bi-exclamation-triangle text-3xl text-red-500" />
-                                </div>
-                                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">تأكيد الحذف</h3>
-                                <p className="text-gray-500 dark:text-gray-400 mb-6">
-                                    هل أنت متأكد من حذف <span className="font-bold text-gray-800 dark:text-gray-200">"{accountToDelete?.account_name}"</span>؟
-                                </p>
+                <div className="lg-modal-overlay">
+                    <div className="lg-modal lg-animate-in" style={{ maxWidth: '28rem' }}>
+                        <div className="text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <i className="bi bi-exclamation-triangle text-3xl text-red-500" />
                             </div>
-                            <div className="flex gap-3 justify-center">
-                                <button onClick={cancelDelete} className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300">إلغاء</button>
-                                <button onClick={confirmDelete} className="px-6 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 hover-scale">حذف</button>
-                            </div>
+                            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--lg-text-primary)' }}>تأكيد الحذف</h3>
+                            <p className="mb-6" style={{ color: 'var(--lg-text-muted)' }}>
+                                هل أنت متأكد من حذف <span className="font-bold" style={{ color: 'var(--lg-text-primary)' }}>"{accountToDelete?.account_name}"</span>؟
+                            </p>
+                        </div>
+                        <div className="flex gap-3 justify-center">
+                            <button onClick={cancelDelete} className="lg-btn lg-btn-secondary px-6 py-2.5">إلغاء</button>
+                            <button onClick={confirmDelete} className="lg-btn lg-btn-danger px-6 py-2.5">حذف</button>
                         </div>
                     </div>
                 </div>
@@ -139,36 +138,36 @@ const FinancialAccountManagement = () => {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
-                                <i className="bi bi-bank text-lg" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                                <i className="bi bi-bank text-lg text-violet-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">إجمالي الحسابات</p>
-                                <p className="text-lg font-bold">{stats.total}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>إجمالي الحسابات</p>
+                                <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{stats.total}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-check-circle text-lg text-green-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                <i className="bi bi-check-circle text-lg text-green-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">نشط</p>
-                                <p className="text-lg font-bold">{stats.active}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>نشط</p>
+                                <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{stats.active}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '150ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-cash-stack text-lg text-purple-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(168,85,247,0.12)', border: '1px solid rgba(168,85,247,0.25)' }}>
+                                <i className="bi bi-cash-stack text-lg text-purple-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">إجمالي الأرصدة</p>
-                                <p className="text-lg font-bold">{stats.totalBalance.toLocaleString()}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>إجمالي الأرصدة</p>
+                                <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{stats.totalBalance.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -189,7 +188,7 @@ const FinancialAccountManagement = () => {
 
             {/* Add/Edit Form */}
             {showForm && (
-                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
+                <div className="mb-6 lg-card overflow-hidden lg-animate-fade">
                     <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
                             <i className={`bi ${editingAccount ? 'bi-pencil-square' : 'bi-plus-circle-fill'} ml-2 text-violet-600 dark:text-violet-400`} />
@@ -203,23 +202,23 @@ const FinancialAccountManagement = () => {
             )}
 
             {/* Accounts Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-violet-500" />
                         دليل الحسابات
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">{filteredAccounts.length}</span>
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: 'rgb(124,58,237)' }}>{filteredAccounts.length}</span>
                     </h5>
                 </div>
                 <div>
                     {filteredAccounts.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-bank text-5xl text-violet-400 dark:text-violet-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-bank text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد حسابات</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">قم بإضافة الحسابات المالية</p>
-                            <button onClick={handleAddNew} className="inline-flex items-center px-5 py-2.5 rounded-xl font-medium bg-violet-600 text-white hover:bg-violet-700 hover-scale">
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد حسابات</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>قم بإضافة الحسابات المالية</p>
+                            <button onClick={handleAddNew} className="lg-btn lg-btn-primary px-5 py-2.5 font-medium">
                                 <i className="bi bi-plus-lg ml-2" />إضافة أول حساب
                             </button>
                         </div>
@@ -238,7 +237,7 @@ const FinancialAccountManagement = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {filteredAccounts.map((account, idx) => (
-                                        <tr key={account.account_id} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
+                                        <tr key={account.account_id} className="transition-all lg-animate-in" style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
                                             <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{account.account_id}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">

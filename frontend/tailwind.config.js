@@ -44,7 +44,7 @@ module.exports = {
         info: 'var(--info-color)',
       },
       fontFamily: {
-        sans: ['Cairo', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
+        sans: ['IBM Plex Sans Arabic', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
       },
       // Animations
       animation: {

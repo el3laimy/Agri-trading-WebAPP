@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCapitalDistribution, getCapitalBreakdown } from '../api/reports';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Doughnut } from 'react-chartjs-2';
-
-ChartJS.register(ArcElement, Tooltip, Legend);
+import Chart from 'react-apexcharts';
 
 function CapitalDistribution() {
     const [report, setReport] = useState(null);
@@ -70,40 +67,25 @@ function CapitalDistribution() {
 
     if (!report) return null;
 
-    const chartData = breakdown ? {
-        labels: breakdown.categories.map(c => c.name),
-        datasets: [{
-            data: breakdown.categories.map(c => c.value),
-            backgroundColor: breakdown.categories.map(c => c.color),
-            borderColor: breakdown.categories.map(c => c.color),
-            borderWidth: 2,
-            hoverOffset: 10
-        }]
-    } : null;
+    const chartSeries = breakdown ? breakdown.categories.map(c => c.value) : [];
 
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    font: { family: 'Cairo, sans-serif', size: 14 },
-                    padding: 20
-                }
-            },
-            tooltip: {
-                callbacks: {
-                    label: function (context) {
-                        const value = formatCurrency(context.raw);
-                        const percentage = breakdown.categories[context.dataIndex].percentage;
-                        return `${context.label}: ${value} (${percentage}%)`;
-                    }
+    const chartOptions = breakdown ? {
+        chart: { type: 'donut', fontFamily: 'Cairo, sans-serif' },
+        labels: breakdown.categories.map(c => c.name),
+        colors: breakdown.categories.map(c => c.color),
+        legend: { position: 'bottom', fontSize: '14px', itemMargin: { horizontal: 10, vertical: 5 } },
+        tooltip: {
+            y: {
+                formatter: (val, opts) => {
+                    const percentage = breakdown.categories[opts.seriesIndex]?.percentage || 0;
+                    return `${formatCurrency(val)} (${percentage}%)`;
                 }
             }
         },
-        cutout: '60%'
-    };
+        plotOptions: { pie: { donut: { size: '60%' } } },
+        dataLabels: { enabled: false },
+        stroke: { width: 2 },
+    } : {};
 
     return (
         <div className="p-6">
@@ -171,9 +153,9 @@ function CapitalDistribution() {
                     </div>
                     <div className="p-5">
                         {/* Chart */}
-                        {chartData && (
-                            <div style={{ height: '250px', marginBottom: '20px' }}>
-                                <Doughnut data={chartData} options={chartOptions} />
+                        {chartSeries.length > 0 && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <Chart type="donut" options={chartOptions} series={chartSeries} height={250} />
                             </div>
                         )}
 

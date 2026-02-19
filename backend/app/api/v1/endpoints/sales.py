@@ -6,6 +6,7 @@ import json
 from app import crud, schemas
 from app.api.v1.endpoints.crops import get_db # Reuse the get_db dependency
 from app.services import sales as sales_service
+from app.core.idempotency import check_idempotency
 
 router = APIRouter()
 
@@ -29,18 +30,19 @@ def get_last_sale_price(
     
     if last_sale:
         return {
-            "selling_unit_price": float(last_sale.selling_unit_price),
+            "selling_unit_price": str(last_sale.selling_unit_price),
             "sale_date": last_sale.sale_date.isoformat() if last_sale.sale_date else None,
-            "quantity_sold_kg": float(last_sale.quantity_sold_kg) if last_sale.quantity_sold_kg else None
+            "quantity_sold_kg": str(last_sale.quantity_sold_kg) if last_sale.quantity_sold_kg else None
         }
     return {"selling_unit_price": None, "sale_date": None, "quantity_sold_kg": None}
 
-@router.post("/", response_model=schemas.SaleRead)
+@router.post("/", response_model=schemas.SaleRead, dependencies=[Depends(check_idempotency)])
 def create_sale(
     sale: schemas.SaleCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    """Create a new sale. Protected by Idempotency Key."""
     return sales_service.create_new_sale(db=db, sale=sale, user_id=current_user.user_id)
 
 @router.get("/", response_model=List[schemas.SaleRead])
@@ -117,10 +119,21 @@ def delete_sale(
     if not db_sale:
         raise HTTPException(status_code=404, detail="عملية البيع غير موجودة")
     
-    # Delete related journal entries
-    db.query(models.JournalEntry).filter(
-        models.JournalEntry.reference_type == 'SALE',
-        models.JournalEntry.reference_id == sale_id
+    # Delete related dependencies
+    
+    # 1. Delete Sale Returns linked to this sale
+    db.query(models.SaleReturn).filter(models.SaleReturn.sale_id == sale_id).delete()
+    
+    # 2. Delete related Payments
+    db.query(models.Payment).filter(
+        models.Payment.transaction_type == 'SALE', 
+        models.Payment.transaction_id == sale_id
+    ).delete()
+
+    # 3. Delete related General Ledger entries
+    db.query(models.GeneralLedger).filter(
+        models.GeneralLedger.source_type == 'SALE',
+        models.GeneralLedger.source_id == sale_id
     ).delete()
     
     # Delete the sale

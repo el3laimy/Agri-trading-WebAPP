@@ -9,7 +9,7 @@ import axios from 'axios';
 import * as purchaseReturns from '../api/purchase_returns';
 import * as saleReturns from '../api/sale_returns';
 
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 describe('Purchase Returns API', () => {
     afterEach(() => {

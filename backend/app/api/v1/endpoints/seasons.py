@@ -39,6 +39,16 @@ def update_season(season_id: int, season_update: schemas.SeasonUpdate, db: Sessi
         raise HTTPException(status_code=404, detail="الموسم غير موجود")
     return db_season
 
+@router.post("/{season_id}/activate", response_model=schemas.SeasonRead)
+def activate_season(season_id: int, db: Session = Depends(get_db)):
+    """
+    تفعيل الموسم الحالي
+    """
+    db_season = crud.activate_season(db, season_id=season_id)
+    if db_season is None:
+        raise HTTPException(status_code=404, detail="الموسم غير موجود")
+    return db_season
+
 @router.post("/{season_id}/close")
 def close_season(season_id: int, db: Session = Depends(get_db)):
     """

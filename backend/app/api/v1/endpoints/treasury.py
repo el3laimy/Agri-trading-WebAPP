@@ -5,6 +5,7 @@ from typing import List
 from app import schemas
 from app.api.v1.endpoints.crops import get_db
 from app.services import treasury
+from app.core.idempotency import check_idempotency
 
 router = APIRouter()
 
@@ -21,42 +22,42 @@ def read_treasury_summary(target_date: Optional[date] = None, db: Session = Depe
 def read_treasury_transactions(target_date: Optional[date] = None, limit: int = 100, db: Session = Depends(get_db)):
     return treasury.get_treasury_transactions(db, target_date, limit)
 
-@router.post("/cash-receipt")
+@router.post("/cash-receipt", dependencies=[Depends(check_idempotency)])
 def create_cash_receipt(
     receipt: schemas.CashReceiptCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
     _: models.User = Depends(require_write_permission("treasury"))
 ):
-    """إنشاء إيصال قبض نقدي"""
+    """إنشاء إيصال قبض نقدي - Protected by Idempotency Key"""
     try:
         result = treasury.create_cash_receipt(db, receipt, user_id=current_user.user_id)
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/cash-payment")
+@router.post("/cash-payment", dependencies=[Depends(check_idempotency)])
 def create_cash_payment(
     payment: schemas.CashPaymentCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
     _: models.User = Depends(require_write_permission("treasury"))
 ):
-    """إنشاء إيصال صرف نقدي"""
+    """إنشاء إيصال صرف نقدي - Protected by Idempotency Key"""
     try:
         result = treasury.create_cash_payment(db, payment, user_id=current_user.user_id)
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/quick-expense")
+@router.post("/quick-expense", dependencies=[Depends(check_idempotency)])
 def create_quick_expense(
     expense: schemas.QuickExpenseCreate, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
     _: models.User = Depends(require_write_permission("treasury"))
 ):
-    """تسجيل مصروف سريع"""
+    """تسجيل مصروف سريع - Protected by Idempotency Key"""
     try:
         result = treasury.create_quick_expense(db, expense, user_id=current_user.user_id)
         return result

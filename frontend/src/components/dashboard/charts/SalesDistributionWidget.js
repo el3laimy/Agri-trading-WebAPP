@@ -68,9 +68,9 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
                             color: theme === 'dark' ? '#10B981' : '#059669',
                             formatter: (val) => {
                                 if (viewMode === 'value') {
-                                    return new Intl.NumberFormat('ar-EG').format(val) + ' ج.م';
+                                    return new Intl.NumberFormat('en-US').format(val) + ' ج.م';
                                 }
-                                return new Intl.NumberFormat('ar-EG').format(val) + ' كجم';
+                                return new Intl.NumberFormat('en-US').format(val) + ' كجم';
                             }
                         },
                         total: {
@@ -81,9 +81,9 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
                             color: theme === 'dark' ? '#94A3B8' : '#64748B',
                             formatter: () => {
                                 if (viewMode === 'value') {
-                                    return new Intl.NumberFormat('ar-EG').format(totalValue) + ' ج.م';
+                                    return new Intl.NumberFormat('en-US').format(totalValue) + ' ج.م';
                                 }
-                                return new Intl.NumberFormat('ar-EG').format(Math.round(totalVolume / 1000)) + ' طن';
+                                return new Intl.NumberFormat('en-US').format(Math.round(totalVolume / 1000)) + ' طن';
                             }
                         }
                     }
@@ -107,9 +107,9 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
                 formatter: (val) => {
                     const percentage = currentTotal > 0 ? ((val / currentTotal) * 100).toFixed(1) : 0;
                     if (viewMode === 'value') {
-                        return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(val) + ` (${percentage}%)`;
+                        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(val) + ` (${percentage}%)`;
                     }
-                    return new Intl.NumberFormat('ar-EG').format(val) + ` كجم (${percentage}%)`;
+                    return new Intl.NumberFormat('en-US').format(val) + ` كجم (${percentage}%)`;
                 }
             }
         },
@@ -125,10 +125,10 @@ const SalesDistributionWidget = ({ salesByCrop = [], loading }) => {
 
     const series = filteredData.map(s => viewMode === 'value' ? s.value : s.volume);
 
-    const formatNumber = (val) => new Intl.NumberFormat('ar-EG').format(val);
+    const formatNumber = (val) => new Intl.NumberFormat('en-US').format(val);
 
     return (
-        <div className="neumorphic h-[480px] flex flex-col overflow-hidden animate-fade-in">
+        <div className="lg-card h-[480px] flex flex-col overflow-hidden lg-animate-fade">
             {/* Header */}
             <div className="p-6 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex justify-between items-center">

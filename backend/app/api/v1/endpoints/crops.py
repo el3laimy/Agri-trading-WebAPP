@@ -25,10 +25,7 @@ def _crop_to_response(db_crop) -> schemas.Crop:
         crop_name=db_crop.crop_name,
         allowed_pricing_units=json.loads(db_crop.allowed_pricing_units),
         conversion_factors=json.loads(db_crop.conversion_factors),
-        is_active=db_crop.is_active,
-        is_complex_unit=db_crop.is_complex_unit or False,
-        default_tare_per_bag=db_crop.default_tare_per_bag or 0,
-        standard_unit_weight=db_crop.standard_unit_weight
+        is_active=db_crop.is_active
     )
 
 @router.get("/formulas")
@@ -69,9 +66,6 @@ def update_crop(crop_id: int, crop: schemas.CropCreate, db: Session = Depends(ge
     db_crop.allowed_pricing_units = json.dumps(crop.allowed_pricing_units)
     db_crop.conversion_factors = json.dumps(crop.conversion_factors)
     db_crop.is_active = crop.is_active
-    db_crop.is_complex_unit = crop.is_complex_unit
-    db_crop.default_tare_per_bag = crop.default_tare_per_bag
-    db_crop.standard_unit_weight = crop.standard_unit_weight
     
     db.commit()
     db.refresh(db_crop)

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getDebtAnalysis } from '../api/reports';
+import { useDebtAnalysis } from '../hooks/useQueries';
 import html2canvas from 'html2canvas';
 
 // Import shared components
@@ -15,25 +15,11 @@ function DebtorsView() {
     const initialTab = searchParams.get('type') === 'payables' ? 'payables' : 'receivables';
 
     const [activeTab, setActiveTab] = useState(initialTab);
-    const [debtData, setDebtData] = useState({ receivables: [], payables: [] });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const tableRef = useRef(null);
 
-    useEffect(() => { fetchDebtData(); }, []);
-
-    const fetchDebtData = async () => {
-        setLoading(true);
-        try {
-            const data = await getDebtAnalysis();
-            setDebtData(data);
-        } catch (err) {
-            setError("فشل تحميل بيانات المديونية");
-        } finally {
-            setLoading(false);
-        }
-    };
+    // TanStack Query - replaces manual useState/useEffect
+    const { data: debtData = { receivables: [], payables: [] }, isLoading: loading, isError, error } = useDebtAnalysis();
 
     const formatCurrency = (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(amount || 0);
 
@@ -51,7 +37,7 @@ function DebtorsView() {
             if (item.phone) message += `   الهاتف: ${item.phone}\n`;
             message += `\n`;
         });
-        message += `━━━━━━━━━━━━━━━━━\n📊 الإجمالي: ${formatCurrency(totalAmount)}\n📅 التاريخ: ${new Date().toLocaleDateString('ar-EG')}`;
+        message += `━━━━━━━━━━━━━━━━━\n📊 الإجمالي: ${formatCurrency(totalAmount)}\n📅 التاريخ: ${new Date().toLocaleDateString('en-US')}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     };
 
@@ -78,23 +64,23 @@ function DebtorsView() {
     if (loading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                <div className="lg-card overflow-hidden mb-6 animate-pulse">
                     <div className="h-40 bg-gradient-to-br from-red-200 to-rose-200 dark:from-red-800/30 dark:to-rose-800/30" />
                 </div>
-                <div className="neumorphic p-6"><LoadingCard rows={8} /></div>
+                <div className="lg-card p-6"><LoadingCard rows={8} /></div>
             </div>
         );
     }
 
-    if (error) {
+    if (isError) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic p-6 border-r-4 border-red-500 animate-fade-in">
+                <div className="lg-card p-6 border-r-4 border-red-500 lg-animate-fade">
                     <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
                         <i className="bi bi-exclamation-triangle-fill text-2xl" />
-                        <span className="font-bold">{error}</span>
+                        <span className="font-bold">{error?.message || 'فشل تحميل بيانات المديونية'}</span>
                     </div>
-                    <button onClick={() => navigate('/dashboard')} className="px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300">
+                    <button onClick={() => navigate('/dashboard')} className="lg-btn lg-btn-secondary px-4 py-2">
                         <i className="bi bi-arrow-right ml-2" />العودة للرئيسية
                     </button>
                 </div>
@@ -134,47 +120,47 @@ function DebtorsView() {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-person-check text-lg text-green-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'var(--lg-tint-emerald)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                <i className="bi bi-person-check text-lg text-green-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">عملاء مدينين</p>
-                                <p className="text-lg font-bold">{debtData.receivables?.length || 0}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>عملاء مدينين</p>
+                                <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{debtData.receivables?.length || 0}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-truck text-lg text-red-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'var(--lg-tint-rose)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                                <i className="bi bi-truck text-lg text-red-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">موردين دائنين</p>
-                                <p className="text-lg font-bold">{debtData.payables?.length || 0}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>موردين دائنين</p>
+                                <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{debtData.payables?.length || 0}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '150ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-arrow-down-circle text-lg text-emerald-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'var(--lg-tint-emerald)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                                <i className="bi bi-arrow-down-circle text-lg text-emerald-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">لنا</p>
-                                <p className="text-lg font-bold">{formatCurrency(debtData.receivables?.reduce((s, i) => s + (parseFloat(i.balance_due) || 0), 0))}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>لنا</p>
+                                <p className="text-lg font-bold text-emerald-600">{formatCurrency(debtData.receivables?.reduce((s, i) => s + (parseFloat(i.balance_due) || 0), 0))}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-4">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-rose-500/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-arrow-up-circle text-lg text-rose-300" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'var(--lg-tint-rose)', border: '1px solid rgba(244,63,94,0.25)' }}>
+                                <i className="bi bi-arrow-up-circle text-lg text-rose-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">علينا</p>
-                                <p className="text-lg font-bold">{formatCurrency(debtData.payables?.reduce((s, i) => s + (parseFloat(i.balance_due) || 0), 0))}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>علينا</p>
+                                <p className="text-lg font-bold text-rose-600">{formatCurrency(debtData.payables?.reduce((s, i) => s + (parseFloat(i.balance_due) || 0), 0))}</p>
                             </div>
                         </div>
                     </div>
@@ -193,7 +179,7 @@ function DebtorsView() {
             </div>
 
             {/* Summary */}
-            <div className={`neumorphic p-4 mb-6 border-r-4 ${activeTab === 'receivables' ? 'border-emerald-500' : 'border-red-500'} animate-fade-in`}>
+            <div className={`lg-card p-4 mb-6 border-r-4 ${activeTab === 'receivables' ? 'border-emerald-500' : 'border-red-500'} lg-animate-fade`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-xl ${activeTab === 'receivables' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'} flex items-center justify-center`}>
@@ -204,29 +190,29 @@ function DebtorsView() {
                             <h4 className={`text-xl font-black ${activeTab === 'receivables' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>{formatCurrency(totalAmount)}</h4>
                         </div>
                     </div>
-                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-slate-700 px-3 py-1 rounded-lg">آخر تحديث: {new Date().toLocaleTimeString('ar-EG')}</span>
+                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-slate-700 px-3 py-1 rounded-lg">آخر تحديث: {new Date().toLocaleTimeString('en-US')}</span>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in" ref={tableRef}>
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade" ref={tableRef}>
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className={`bi ${activeTab === 'receivables' ? 'bi-person-lines-fill text-emerald-500' : 'bi-truck text-red-500'}`} />
                         {activeTab === 'receivables' ? 'قائمة العملاء المدينين' : 'قائمة الموردين الدائنين'}
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300">{filteredData.length}</span>
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold">{filteredData.length}</span>
                     </h5>
                 </div>
                 <div>
                     {filteredData.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-check2-circle text-5xl text-emerald-400" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float lg-card">
+                                <i className="bi bi-check2-circle text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>
                                 {searchTerm ? 'لا توجد نتائج بحث' : 'تهانينا! لا توجد مديونيات'}
                             </h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>
                                 {searchTerm ? 'حاول استخدام كلمات بحث أخرى' : 'جميع الحسابات في هذه القائمة مصفاة'}
                             </p>
                         </div>
@@ -245,7 +231,7 @@ function DebtorsView() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {filteredData.map((item, idx) => (
-                                        <tr key={idx} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)} group`}>
+                                        <tr key={idx} className="transition-all lg-animate-in group" style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
                                             <td className="px-6 py-4 text-center text-gray-400">{idx + 1}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">

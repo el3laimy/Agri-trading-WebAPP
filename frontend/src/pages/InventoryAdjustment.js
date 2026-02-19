@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/common/PageHeader';
 import { useToast } from '../components/common';
 import { safeParseFloat } from '../utils/mathUtils';
+import { handleApiError, VALIDATION_MESSAGES } from '../utils';
 import '../styles/dashboardAnimations.css';
 
 const InventoryAdjustment = () => {
@@ -31,7 +32,7 @@ const InventoryAdjustment = () => {
             setCrops(cropList);
         } catch (err) {
             console.error("Failed to load crops:", err);
-            showError("فشل في تحميل قائمة المحاصيل");
+            showError(handleApiError(err, 'inventory_fetch'));
         }
     };
 
@@ -75,7 +76,7 @@ const InventoryAdjustment = () => {
             navigate('/inventory'); // Redirect to inventory list
         } catch (err) {
             console.error(err);
-            showError(err.response?.data?.detail || "فشل في تسجيل التسوية");
+            showError(handleApiError(err, 'inventory_adjust'));
         } finally {
             setLoading(false);
         }
@@ -90,7 +91,7 @@ const InventoryAdjustment = () => {
                 gradient="from-orange-500 to-amber-500"
             />
 
-            <div className="neumorphic overflow-hidden animate-fade-in max-w-3xl mx-auto">
+            <div className="lg-card overflow-hidden lg-animate-fade max-w-3xl mx-auto">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
                         <i className="bi bi-pencil-square ml-2 text-orange-600 dark:text-orange-400" />
@@ -103,7 +104,7 @@ const InventoryAdjustment = () => {
                         <div>
                             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">المحصول *</label>
                             <select
-                                className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500"
+                                className="w-full p-3 lg-input rounded-xl"
                                 name="crop_id"
                                 value={formData.crop_id}
                                 onChange={handleChange}
@@ -122,7 +123,7 @@ const InventoryAdjustment = () => {
                             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">تاريخ التسوية *</label>
                             <input
                                 type="date"
-                                className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500"
+                                className="w-full p-3 lg-input rounded-xl"
                                 name="adjustment_date"
                                 value={formData.adjustment_date}
                                 onChange={handleChange}
@@ -133,7 +134,7 @@ const InventoryAdjustment = () => {
                         <div>
                             <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">نوع التسوية *</label>
                             <select
-                                className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500"
+                                className="w-full p-3 lg-input rounded-xl"
                                 name="adjustment_type"
                                 value={formData.adjustment_type}
                                 onChange={handleChange}
@@ -149,7 +150,7 @@ const InventoryAdjustment = () => {
                             <input
                                 type="number"
                                 step="0.01"
-                                className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500"
+                                className="w-full p-3 lg-input rounded-xl"
                                 name="quantity_kg"
                                 value={formData.quantity_kg}
                                 onChange={handleChange}
@@ -165,7 +166,7 @@ const InventoryAdjustment = () => {
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">ملاحظات</label>
                         <textarea
-                            className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500 min-h-[100px]"
+                            className="w-full p-3 lg-input rounded-xl min-h-[100px]"
                             name="notes"
                             value={formData.notes}
                             onChange={handleChange}

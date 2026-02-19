@@ -62,7 +62,22 @@ export const useUpdateSale = () => {
 
     return useMutation({
         mutationFn: ({ saleId, data }) => updateSale(saleId, data),
-        onSuccess: () => {
+        onMutate: async ({ saleId, data }) => {
+            await queryClient.cancelQueries({ queryKey: salesKeys.lists() });
+            const previousSales = queryClient.getQueryData(salesKeys.lists());
+
+            queryClient.setQueryData(salesKeys.lists(), (old) => {
+                return old?.map((sale) =>
+                    sale.sale_id === saleId ? { ...sale, ...data } : sale
+                );
+            });
+
+            return { previousSales };
+        },
+        onError: (err, newSale, context) => {
+            queryClient.setQueryData(salesKeys.lists(), context.previousSales);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         },
@@ -77,7 +92,20 @@ export const useDeleteSale = () => {
 
     return useMutation({
         mutationFn: deleteSale,
-        onSuccess: () => {
+        onMutate: async (saleId) => {
+            await queryClient.cancelQueries({ queryKey: salesKeys.lists() });
+            const previousSales = queryClient.getQueryData(salesKeys.lists());
+
+            queryClient.setQueryData(salesKeys.lists(), (old) => {
+                return old?.filter((sale) => sale.sale_id !== saleId);
+            });
+
+            return { previousSales };
+        },
+        onError: (err, saleId, context) => {
+            queryClient.setQueryData(salesKeys.lists(), context.previousSales);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         },

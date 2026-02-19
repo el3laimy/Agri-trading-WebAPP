@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-
-// Import CSS animations
-import '../styles/dashboardAnimations.css';
+import { useAuth } from '../context/AuthContext';
+import '../styles/liquidglass.css';
 
 function Sidebar() {
     const location = useLocation();
+    const { logout } = useAuth();
     const [openMenus, setOpenMenus] = useState({
         reports: location.pathname.includes('report') || location.pathname.includes('ledger') || location.pathname.includes('balance') || location.pathname.includes('income') || location.pathname.includes('cash-flow') || location.pathname.includes('debtors'),
         settings: location.pathname.includes('crops') || location.pathname.includes('contacts') || location.pathname.includes('seasons') || location.pathname.includes('financial-accounts') || location.pathname.includes('users')
@@ -131,11 +131,9 @@ function Sidebar() {
     // ==================== العرض ====================
 
     return (
-        <div className="h-screen fixed right-0 top-0 overflow-hidden z-50 flex flex-col w-64">
-            {/* Background with Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#1A4D2E] via-[#164028] to-[#0F2F1D]" />
-
-            {/* Decorative Elements */}
+        <div className="h-full w-full flex flex-col relative overflow-hidden lg-sidebar" style={{ background: 'linear-gradient(180deg, rgba(26,77,46,0.92) 0%, rgba(22,64,40,0.95) 50%, rgba(15,47,29,0.98) 100%)' }}>
+            {/* Background with Gradient - Removed absolute bg div as it is now on parent */
+    /* Decorative Elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-emerald-500/10 blur-3xl" />
                 <div className="absolute top-1/3 -left-10 w-32 h-32 rounded-full bg-teal-500/10 blur-3xl" />
@@ -146,7 +144,7 @@ function Sidebar() {
             <div className="relative flex flex-col h-full">
                 {/* Logo */}
                 <div className="p-4">
-                    <a href="/" className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-sm hover:bg-white/15 transition-all duration-200 no-underline text-white group">
+                    <a href="/" className="flex items-center gap-3 p-3 rounded-2xl transition-all duration-200 no-underline text-white group" style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}>
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                             <i className="bi bi-flower1 text-2xl text-white" />
                         </div>
@@ -158,7 +156,7 @@ function Sidebar() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto px-3 pb-4 custom-scrollbar">
+                <nav className="flex-1 overflow-y-auto px-3 pb-4 lg-scrollbar">
                     {/* العمليات الرئيسية */}
                     <SectionLabel>العمليات الرئيسية</SectionLabel>
                     <div className="space-y-1">
@@ -193,10 +191,11 @@ function Sidebar() {
                 </nav>
 
                 {/* Footer Actions */}
-                <div className="p-3 border-t border-white/10 bg-black/10 backdrop-blur-sm">
+                <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.12)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
                     <button
-                        onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all duration-200 text-sm font-medium"
+                        onClick={() => logout()}
+                        className="lg-btn w-full flex items-center justify-center gap-2 py-2.5 text-white/80 hover:text-white text-sm font-medium"
+                        style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--lg-radius-sm)', border: '1px solid rgba(255,255,255,0.06)' }}
                     >
                         <i className="bi bi-box-arrow-right" />
                         تسجيل الخروج
@@ -209,24 +208,9 @@ function Sidebar() {
                 </div>
             </div>
 
-            {/* Custom Scrollbar Styles */}
-            <style>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 2px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255,255,255,0.2);
-                }
-            `}</style>
+
         </div>
     );
 }
 
-export default Sidebar;
+export default React.memo(Sidebar);

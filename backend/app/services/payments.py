@@ -1,9 +1,16 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+from decimal import Decimal
 
 from app import models, schemas, crud
 
 def create_payment(db: Session, payment: schemas.PaymentCreate, user_id: int = None):
+    """
+    إنشاء دفعة مالية مع قيود محاسبية متوازنة.
+    يستخدم AccountingEngine لضمان التوازن والدقة.
+    """
+    from app.services.accounting_engine import get_engine, LedgerEntry
+    
     # 1. Create the payment record
     payment_data = payment.model_dump()
     payment_data['created_by'] = user_id
@@ -31,47 +38,28 @@ def create_payment(db: Session, payment: schemas.PaymentCreate, user_id: int = N
         else:
             transaction.payment_status = 'PARTIAL'
     elif payment.transaction_type == 'GENERAL':
-        # No specific transaction to update for GENERAL payments
         pass
     else:
         raise HTTPException(status_code=400, detail="نوع العملية غير صالح")
 
-    # 3. Create General Ledger entries
-    # Debit the asset account (Cash/Bank)
-    
-    # Translate Transaction Type for description
+    # 3. Create balanced GL entries using AccountingEngine
     trans_type_ar = "شراء" if payment.transaction_type == 'PURCHASE' else "بيع" if payment.transaction_type == 'SALE' else "عام"
+    description = f"دفعة عن عملية {trans_type_ar} #{payment.transaction_id}"
+    amount = Decimal(str(payment.amount))
     
-    debit_entry = models.GeneralLedger(
+    engine = get_engine(db)
+    engine.create_balanced_entry(
+        entries=[
+            LedgerEntry(account_id=payment.debit_account_id, debit=amount, credit=Decimal(0), description=description),
+            LedgerEntry(account_id=payment.credit_account_id, debit=Decimal(0), credit=amount, description=description),
+        ],
         entry_date=payment.payment_date,
-        account_id=payment.debit_account_id,
-        debit=payment.amount,
-        credit=0,
-        description=f"دفعة عن عملية {trans_type_ar} #{payment.transaction_id}",
         source_type='PAYMENT',
         source_id=db_payment.payment_id,
         created_by=user_id
     )
-    db.add(debit_entry)
 
-    # Credit the liability/receivable account
-    credit_entry = models.GeneralLedger(
-        entry_date=payment.payment_date,
-        account_id=payment.credit_account_id,
-        debit=0,
-        credit=payment.amount,
-        description=f"دفعة عن عملية {trans_type_ar} #{payment.transaction_id}",
-        source_type='PAYMENT',
-        source_id=db_payment.payment_id,
-        created_by=user_id
-    )
-    db.add(credit_entry)
-
-    # 4. Update account balances
-    # 4. Update account balances
-    crud.update_balance_by_nature(db, payment.debit_account_id, payment.amount, 'debit')
-    crud.update_balance_by_nature(db, payment.credit_account_id, payment.amount, 'credit')
-
-    db.commit()
+    db.flush()  # Caller manages transaction - allows rollback on error
     db.refresh(db_payment)
     return db_payment
+

@@ -61,7 +61,22 @@ export const useUpdatePurchase = () => {
 
     return useMutation({
         mutationFn: ({ purchaseId, data }) => updatePurchase(purchaseId, data),
-        onSuccess: () => {
+        onMutate: async ({ purchaseId, data }) => {
+            await queryClient.cancelQueries({ queryKey: purchasesKeys.lists() });
+            const previousPurchases = queryClient.getQueryData(purchasesKeys.lists());
+
+            queryClient.setQueryData(purchasesKeys.lists(), (old) => {
+                return old?.map((purchase) =>
+                    purchase.purchase_id === purchaseId ? { ...purchase, ...data } : purchase
+                );
+            });
+
+            return { previousPurchases };
+        },
+        onError: (err, newPurchase, context) => {
+            queryClient.setQueryData(purchasesKeys.lists(), context.previousPurchases);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: purchasesKeys.lists() });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             queryClient.invalidateQueries({ queryKey: ['inventory'] });
@@ -77,7 +92,20 @@ export const useDeletePurchase = () => {
 
     return useMutation({
         mutationFn: deletePurchase,
-        onSuccess: () => {
+        onMutate: async (purchaseId) => {
+            await queryClient.cancelQueries({ queryKey: purchasesKeys.lists() });
+            const previousPurchases = queryClient.getQueryData(purchasesKeys.lists());
+
+            queryClient.setQueryData(purchasesKeys.lists(), (old) => {
+                return old?.filter((purchase) => purchase.purchase_id !== purchaseId);
+            });
+
+            return { previousPurchases };
+        },
+        onError: (err, purchaseId, context) => {
+            queryClient.setQueryData(purchasesKeys.lists(), context.previousPurchases);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: purchasesKeys.lists() });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
             queryClient.invalidateQueries({ queryKey: ['inventory'] });

@@ -132,81 +132,72 @@ def get_treasury_transactions(db: Session, target_date: date = None, limit: int 
 def create_cash_receipt(db: Session, receipt: schemas.CashReceiptCreate, user_id: int = None) -> dict:
     """
     إنشاء إيصال قبض نقدي
-    القيد: من حـ/ النقدية إلى حـ/ الذمم المدينة (أو إيراد عام)
+    القيد: من حـ/ النقدية إلى حـ/ الذمم المدينة (أو إيراد المبيعات)
     
-    التحسين: إنشاء سجل Payment ليظهر في كشف حساب العميل
+    يستخدم AccountingEngine لضمان توازن القيد دائماً.
     """
     from decimal import Decimal
+    from fastapi import HTTPException
     from app.services.accounting_engine import get_engine, LedgerEntry
     
-    # Get Account IDs
-    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
-    accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
+    try:
+        # Get Account IDs
+        cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+        accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
 
-    # 1. إنشاء سجل Payment إذا كان هناك عميل محدد
-    payment_id = None
-    if receipt.contact_id:
-        db_payment = models.Payment(
-            payment_date=receipt.receipt_date,
-            amount=receipt.amount,
-            contact_id=receipt.contact_id,
-            payment_method='CASH',
-            notes=receipt.description,
-            credit_account_id=accounts_receivable_id,
-            debit_account_id=cash_id,
-            transaction_type='GENERAL',
-            transaction_id=None,
-            created_by=user_id
-        )
-        db.add(db_payment)
-        db.flush()
-        payment_id = db_payment.payment_id
-    
-    # 2. Create balanced entries using AccountingEngine
-    engine = get_engine(db)
-    amount = Decimal(str(receipt.amount))
-    
-    entries = [
-        LedgerEntry(account_id=cash_id, debit=amount, credit=Decimal(0), description=receipt.description)
-    ]
-    if receipt.contact_id:
-        entries.append(
-            LedgerEntry(account_id=accounts_receivable_id, debit=Decimal(0), credit=amount, description=receipt.description)
-        )
-    
-    # Only create entry if we have both sides
-    if len(entries) == 2:
+        # 1. إنشاء سجل Payment إذا كان هناك عميل محدد
+        payment_id = None
+        if receipt.contact_id:
+            db_payment = models.Payment(
+                payment_date=receipt.receipt_date,
+                amount=receipt.amount,
+                contact_id=receipt.contact_id,
+                payment_method='CASH',
+                notes=receipt.description,
+                credit_account_id=accounts_receivable_id,
+                debit_account_id=cash_id,
+                transaction_type='GENERAL',
+                transaction_id=None,
+                created_by=user_id
+            )
+            db.add(db_payment)
+            db.flush()
+            payment_id = db_payment.payment_id
+        
+        # 2. إنشاء قيد متوازن بمحرك المحاسبة
+        engine = get_engine(db)
+        amount = Decimal(str(receipt.amount))
+        
+        # تحديد الحساب الدائن:
+        # - إذا وُجد عميل: حـ/ الذمم المدينة
+        # - إذا لم يوجد: حـ/ إيرادات المبيعات (قبض عام)
+        if receipt.contact_id:
+            credit_account_id = accounts_receivable_id
+        else:
+            credit_account_id = int(get_setting(db, "SALES_REVENUE_ACCOUNT_ID"))
+        
         engine.create_balanced_entry(
-            entries=entries,
+            entries=[
+                LedgerEntry(account_id=cash_id, debit=amount, credit=Decimal(0), description=receipt.description),
+                LedgerEntry(account_id=credit_account_id, debit=Decimal(0), credit=amount, description=receipt.description),
+            ],
             entry_date=receipt.receipt_date,
             source_type="CASH_RECEIPT",
             source_id=payment_id or 0,
             created_by=user_id
         )
-    else:
-        # Single sided entry (no contact) - just cash increase
-        # This is a special case, we still need to add cash entry
-        cash_entry = models.GeneralLedger(
-            entry_date=receipt.receipt_date,
-            account_id=cash_id,
-            debit=amount,
-            credit=Decimal(0),
-            description=receipt.description,
-            source_type="CASH_RECEIPT",
-            source_id=payment_id or 0,
-            created_by=user_id
-        )
-        db.add(cash_entry)
-        engine._update_account_balance(cash_id, amount, Decimal(0))
-    
-    db.commit()
-    
-    return {
-        "success": True,
-        "message": f"تم تسجيل قبض نقدي بمبلغ {receipt.amount}",
-        "voucher_id": 0,
-        "payment_id": payment_id
-    }
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"تم تسجيل قبض نقدي بمبلغ {receipt.amount}",
+            "voucher_id": 0,
+            "payment_id": payment_id
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"خطأ أثناء تسجيل القبض النقدي: {e}")
 
 
 def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate, user_id: int = None) -> dict:
@@ -214,146 +205,138 @@ def create_cash_payment(db: Session, payment: schemas.CashPaymentCreate, user_id
     إنشاء إيصال صرف نقدي
     القيد: من حـ/ الذمم الدائنة (أو مصروف عام) إلى حـ/ النقدية
     
-    التحسين: إنشاء سجل Payment ليظهر في كشف حساب المورد
+    يستخدم AccountingEngine لضمان توازن القيد دائماً.
     """
-    # Get Account IDs
-    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
-    accounts_payable_id = int(get_setting(db, "ACCOUNTS_PAYABLE_ID"))
+    from decimal import Decimal
+    from fastapi import HTTPException
+    from app.services.accounting_engine import get_engine, LedgerEntry
+    
+    try:
+        # Get Account IDs
+        cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+        accounts_payable_id = int(get_setting(db, "ACCOUNTS_PAYABLE_ID"))
 
-    # 1. إنشاء سجل Payment إذا كان هناك مورد محدد
-    payment_id = None
-    if payment.contact_id:
-        db_payment = models.Payment(
-            payment_date=payment.payment_date,
-            amount=payment.amount,
-            contact_id=payment.contact_id,
-            payment_method='CASH',
-            notes=payment.description,
-            credit_account_id=cash_id,
-            debit_account_id=accounts_payable_id,
-            transaction_type='GENERAL',  # صرف عام على الحساب
-            transaction_id=None,  # ليس مربوط بفاتورة محددة
-            created_by=user_id
-        )
-        db.add(db_payment)
-        db.flush()  # للحصول على payment_id
-        payment_id = db_payment.payment_id
-    
-    # 2. قيد النقدية (دائن - خروج)
-    cash_entry = models.GeneralLedger(
-        entry_date=payment.payment_date,
-        account_id=cash_id,
-        debit=0.0,
-        credit=payment.amount,
-        description=payment.description,
-        source_type="CASH_PAYMENT",
-        source_id=payment_id or 0,
-        created_by=user_id
-    )
-    db.add(cash_entry)
-    
-    # 3. قيد الذمم الدائنة (مدين - تخفيض دين للمورد)
-    if payment.contact_id:
-        payable_entry = models.GeneralLedger(
+        # 1. إنشاء سجل Payment إذا كان هناك مورد محدد
+        payment_id = None
+        if payment.contact_id:
+            db_payment = models.Payment(
+                payment_date=payment.payment_date,
+                amount=payment.amount,
+                contact_id=payment.contact_id,
+                payment_method='CASH',
+                notes=payment.description,
+                credit_account_id=cash_id,
+                debit_account_id=accounts_payable_id,
+                transaction_type='GENERAL',
+                transaction_id=None,
+                created_by=user_id
+            )
+            db.add(db_payment)
+            db.flush()
+            payment_id = db_payment.payment_id
+        
+        # 2. إنشاء قيد متوازن بمحرك المحاسبة
+        engine = get_engine(db)
+        amount = Decimal(str(payment.amount))
+        
+        # تحديد الحساب المدين:
+        # - إذا وُجد مورد: حـ/ الذمم الدائنة
+        # - إذا لم يوجد: حـ/ المصروفات العمومية (صرف عام)
+        if payment.contact_id:
+            debit_account_id = accounts_payable_id
+        else:
+            debit_account_id = int(get_setting(db, "GENERAL_EXPENSES_ACCOUNT_ID"))
+        
+        engine.create_balanced_entry(
+            entries=[
+                LedgerEntry(account_id=debit_account_id, debit=amount, credit=Decimal(0), description=payment.description),
+                LedgerEntry(account_id=cash_id, debit=Decimal(0), credit=amount, description=payment.description),
+            ],
             entry_date=payment.payment_date,
-            account_id=accounts_payable_id,
-            debit=payment.amount,
-            credit=0.0,
-            description=payment.description,
             source_type="CASH_PAYMENT",
             source_id=payment_id or 0,
             created_by=user_id
         )
-        db.add(payable_entry)
-        crud.update_account_balance(db, accounts_payable_id, -payment.amount)
-    
-    # 4. تحديث رصيد الحساب النقدي
-    crud.update_account_balance(db, cash_id, -payment.amount)
-    
-    db.commit()
-    
-    return {
-        "success": True,
-        "message": f"تم تسجيل صرف نقدي بمبلغ {payment.amount}",
-        "voucher_id": cash_entry.entry_id,
-        "payment_id": payment_id
-    }
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"تم تسجيل صرف نقدي بمبلغ {payment.amount}",
+            "voucher_id": 0,
+            "payment_id": payment_id
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"خطأ أثناء تسجيل الصرف النقدي: {e}")
 
 
 def create_quick_expense(db: Session, expense: schemas.QuickExpenseCreate, user_id: int = None) -> dict:
     """
     تسجيل مصروف سريع من الخزينة
     القيد: من حـ/ المصروفات إلى حـ/ النقدية
+    
+    يستخدم AccountingEngine لضمان توازن القيد دائماً.
     """
-    # إنشاء حساب مصروفات عام إذا لم يكن موجوداً
-    expense_account_id = 50103  # مصروفات عمومية
+    from decimal import Decimal
+    from fastapi import HTTPException
+    from app.services.accounting_engine import get_engine, LedgerEntry
     
-    # التحقق من وجود الحساب
-    expense_account = crud.get_financial_account(db, expense_account_id)
-    if not expense_account:
-        # إنشاء حساب المصروفات
-        expense_account = models.FinancialAccount(
-            account_id=expense_account_id,
-            account_name="مصروفات عمومية",
-            account_type="EXPENSE",
-            current_balance=0.0
-        )
-        db.add(expense_account)
-        db.commit()
-    
-    cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+    try:
+        # قراءة حساب المصروفات من الإعدادات (بدلاً من قيمة ثابتة)
+        expense_account_id = int(get_setting(db, "GENERAL_EXPENSES_ACCOUNT_ID"))
+        cash_id = int(get_setting(db, "CASH_ACCOUNT_ID"))
+        
+        # التحقق من وجود الحساب
+        expense_account = crud.get_financial_account(db, expense_account_id)
+        if not expense_account:
+            expense_account = models.FinancialAccount(
+                account_id=expense_account_id,
+                account_name="مصروفات عمومية",
+                account_type="EXPENSE",
+                current_balance=Decimal(0)
+            )
+            db.add(expense_account)
+            db.flush()
 
-    # 1. إنشاء سجل المصروفات (Expense Model)
-    # لضمان ظهوره في تقارير المصروفات
-    db_expense = models.Expense(
-        expense_date=expense.expense_date,
-        description=expense.description,
-        amount=expense.amount,
-        debit_account_id=expense_account_id,
-        credit_account_id=cash_id,
-        created_by=user_id
-    )
-    db.add(db_expense)
-    db.flush() # للحصول على expense_id
-    
-    # قيد المصروفات (مدين)
-    expense_entry = models.GeneralLedger(
-        entry_date=expense.expense_date,
-        account_id=expense_account_id,
-        debit=expense.amount,
-        credit=0.0,
-        description=expense.description,
-        source_type="QUICK_EXPENSE",
-        source_id=db_expense.expense_id,
-        created_by=user_id
-    )
-    db.add(expense_entry)
-    
-    # قيد النقدية (دائن - خروج)
-    cash_entry = models.GeneralLedger(
-        entry_date=expense.expense_date,
-        account_id=cash_id,
-        debit=0.0,
-        credit=expense.amount,
-        description=expense.description,
-        source_type="QUICK_EXPENSE",
-        source_id=db_expense.expense_id,
-        created_by=user_id
-    )
-    db.add(cash_entry)
-    
-    # تحديث الأرصدة
-    crud.update_account_balance(db, expense_account_id, expense.amount)
-    crud.update_account_balance(db, cash_id, -expense.amount)
-    
-    db.commit()
-    
-    return {
-        "success": True,
-        "message": f"تم تسجيل مصروف بمبلغ {expense.amount}",
-        "voucher_id": cash_entry.entry_id,
-        "expense_id": db_expense.expense_id
-    }
+        # 1. إنشاء سجل المصروفات (Expense Model)
+        db_expense = models.Expense(
+            expense_date=expense.expense_date,
+            description=expense.description,
+            amount=expense.amount,
+            debit_account_id=expense_account_id,
+            credit_account_id=cash_id,
+            created_by=user_id
+        )
+        db.add(db_expense)
+        db.flush()
+        
+        # 2. إنشاء قيد متوازن بمحرك المحاسبة
+        engine = get_engine(db)
+        amount = Decimal(str(expense.amount))
+        
+        engine.create_balanced_entry(
+            entries=[
+                LedgerEntry(account_id=expense_account_id, debit=amount, credit=Decimal(0), description=expense.description),
+                LedgerEntry(account_id=cash_id, debit=Decimal(0), credit=amount, description=expense.description),
+            ],
+            entry_date=expense.expense_date,
+            source_type="QUICK_EXPENSE",
+            source_id=db_expense.expense_id,
+            created_by=user_id
+        )
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"تم تسجيل مصروف بمبلغ {expense.amount}",
+            "voucher_id": 0,
+            "expense_id": db_expense.expense_id
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"خطأ أثناء تسجيل المصروف: {e}")
 
 
 def delete_transaction(db: Session, transaction_id: int):
@@ -364,54 +347,55 @@ def delete_transaction(db: Session, transaction_id: int):
     3. عكس التأثير المالي على الأرصدة
     4. حذف القيود والسجل الأصلي
     """
-    # 1. البحث عن القيد الرئيسي
-    gl_entry = db.query(models.GeneralLedger).filter(models.GeneralLedger.entry_id == transaction_id).first()
-    if not gl_entry:
-        raise ValueError("المعاملة غير موجودة")
-
-    source_type = gl_entry.source_type
-    source_id = gl_entry.source_id
-
-    # 2. البحث عن جميع القيود المرتبطة بهذه المعاملة
-    related_entries = db.query(models.GeneralLedger).filter(
-        models.GeneralLedger.source_type == source_type,
-        models.GeneralLedger.source_id == source_id
-    ).all()
-
-    # 3. عكس التأثير المالي وتحديث الأرصدة
-    for entry in related_entries:
-        account = db.query(models.FinancialAccount).get(entry.account_id)
-        if not account:
-            continue
-
-        # تحديد طبيعة الحساب لحساب التغير في الرصيد
-        # الأصول والمصروفات: الرصيد = مدين - دائن
-        # الخصوم والإيرادات وحقوق الملكية: الرصيد = دائن - مدين
-        is_normal_debit = account.account_type in ['ASSET', 'CASH', 'EXPENSE', 'RECEIVABLE']
-        
-        # التغير الذي أحدثه القيد في الرصيد
-        if is_normal_debit:
-            balance_change = entry.debit - entry.credit
-        else:
-            balance_change = entry.credit - entry.debit
-            
-        # لعكس التأثير، نطرح التغيير (نضيف السالب)
-        crud.update_account_balance(db, account.account_id, -balance_change)
-
-    # 4. حذف السجلات
-    # حذف السجل الأصلي (Payment / Expense)
-    if source_type in ['CASH_RECEIPT', 'CASH_PAYMENT']:
-        db.query(models.Payment).filter(models.Payment.payment_id == source_id).delete()
-    elif source_type == 'QUICK_EXPENSE':
-        db.query(models.Expense).filter(models.Expense.expense_id == source_id).delete()
+    from fastapi import HTTPException
     
-    # حذف قيود اليومية
-    for entry in related_entries:
-        db.delete(entry)
-        
+    try:
+        # 1. البحث عن القيد الرئيسي
+        gl_entry = db.query(models.GeneralLedger).filter(models.GeneralLedger.entry_id == transaction_id).first()
+        if not gl_entry:
+            raise HTTPException(status_code=404, detail="المعاملة غير موجودة")
 
-    db.commit()
-    return {"success": True, "message": "تم حذف المعاملة بنجاح"}
+        source_type = gl_entry.source_type
+        source_id = gl_entry.source_id
+
+        # 2. البحث عن جميع القيود المرتبطة بهذه المعاملة
+        related_entries = db.query(models.GeneralLedger).filter(
+            models.GeneralLedger.source_type == source_type,
+            models.GeneralLedger.source_id == source_id
+        ).all()
+
+        # 3. عكس التأثير المالي عبر المحرك المحاسبي
+        from decimal import Decimal
+        from app.services.accounting_engine import get_engine
+        engine = get_engine(db)
+        
+        for entry in related_entries:
+            engine._update_account_balance(
+                entry.account_id,
+                Decimal(str(entry.credit)),  # عكس: الدائن يصبح مدين
+                Decimal(str(entry.debit))    # عكس: المدين يصبح دائن
+            )
+
+        # 4. حذف السجلات
+        # حذف السجل الأصلي (Payment / Expense)
+        if source_type in ['CASH_RECEIPT', 'CASH_PAYMENT']:
+            db.query(models.Payment).filter(models.Payment.payment_id == source_id).delete()
+        elif source_type == 'QUICK_EXPENSE':
+            db.query(models.Expense).filter(models.Expense.expense_id == source_id).delete()
+        
+        # حذف قيود اليومية
+        for entry in related_entries:
+            db.delete(entry)
+
+        db.commit()
+        return {"success": True, "message": "تم حذف المعاملة بنجاح"}
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"خطأ أثناء حذف المعاملة: {e}")
+
 
 def update_transaction(db: Session, transaction_id: int, data: dict, transaction_type: str):
     """

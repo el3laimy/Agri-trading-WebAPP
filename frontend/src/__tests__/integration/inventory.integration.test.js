@@ -5,7 +5,8 @@
  * هذه الاختبارات تتطلب تشغيل Backend
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
+vi.unmock('axios'); // Use real axios/backend for integration
 import axios from 'axios';
 
 const API_BASE = 'http://localhost:8000/api/v1';
@@ -69,12 +70,12 @@ describe.skipIf(!await checkBackend())('Inventory Integration Tests', () => {
     });
 
     // =========================================================================
-    // DataContext → Component Integration
+    // Component Data Integration
     // =========================================================================
-    describe('DataContext → Component Field Mapping', () => {
+    describe('Component Field Mapping', () => {
 
         test('Component should use current_stock_kg for display', async () => {
-            // Simulate what DataContext fetches
+            // Simulate what the API returns directly
             const response = await axios.get(`${API_BASE}/inventory/`);
             const inventoryData = response.data;
 

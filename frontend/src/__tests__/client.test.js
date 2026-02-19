@@ -79,7 +79,7 @@ describe('API Client Interceptors', () => {
 
         const result = requestInterceptor(config);
 
-        expect(result.headers['X-Session-Token']).toBe('test-token');
+        expect(result.headers['Authorization']).toBe('Bearer test-token');
     });
 
     test('Request Interceptor should do nothing if no token', () => {
@@ -88,7 +88,7 @@ describe('API Client Interceptors', () => {
 
         const result = requestInterceptor(config);
 
-        expect(result.headers['X-Session-Token']).toBeUndefined();
+        expect(result.headers['Authorization']).toBeUndefined();
     });
 
     test('Request Error Interceptor should reject', async () => {
@@ -97,24 +97,29 @@ describe('API Client Interceptors', () => {
     });
 
     test('Response Interceptor should return response', () => {
-        const response = { data: 'ok' };
+        const response = {
+            data: 'ok',
+            config: { metadata: { startTime: new Date() } }
+        };
         expect(responseInterceptor(response)).toBe(response);
     });
 
     test('Response Error Interceptor should handle 401', async () => {
         const error = {
-            response: { status: 401 }
+            response: { status: 401, config: { url: '/api/data' } }
         };
+
+        const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
         try {
             await responseErrorInterceptor(error);
         } catch (e) {
-            // It rejects, but we check side effects
+            // It rejects
         }
 
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('session_token');
-        expect(localStorageMock.removeItem).toHaveBeenCalledWith('user');
-        expect(window.location.href).toBe('/login');
+        expect(dispatchSpy).toHaveBeenCalledWith(expect.any(Event));
+        // Verify event type
+        expect(dispatchSpy.mock.calls[0][0].type).toBe('auth:unauthorized');
     });
 
     test('Response Error Interceptor should handle 403', async () => {

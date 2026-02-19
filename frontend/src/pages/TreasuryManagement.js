@@ -12,7 +12,7 @@ import {
 } from '../api/treasury';
 import { getContacts } from '../api/contacts';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/common';
+import { useToast, ConfirmationModal } from '../components/common';
 
 // Import treasury components
 import TreasuryKPICards from '../components/treasury/TreasuryKPICards';
@@ -23,9 +23,12 @@ import QuickExpenseModal from '../components/treasury/QuickExpenseModal';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
+import { TreasurySkeleton } from '../components/common';
+import { handleApiError } from '../utils';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function TreasuryManagement() {
     const { hasPermission } = useAuth();
@@ -45,12 +48,17 @@ function TreasuryManagement() {
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
+    // Delete confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingTransaction, setDeletingTransaction] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // Form Data State
     const [formData, setFormData] = useState({});
 
     // Format currency
     const formatCurrency = (value) => {
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP',
             minimumFractionDigits: 0
@@ -159,25 +167,40 @@ function TreasuryManagement() {
             fetchData();
         } catch (err) {
             console.error('Operation failed:', err);
-            showError('فشل في تنفيذ العملية: ' + (err.response?.data?.detail || err.message));
+            showError(handleApiError(err, 'treasury_create'));
         } finally {
             setSubmitting(false);
         }
     };
 
-    // Handle Delete
-    const handleDelete = async (transaction) => {
-        if (!window.confirm(`هل أنت متأكد من حذف هذه العملية؟`)) {
-            return;
-        }
+    // Handle Delete - opens confirmation modal
+    const handleDelete = (transaction) => {
+        setDeletingTransaction(transaction);
+        setShowDeleteConfirm(true);
+    };
+
+    // Confirm delete
+    const confirmDelete = async () => {
+        if (!deletingTransaction) return;
+        setIsDeleting(true);
         try {
-            await deleteTransaction(transaction.transaction_id);
+            await deleteTransaction(deletingTransaction.transaction_id);
             showSuccess('تم حذف العملية بنجاح');
+            setShowDeleteConfirm(false);
+            setDeletingTransaction(null);
             fetchData();
         } catch (err) {
             console.error('Failed to delete transaction:', err);
-            showError('فشل في حذف العملية');
+            showError(handleApiError(err, 'treasury_delete'));
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    // Cancel delete
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false);
+        setDeletingTransaction(null);
     };
 
     // Filter transactions
@@ -229,20 +252,24 @@ function TreasuryManagement() {
 
     // Loading state
     if (isLoading && !summary) { // Only show full loader on initial load
-        return (
-            <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
-                    <div className="h-40 bg-gradient-to-br from-amber-200 to-yellow-200 dark:from-amber-800/30 dark:to-yellow-800/30" />
-                </div>
-                <div className="neumorphic p-6">
-                    <LoadingCard rows={6} />
-                </div>
-            </div>
-        );
+        return <TreasurySkeleton />;
     }
 
     return (
         <div className="p-6 max-w-full mx-auto">
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                title="تأكيد حذف العملية"
+                message="هل أنت متأكد من حذف هذه العملية؟ لا يمكن التراجع عن هذا الإجراء."
+                confirmText="حذف"
+                cancelText="إلغاء"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
             {/* Modals */}
             <CashReceiptModal
                 show={activeModal === 'receipt'}
@@ -315,10 +342,17 @@ function TreasuryManagement() {
                     {stats.map((stat, index) => (
                         <div
                             key={index}
-                            className={`glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-${index + 1}`}
+                            className={`px-4 py-3 rounded-xl text-white lg-animate-in`}
+                            style={{
+                                background: 'rgba(255,255,255,0.12)',
+                                backdropFilter: 'blur(16px)',
+                                WebkitBackdropFilter: 'blur(16px)',
+                                border: '1px solid rgba(255,255,255,0.18)',
+                                animationDelay: `${index * 100}ms`
+                            }}
                         >
                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center animate-float`}>
+                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center lg-animate-float`}>
                                     <i className={`bi ${stat.icon} text-lg`} />
                                 </div>
                                 <div>
@@ -333,7 +367,7 @@ function TreasuryManagement() {
 
             {/* Error Alert */}
             {error && (
-                <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 animate-fade-in">
+                <div className="mb-6 p-4 rounded-xl border-2 border-red-200 dark:border-red-800 lg-animate-fade" style={{ background: 'var(--lg-glass-bg)' }}>
                     <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
                             <i className="bi bi-exclamation-triangle-fill text-red-500" />
@@ -396,27 +430,27 @@ function TreasuryManagement() {
             </div>
 
             {/* Transactions Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-amber-500" />
                         سجل العمليات
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(245,158,11,0.15)', color: 'rgb(217,119,6)' }}>
                             {filteredTransactions.length}
                         </span>
                     </h5>
-                    <button onClick={fetchData} className="text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors" title="تحديث البيانات">
+                    <button onClick={fetchData} className="lg-btn lg-btn-ghost" title="تحديث البيانات">
                         <i className="bi bi-arrow-clockwise text-lg" />
                     </button>
                 </div>
                 <div>
                     {filteredTransactions.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-inbox text-5xl text-amber-400 dark:text-amber-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-inbox text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد عمليات</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">لا توجد عمليات مسجلة لهذا التاريخ</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد عمليات</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>لا توجد عمليات مسجلة لهذا التاريخ</p>
                         </div>
                     ) : (
                         <TransactionsTable

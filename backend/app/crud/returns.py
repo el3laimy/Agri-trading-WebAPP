@@ -4,7 +4,6 @@ Sale and Purchase Returns CRUD Operations
 from sqlalchemy.orm import Session, joinedload
 from app import models, schemas
 from app.core.settings import get_setting
-from .finance import update_account_balance
 from .inventory import get_or_create_inventory
 
 
@@ -12,7 +11,15 @@ def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> mo
     """
     إنشاء مرتجع مبيعات مع القيود المحاسبية
     القيد: من حـ/ إيرادات المبيعات إلى حـ/ الذمم المدينة
+    
+    يستخدم AccountingEngine لضمان التوازن والدقة.
+    FIFO: ينشئ دفعة جديدة بالتكلفة الأصلية (COGS)
     """
+    from decimal import Decimal
+    from datetime import date as date_type
+    from app.services.inventory import add_stock_batch
+    from app.services.accounting_engine import get_engine, LedgerEntry
+    
     # 1. Get the original sale
     sale = db.query(models.Sale).filter(models.Sale.sale_id == sale_return.sale_id).first()
     if not sale:
@@ -29,44 +36,50 @@ def create_sale_return(db: Session, sale_return: schemas.SaleReturnCreate) -> mo
     db.add(db_sale_return)
     db.flush()
     
-    # 4. Update inventory - add back the returned quantity
-    inventory = get_or_create_inventory(db, sale.crop_id)
-    inventory.current_stock_kg += sale_return.quantity_kg
-    db.add(inventory)
+    # 4. حساب التكلفة الأصلية (COGS) للكمية المباعة
+    # البحث بـ source_type بدلاً من الوصف النصي
+    cogs_entry = db.query(models.GeneralLedger).filter(
+        models.GeneralLedger.source_type == 'SALE_COGS',
+        models.GeneralLedger.source_id == sale.sale_id,
+        models.GeneralLedger.debit > 0
+    ).first()
     
-    # 5. إضافة القيود المحاسبية - عكس قيد البيع
+    if cogs_entry and sale.quantity_sold_kg > 0:
+        original_cost_per_kg = Decimal(str(cogs_entry.debit)) / Decimal(str(sale.quantity_sold_kg))
+    else:
+        inventory = db.query(models.Inventory).filter(
+            models.Inventory.crop_id == sale.crop_id
+        ).first()
+        original_cost_per_kg = inventory.average_cost_per_kg if inventory else Decimal(0)
+    
+    # 5. إنشاء دفعة جديدة بالتكلفة الأصلية (FIFO-compliant)
+    add_stock_batch(
+        db=db,
+        crop_id=sale.crop_id,
+        quantity_kg=Decimal(str(sale_return.quantity_kg)),
+        cost_per_kg=original_cost_per_kg,
+        purchase_date=sale_return.return_date,
+        notes=f"مرتجع مبيعات - فاتورة #{sale.sale_id}"
+    )
+    
+    # 6. إنشاء قيد متوازن بمحرك المحاسبة - عكس قيد البيع
     return_description = f"مرتجع مبيعات - فاتورة #{sale.sale_id}"
     
     sales_revenue_id = int(get_setting(db, "SALES_REVENUE_ACCOUNT_ID"))
     accounts_receivable_id = int(get_setting(db, "ACCOUNTS_RECEIVABLE_ID"))
 
-    # مدين: إيرادات المبيعات (تخفيض الإيراد)
-    debit_entry = models.GeneralLedger(
+    engine = get_engine(db)
+    refund_decimal = Decimal(str(refund_amount))
+    
+    engine.create_balanced_entry(
+        entries=[
+            LedgerEntry(account_id=sales_revenue_id, debit=refund_decimal, credit=Decimal(0), description=return_description),
+            LedgerEntry(account_id=accounts_receivable_id, debit=Decimal(0), credit=refund_decimal, description=return_description),
+        ],
         entry_date=sale_return.return_date,
-        account_id=sales_revenue_id,
-        debit=refund_amount,
-        credit=0.0,
-        description=return_description,
         source_type='SALE_RETURN',
         source_id=db_sale_return.return_id
     )
-    db.add(debit_entry)
-    
-    # دائن: الذمم المدينة (تخفيض دين العميل)
-    credit_entry = models.GeneralLedger(
-        entry_date=sale_return.return_date,
-        account_id=accounts_receivable_id,
-        debit=0.0,
-        credit=refund_amount,
-        description=return_description,
-        source_type='SALE_RETURN',
-        source_id=db_sale_return.return_id
-    )
-    db.add(credit_entry)
-    
-    # 6. تحديث أرصدة الحسابات
-    update_account_balance(db, sales_revenue_id, refund_amount)
-    update_account_balance(db, accounts_receivable_id, -refund_amount)
     
     # 7. تحديث إجمالي المبيعة الأصلية
     sale.total_sale_amount -= refund_amount
@@ -92,7 +105,13 @@ def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnC
     """
     إنشاء مرتجع مشتريات مع القيود المحاسبية
     القيد: من حـ/ الذمم الدائنة إلى حـ/ المخزون
+    
+    يستخدم AccountingEngine لضمان التوازن والدقة.
+    FIFO: يعدل الدفعة الأصلية المرتبطة بالشراء
     """
+    from decimal import Decimal
+    from app.services.accounting_engine import get_engine, LedgerEntry
+    
     # 1. Get the original purchase
     purchase = db.query(models.Purchase).filter(models.Purchase.purchase_id == purchase_return.purchase_id).first()
     if not purchase:
@@ -109,44 +128,64 @@ def create_purchase_return(db: Session, purchase_return: schemas.PurchaseReturnC
     db.add(db_purchase_return)
     db.flush()
     
-    # 4. Update inventory - subtract the returned quantity
+    # 4. تعديل الدفعة الأصلية المرتبطة بالشراء (FIFO-compliant)
+    from app.models import InventoryBatch
+    
+    batch = db.query(InventoryBatch).filter(
+        InventoryBatch.purchase_id == purchase.purchase_id,
+        InventoryBatch.is_active == True
+    ).first()
+    
+    return_qty = Decimal(str(purchase_return.quantity_kg))
+    
+    if batch:
+        batch.quantity_kg -= return_qty
+        
+        if batch.quantity_kg <= Decimal('0.0001'):
+            batch.is_active = False
+            batch.quantity_kg = Decimal(0)
+    
+    # 5. تحديث المخزون الإجمالي
     inventory = get_or_create_inventory(db, purchase.crop_id)
-    inventory.current_stock_kg -= purchase_return.quantity_kg
+    inventory.current_stock_kg -= return_qty
+    inventory.net_stock_kg -= return_qty
+    
+    if inventory.net_stock_kg > 0:
+        active_batches = db.query(InventoryBatch).filter(
+            InventoryBatch.crop_id == purchase.crop_id,
+            InventoryBatch.is_active == True,
+            InventoryBatch.quantity_kg > 0
+        ).all()
+        
+        total_value = sum(Decimal(str(b.quantity_kg)) * Decimal(str(b.cost_per_kg)) for b in active_batches)
+        total_qty = sum(Decimal(str(b.quantity_kg)) for b in active_batches)
+        
+        if total_qty > 0:
+            inventory.average_cost_per_kg = total_value / total_qty
+    elif inventory.net_stock_kg <= 0:
+        inventory.net_stock_kg = Decimal(0)
+        inventory.current_stock_kg = Decimal(0)
+    
     db.add(inventory)
     
-    # 5. إضافة القيود المحاسبية - عكس قيد الشراء
+    # 6. إنشاء قيد متوازن بمحرك المحاسبة - عكس قيد الشراء
     return_description = f"مرتجع مشتريات - فاتورة #{purchase.purchase_id}"
     
     accounts_payable_id = int(get_setting(db, "ACCOUNTS_PAYABLE_ID"))
     inventory_id = int(get_setting(db, "INVENTORY_ACCOUNT_ID"))
 
-    # مدين: الذمم الدائنة (تخفيض دينا للمورد)
-    debit_entry = models.GeneralLedger(
+    engine = get_engine(db)
+    returned_cost_decimal = Decimal(str(returned_cost))
+    
+    engine.create_balanced_entry(
+        entries=[
+            LedgerEntry(account_id=accounts_payable_id, debit=returned_cost_decimal, credit=Decimal(0), description=return_description),
+            LedgerEntry(account_id=inventory_id, debit=Decimal(0), credit=returned_cost_decimal, description=return_description),
+        ],
         entry_date=purchase_return.return_date,
-        account_id=accounts_payable_id,
-        debit=returned_cost,
-        credit=0.0,
-        description=return_description,
         source_type='PURCHASE_RETURN',
         source_id=db_purchase_return.return_id
     )
-    db.add(debit_entry)
-    
-    # دائن: المخزون (تخفيض قيمة المخزون)
-    credit_entry = models.GeneralLedger(
-        entry_date=purchase_return.return_date,
-        account_id=inventory_id,
-        debit=0.0,
-        credit=returned_cost,
-        description=return_description,
-        source_type='PURCHASE_RETURN',
-        source_id=db_purchase_return.return_id
-    )
-    db.add(credit_entry)
-    
-    # 6. تحديث أرصدة الحسابات
-    update_account_balance(db, accounts_payable_id, -returned_cost)
-    update_account_balance(db, inventory_id, -returned_cost)
     
     # 7. تحديث إجمالي المشتراة الأصلية
     purchase.total_cost -= returned_cost

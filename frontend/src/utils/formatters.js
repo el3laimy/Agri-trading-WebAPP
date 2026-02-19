@@ -108,3 +108,44 @@ export function truncateText(text, maxLength = 50) {
     if (!text || text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
 }
+
+/**
+ * Format a timestamp as relative time (e.g., "منذ 5 دقائق")
+ * @param {string|Date} timestamp - The timestamp to format
+ * @returns {string} Relative time string in Arabic
+ */
+export function formatRelativeTime(timestamp) {
+    if (!timestamp) return '';
+    const now = new Date();
+    const date = new Date(timestamp);
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'الآن';
+    if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
+    if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+    if (diffDays < 7) return `منذ ${diffDays} يوم`;
+    return formatDate(timestamp, { day: 'numeric', month: 'short' });
+}
+
+/**
+ * Format currency with optional compact mode for large numbers
+ * @param {number} amount - The amount to format
+ * @param {boolean} compact - Whether to use compact format (e.g., 1.5 م, 3.2 ك)
+ * @returns {string} Formatted currency string
+ */
+export function formatCurrencyCompact(amount, compact = false) {
+    if (compact && Math.abs(amount) >= 1000000) {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 1, maximumFractionDigits: 1
+        }).format(amount / 1000000) + ' م';
+    }
+    if (compact && Math.abs(amount) >= 1000) {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0, maximumFractionDigits: 0
+        }).format(amount / 1000) + ' ك';
+    }
+    return formatCurrency(amount);
+}

@@ -9,7 +9,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import * as purchasesApi from '../api/purchases';
 
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 describe('Purchases Destructive Security Tests', () => {
 

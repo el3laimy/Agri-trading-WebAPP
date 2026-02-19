@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '../context/DataContext';
+import { useCustomers, useCrops } from '../hooks/useQueries';
 
 // Pages configuration
 const pages = [
@@ -21,7 +21,10 @@ const GlobalSearch = () => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const searchInputRef = useRef(null);
     const navigate = useNavigate();
-    const { customers, crops } = useData();
+
+    // TanStack Query hooks
+    const { data: customers = [] } = useCustomers();
+    const { data: crops = [] } = useCrops();
 
     useEffect(() => {
         const handleKeyDown = (e) => {

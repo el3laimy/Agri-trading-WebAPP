@@ -13,7 +13,7 @@ export function TopCustomersWidget({ topCustomers, formatCurrency }) {
 
     return (
         <div className="mb-8">
-            <div className="neumorphic overflow-hidden animate-fade-in">
+            <div className="lg-card overflow-hidden lg-animate-fade">
                 <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center shadow-lg">

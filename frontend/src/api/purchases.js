@@ -35,6 +35,7 @@ export const createPurchase = async (purchaseData) => {
 };
 
 export const updatePurchase = async (purchaseId, purchaseData) => {
+    if (!purchaseId) throw new Error('Purchase ID is required');
     try {
         const validatedData = BasePurchaseSchema.partial().parse(purchaseData);
         const response = await apiClient.put(`${API_URL}${purchaseId}`, validatedData);
@@ -46,6 +47,7 @@ export const updatePurchase = async (purchaseId, purchaseData) => {
 };
 
 export const deletePurchase = async (purchaseId) => {
+    if (!purchaseId) throw new Error('Purchase ID is required');
     try {
         const response = await apiClient.delete(`${API_URL}${purchaseId}`);
         return response.data;

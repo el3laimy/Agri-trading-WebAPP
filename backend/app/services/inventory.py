@@ -76,7 +76,7 @@ def add_stock_batch(
     if new_total_net > 0:
         inventory.average_cost_per_kg = total_value / new_total_net
         
-    db.commit()
+    db.flush()  # Caller manages transaction - allows rollback on error
     db.refresh(batch)
     return batch
 
@@ -146,7 +146,7 @@ def consume_stock(db: Session, crop_id: int, quantity_kg: Decimal):
     # We will assume caller handles Gross/Bag update on Inventory model directly if needed, or we expand this function.
     # Let's expand it.
     
-    db.commit()
+    db.flush()  # Caller manages transaction - allows rollback on error
     return consumed_details
 
 def reduce_physical_stock(db: Session, crop_id: int, gross_qty: Decimal, bag_count: int):
@@ -157,4 +157,4 @@ def reduce_physical_stock(db: Session, crop_id: int, gross_qty: Decimal, bag_cou
     if inventory:
         inventory.gross_stock_kg -= gross_qty
         inventory.bag_count -= bag_count
-        db.commit()
+        db.flush()  # Caller manages transaction - allows rollback on error

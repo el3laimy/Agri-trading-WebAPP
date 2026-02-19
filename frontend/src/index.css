@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -171,7 +171,7 @@
 }
 
 body {
-  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-body);
@@ -253,8 +253,8 @@ p {
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-speed) ease;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .card:hover {
@@ -574,6 +574,31 @@ p {
   color: #0C5460;
 }
 
+/* Alert Dark Mode Overrides */
+[data-theme="dark"] .alert-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .alert-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FCD34D;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="dark"] .alert-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #FCA5A5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="dark"] .alert-info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93C5FD;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
 /* ===== Badge Styles ===== */
 .badge {
   padding: 0.5rem 0.875rem;
@@ -747,4 +772,56 @@ p {
 
 .shadow-hover:hover {
   box-shadow: var(--shadow-lg);
+}
+
+/* ===== DatePicker Dark Mode ===== */
+[data-theme="dark"] .react-datepicker {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+  font-family: 'Cairo', sans-serif;
+}
+
+[data-theme="dark"] .react-datepicker__header {
+  background-color: var(--surface-2);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .react-datepicker__current-month,
+[data-theme="dark"] .react-datepicker__day-name,
+[data-theme="dark"] .react-datepicker-time__header {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .react-datepicker__day {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .react-datepicker__day:hover {
+  background-color: var(--primary-100);
+  color: var(--primary-color);
+}
+
+[data-theme="dark"] .react-datepicker__day--selected,
+[data-theme="dark"] .react-datepicker__day--keyboard-selected {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+[data-theme="dark"] .react-datepicker__day--outside-month {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .react-datepicker__navigation-icon::before {
+  border-color: var(--text-secondary);
+}
+
+[data-theme="dark"] .react-datepicker__triangle {
+  display: none;
+}
+
+/* ===== Select/Dropdown Dark Mode ===== */
+[data-theme="dark"] select,
+[data-theme="dark"] option {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }

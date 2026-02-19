@@ -19,3 +19,8 @@ export const getCropBatches = async (cropId) => {
     const response = await apiClient.get(`/inventory/${cropId}/batches`);
     return response.data;
 };
+
+export const deleteInventoryAdjustment = async (adjustmentId) => {
+    const response = await apiClient.delete(`/inventory/adjustments/${adjustmentId}`);
+    return response.data;
+};

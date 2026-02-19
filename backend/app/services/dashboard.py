@@ -224,7 +224,7 @@ def get_recent_activities(db: Session, limit: int = 10):
             "type": "sale",
             "title": f"بيع {sale.crop.crop_name}" if sale.crop else "عملية بيع",
             "contact": sale.customer.name if sale.customer else "غير محدد",  # Sale uses 'customer' relationship
-            "amount": float(sale.total_sale_amount or 0),
+            "amount": str(sale.total_sale_amount or 0),
             "timestamp": sale.sale_date.isoformat() if sale.sale_date else datetime.now().isoformat(),
             "icon": "bi-cart-check"
         })
@@ -238,7 +238,7 @@ def get_recent_activities(db: Session, limit: int = 10):
             "type": "purchase",
             "title": f"شراء {purchase.crop.crop_name}" if purchase.crop else "عملية شراء",
             "contact": purchase.supplier.name if purchase.supplier else "غير محدد",  # Purchase uses 'supplier' relationship
-            "amount": float(purchase.total_cost or 0),
+            "amount": str(purchase.total_cost or 0),
             "timestamp": purchase.purchase_date.isoformat() if purchase.purchase_date else datetime.now().isoformat(),
             "icon": "bi-bag"
         })
@@ -305,7 +305,7 @@ def get_advanced_chart_data(
         if crop_id:
             sales_query = sales_query.filter(models.Sale.crop_id == crop_id)
         
-        sales_data = {r.date: float(r.amount or 0) for r in sales_query.group_by(models.Sale.sale_date).all()}
+        sales_data = {r.date: str(r.amount or 0) for r in sales_query.group_by(models.Sale.sale_date).all()}
 
         # 2. Purchases
         purchases_query = db.query(
@@ -318,7 +318,7 @@ def get_advanced_chart_data(
         if crop_id:
             purchases_query = purchases_query.filter(models.Purchase.crop_id == crop_id)
             
-        purchases_data = {r.date: float(r.amount or 0) for r in purchases_query.group_by(models.Purchase.purchase_date).all()}
+        purchases_data = {r.date: str(r.amount or 0) for r in purchases_query.group_by(models.Purchase.purchase_date).all()}
 
         # 3. Expenses (Optional)
         expenses_data = {}
@@ -332,7 +332,7 @@ def get_advanced_chart_data(
             )
             # expenses generally don't have crop_id, but some might if related to season
             # for now, we include general expenses implicitly or filter if schema supported it better
-            expenses_data = {r.date: float(r.amount or 0) for r in expenses_query.group_by(models.Expense.expense_date).all()}
+            expenses_data = {r.date: str(r.amount or 0) for r in expenses_query.group_by(models.Expense.expense_date).all()}
             
         return sales_data, purchases_data, expenses_data
 

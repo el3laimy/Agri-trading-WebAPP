@@ -42,6 +42,39 @@ def delete_season(db: Session, season_id: int) -> models.Season:
     return db_season
 
 
+def get_active_season(db: Session):
+    return db.query(models.Season).filter(models.Season.status == 'ACTIVE').order_by(models.Season.start_date.desc()).first()
+
+
+def activate_season(db: Session, season_id: int) -> models.Season:
+    """
+    تفعيل موسم معين وجعل باقي المواسم غير نشطة (COMPLETED أو UPCOMING حسب التاريخ)
+    """
+    # 1. Get the target season
+    target_season = get_season(db, season_id)
+    if not target_season:
+        return None
+    
+    # 2. Update all other ACTIVE seasons to COMPLETED
+    active_seasons = db.query(models.Season).filter(
+        models.Season.status == 'ACTIVE',
+        models.Season.season_id != season_id
+    ).all()
+    
+    for season in active_seasons:
+        season.status = 'COMPLETED'
+        db.add(season)
+    
+    # 3. Set target season to ACTIVE
+    target_season.status = 'ACTIVE'
+    db.add(target_season)
+    
+    db.commit()
+    db.refresh(target_season)
+    return target_season
+
+
+
 # --- Daily Price CRUD Functions ---
 
 def create_daily_price(db: Session, price: schemas.DailyPriceCreate) -> models.DailyPrice:

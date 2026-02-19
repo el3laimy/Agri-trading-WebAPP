@@ -9,6 +9,7 @@ import { PageHeader, ActionButton, LoadingCard } from '../components/common/Page
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function ContactDetails() {
     const { contactId } = useParams();
@@ -48,7 +49,7 @@ function ContactDetails() {
     };
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleDateString('ar-EG');
+        return new Date(dateStr).toLocaleDateString('en-US');
     };
 
     const getContactTypeLabel = (type) => {
@@ -72,10 +73,10 @@ function ContactDetails() {
     if (loading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                <div className="lg-card overflow-hidden mb-6 animate-pulse">
                     <div className="h-40 bg-gradient-to-br from-fuchsia-200 to-pink-200 dark:from-fuchsia-800/30 dark:to-pink-800/30" />
                 </div>
-                <div className="neumorphic p-6"><LoadingCard rows={8} /></div>
+                <div className="lg-card p-6"><LoadingCard rows={8} /></div>
             </div>
         );
     }
@@ -83,12 +84,12 @@ function ContactDetails() {
     if (error) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic p-6 border-r-4 border-red-500 animate-fade-in">
+                <div className="lg-card p-6 border-r-4 border-red-500 lg-animate-fade">
                     <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
                         <i className="bi bi-exclamation-triangle-fill text-2xl" />
                         <span className="font-bold">{error}</span>
                     </div>
-                    <button onClick={() => navigate('/contacts')} className="px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300">
+                    <button onClick={() => navigate('/contacts')} className="lg-btn lg-btn-secondary px-4 py-2">
                         <i className="bi bi-arrow-right ml-2" />العودة
                     </button>
                 </div>
@@ -119,52 +120,52 @@ function ContactDetails() {
             >
                 {/* Stats Cards in Header */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
-                                <i className="bi bi-person text-lg" />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(217,70,239,0.12)', border: '1px solid rgba(217,70,239,0.25)' }}>
+                                <i className="bi bi-person text-lg text-fuchsia-500" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">نوع التعامل</p>
-                                <p className="text-sm font-bold">{getContactTypeLabel(summary.contact_type)}</p>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>نوع التعامل</p>
+                                <p className="text-sm font-bold" style={{ color: 'var(--lg-text-primary)' }}>{getContactTypeLabel(summary.contact_type)}</p>
                             </div>
                         </div>
                     </div>
                     {summary.contact_type !== 'SUPPLIER' && (
-                        <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                        <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center animate-float">
-                                    <i className="bi bi-cart text-lg text-green-300" />
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                                    <i className="bi bi-cart text-lg text-green-500" />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-white/70">المبيعات</p>
-                                    <p className="text-lg font-bold">{formatCurrency(summary.total_sales)}</p>
+                                    <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المبيعات</p>
+                                    <p className="text-lg font-bold text-green-600">{formatCurrency(summary.total_sales)}</p>
                                 </div>
                             </div>
                         </div>
                     )}
                     {summary.contact_type !== 'CUSTOMER' && (
-                        <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                        <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-500/30 flex items-center justify-center animate-float">
-                                    <i className="bi bi-bag text-lg text-blue-300" />
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)' }}>
+                                    <i className="bi bi-bag text-lg text-blue-500" />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-white/70">المشتريات</p>
-                                    <p className="text-lg font-bold">{formatCurrency(summary.total_purchases)}</p>
+                                    <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المشتريات</p>
+                                    <p className="text-lg font-bold text-blue-600">{formatCurrency(summary.total_purchases)}</p>
                                 </div>
                             </div>
                         </div>
                     )}
-                    <div className={`glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3 ${summary.balance_due >= 0 ? 'ring-2 ring-green-400/50' : 'ring-2 ring-red-400/50'}`}>
+                    <div className={`lg-card px-4 py-3 rounded-xl lg-animate-in ${summary.balance_due >= 0 ? 'ring-2 ring-green-400/50' : 'ring-2 ring-red-400/50'}`} style={{ animationDelay: '150ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl ${summary.balance_due >= 0 ? 'bg-green-500/30' : 'bg-red-500/30'} flex items-center justify-center animate-float`}>
-                                <i className={`bi ${summary.balance_due >= 0 ? 'bi-arrow-down-circle' : 'bi-arrow-up-circle'} text-lg ${summary.balance_due >= 0 ? 'text-green-300' : 'text-red-300'}`} />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float`} style={{ background: summary.balance_due >= 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${summary.balance_due >= 0 ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+                                <i className={`bi ${summary.balance_due >= 0 ? 'bi-arrow-down-circle' : 'bi-arrow-up-circle'} text-lg ${summary.balance_due >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                             </div>
                             <div>
-                                <p className="text-xs text-white/70">الرصيد</p>
-                                <p className="text-lg font-bold">{formatCurrency(Math.abs(summary.balance_due))}</p>
-                                <span className="text-xs">{summary.balance_due >= 0 ? '💰 لنا' : '⚠️ علينا'}</span>
+                                <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>الرصيد</p>
+                                <p className={`text-lg font-bold ${summary.balance_due >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(Math.abs(summary.balance_due))}</p>
+                                <span className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>{summary.balance_due >= 0 ? '💰 لنا' : '⚠️ علينا'}</span>
                             </div>
                         </div>
                     </div>
@@ -172,7 +173,7 @@ function ContactDetails() {
             </PageHeader>
 
             {/* Contact Info */}
-            <div className="neumorphic p-5 mb-6 animate-fade-in">
+            <div className="lg-card p-5 mb-6 lg-animate-fade">
                 <h6 className="font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
                     <i className="bi bi-info-circle text-fuchsia-500" />بيانات جهة التعامل
                 </h6>
@@ -212,18 +213,18 @@ function ContactDetails() {
             </div>
 
             {/* Date Filter */}
-            <div className="neumorphic p-5 mb-6 animate-fade-in">
+            <div className="lg-card p-5 mb-6 lg-animate-fade">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">من تاريخ</label>
-                        <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" dateFormat="yyyy-MM-dd" />
+                        <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--lg-text-secondary)' }}>من تاريخ</label>
+                        <DatePicker selected={startDate} onChange={(date) => setStartDate(date)} className="w-full p-3 lg-input rounded-xl" dateFormat="yyyy-MM-dd" />
                     </div>
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">إلى تاريخ</label>
-                        <DatePicker selected={endDate} onChange={(date) => setEndDate(date)} className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" dateFormat="yyyy-MM-dd" />
+                        <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--lg-text-secondary)' }}>إلى تاريخ</label>
+                        <DatePicker selected={endDate} onChange={(date) => setEndDate(date)} className="w-full p-3 lg-input rounded-xl" dateFormat="yyyy-MM-dd" />
                     </div>
                     <div>
-                        <button className="w-full px-6 py-3 rounded-xl bg-fuchsia-600 text-white hover:bg-fuchsia-700 font-bold hover-scale" onClick={fetchStatement}>
+                        <button className="w-full lg-btn lg-btn-primary px-6 py-3 font-bold" onClick={fetchStatement}>
                             <i className="bi bi-search ml-2" />عرض الكشف
                         </button>
                     </div>
@@ -231,23 +232,23 @@ function ContactDetails() {
             </div>
 
             {/* Statement Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 flex justify-between items-center">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-journal-text text-fuchsia-500" />
                         كشف الحساب التفصيلي
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-700 dark:text-fuchsia-400">{entries.length}</span>
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(217,70,239,0.15)', color: 'rgb(192,38,211)' }}>{entries.length}</span>
                     </h5>
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">من {formatDate(statement.start_date)} إلى {formatDate(statement.end_date)}</span>
+                    <span className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>من {formatDate(statement.start_date)} إلى {formatDate(statement.end_date)}</span>
                 </div>
                 <div>
                     {entries.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-fuchsia-100 to-pink-100 dark:from-fuchsia-900/30 dark:to-pink-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-journal-x text-5xl text-fuchsia-400" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-journal-x text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد حركات</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">لا توجد حركات في هذه الفترة</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد حركات</h4>
+                            <p className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>لا توجد حركات في هذه الفترة</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -271,7 +272,7 @@ function ContactDetails() {
                                         const amount = debit > 0 ? debit : credit;
                                         const isDebit = debit > 0;
                                         return (
-                                            <tr key={idx} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
+                                            <tr key={idx} className="transition-all lg-animate-in" style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
                                                 <td className="px-4 py-4 text-center">
                                                     <span className={`font-bold text-lg ${isDebit ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                                         {amount?.toLocaleString('en-US') || 0}

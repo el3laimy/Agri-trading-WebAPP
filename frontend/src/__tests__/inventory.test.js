@@ -17,7 +17,7 @@ import {
 } from '../api/inventory';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -33,24 +33,20 @@ describe('Inventory Operations', () => {
         const mockData = [{ id: 1, crop_name: 'Wheat', quantity: 1000 }];
         axios.get.mockResolvedValue({ data: mockData });
 
-        const result = await getInventory('token');
+        const result = await getInventory();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/inventory/', {
-            headers: { Authorization: 'Bearer token' }
-        });
+        expect(axios.get).toHaveBeenCalledWith('/inventory/');
     });
 
     test('getInventoryAdjustments should fetch adjustments history', async () => {
         const mockData = [{ id: 1, type: 'SHRINKAGE', amount: 50 }];
         axios.get.mockResolvedValue({ data: mockData });
 
-        const result = await getInventoryAdjustments('token');
+        const result = await getInventoryAdjustments();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/inventory/adjustments', {
-            headers: { Authorization: 'Bearer token' }
-        });
+        expect(axios.get).toHaveBeenCalledWith('/inventory/adjustments');
     });
 
     test('createInventoryAdjustment should post new adjustment', async () => {
@@ -58,13 +54,12 @@ describe('Inventory Operations', () => {
         const mockResponse = { id: 2, ...adjData };
         axios.post.mockResolvedValue({ data: mockResponse });
 
-        const result = await createInventoryAdjustment('token', adjData);
+        const result = await createInventoryAdjustment(adjData);
 
         expect(result).toEqual(mockResponse);
         expect(axios.post).toHaveBeenCalledWith(
-            '/api/v1/inventory/adjustments',
-            adjData,
-            { headers: { Authorization: 'Bearer token' } }
+            '/inventory/adjustments',
+            adjData
         );
     });
 
@@ -72,12 +67,10 @@ describe('Inventory Operations', () => {
         const mockData = [{ batch_id: 'B1', quantity: 500 }];
         axios.get.mockResolvedValue({ data: mockData });
 
-        const result = await getCropBatches('token', 5);
+        const result = await getCropBatches(5);
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/inventory/5/batches', {
-            headers: { Authorization: 'Bearer token' }
-        });
+        expect(axios.get).toHaveBeenCalledWith('/inventory/5/batches');
     });
 
     test('should propagate errors', async () => {

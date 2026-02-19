@@ -44,8 +44,8 @@ def create_new_purchase(db: Session, purchase: schemas.PurchaseCreate, user_id: 
         purchase_data['total_cost'] = total_cost
         purchase_data['created_by'] = user_id
         # للتوافق مع الحقول القديمة
-        purchase_data['gross_quantity'] = quantity_kg
-        purchase_data['tare_weight'] = Decimal(0)
+        purchase_data['gross_quantity'] = purchase.gross_quantity
+        purchase_data['tare_weight'] = purchase.tare_weight
         
         db_purchase = crud.create_purchase_record(db, purchase_data=purchase_data)
         db.flush()
@@ -62,9 +62,14 @@ def create_new_purchase(db: Session, purchase: schemas.PurchaseCreate, user_id: 
             purchase_id=db_purchase.purchase_id,
             supplier_id=purchase.supplier_id,
             notes=purchase.notes,
-            gross_quantity_kg=quantity_kg,
+            gross_quantity_kg=purchase.gross_quantity or quantity_kg,
             bag_count=purchase.bag_count or 0
         )
+
+        # Assign Active Season
+        active_season = crud.get_active_season(db)
+        if active_season:
+            purchase_data['season_id'] = active_season.season_id
 
         # 3. إنشاء القيود المحاسبية
         from app.services.accounting_engine import get_engine, LedgerEntry

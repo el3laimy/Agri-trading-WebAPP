@@ -15,7 +15,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import * as treasuryApi from '../api/treasury';
 
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 describe('Treasury Destructive Security Tests', () => {
 

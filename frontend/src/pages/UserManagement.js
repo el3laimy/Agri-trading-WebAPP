@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/common';
+import { useToast, ConfirmationModal } from '../components/common';
+import { handleApiError } from '../utils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function UserManagement() {
     const { token } = useAuth();
@@ -17,6 +19,11 @@ function UserManagement() {
     const [showModal, setShowModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
+
+    // Delete confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingUserId, setDeletingUserId] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [formData, setFormData] = useState({
         username: '',
@@ -74,78 +81,107 @@ function UserManagement() {
             fetchUsers();
             showSuccess('تم إضافة المستخدم بنجاح');
         } catch (err) {
-            showError(err.response?.data?.detail || 'فشل في إضافة المستخدم');
+            showError(handleApiError(err, 'user_create'));
         }
     };
 
-    const handleDelete = async (userId) => {
-        if (window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
-            try {
-                await apiClient.delete(`/auth/users/${userId}`);
-                fetchUsers();
-                showSuccess('تم حذف المستخدم');
-            } catch (err) {
-                showError('فشل في حذف المستخدم');
-            }
+    // Delete handler - opens confirmation modal
+    const handleDelete = (userId) => {
+        setDeletingUserId(userId);
+        setShowDeleteConfirm(true);
+    };
+
+    // Confirm delete
+    const confirmDelete = async () => {
+        if (!deletingUserId) return;
+        setIsDeleting(true);
+        try {
+            await apiClient.delete(`/auth/users/${deletingUserId}`);
+            setShowDeleteConfirm(false);
+            setDeletingUserId(null);
+            fetchUsers();
+            showSuccess('تم حذف المستخدم');
+        } catch (err) {
+            showError(handleApiError(err, 'user_delete'));
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    // Cancel delete
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false);
+        setDeletingUserId(null);
     };
 
     if (loading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                <div className="lg-card overflow-hidden mb-6 animate-pulse">
                     <div className="h-40 bg-gradient-to-br from-slate-200 to-zinc-200 dark:from-slate-800/30 dark:to-zinc-800/30" />
                 </div>
-                <div className="neumorphic p-6"><LoadingCard rows={6} /></div>
+                <div className="lg-card p-6"><LoadingCard rows={6} /></div>
             </div>
         );
     }
 
     return (
         <div className="p-6 max-w-full mx-auto">
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                title="تأكيد حذف المستخدم"
+                message="هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذا الإجراء."
+                confirmText="حذف"
+                cancelText="إلغاء"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
             {/* Add User Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-                        <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-fade-in-scale">
-                            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-slate-700">
-                                <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                                    <i className="bi bi-person-plus text-2xl text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">إضافة مستخدم جديد</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">إنشاء حساب مستخدم جديد</p>
-                                </div>
+                <div className="lg-modal-overlay">
+                    <div className="lg-modal" style={{ maxWidth: '520px' }}>
+                        <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)' }}>
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--lg-glass-bg)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-person-plus text-2xl" style={{ color: 'var(--lg-primary)' }} />
                             </div>
+                            <div>
+                                <h3 className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>إضافة مستخدم جديد</h3>
+                                <p className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>إنشاء حساب مستخدم جديد</p>
+                            </div>
+                        </div>
+                        <div className="p-6">
                             <form onSubmit={handleSubmit}>
                                 <div className="space-y-4">
                                     <div>
                                         <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">اسم المستخدم *</label>
-                                        <input type="text" required className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} />
+                                        <input type="text" required className="w-full p-3 lg-input rounded-xl" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">الاسم الكامل *</label>
-                                        <input type="text" required className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} />
+                                        <input type="text" required className="w-full p-3 lg-input rounded-xl" value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">كلمة المرور *</label>
-                                        <input type="password" required className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                                        <input type="password" required className="w-full p-3 lg-input rounded-xl" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">الدور الصلاحي</label>
-                                        <select className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" value={formData.role_id} onChange={e => setFormData({ ...formData, role_id: parseInt(e.target.value) })}>
+                                        <select className="w-full p-3 lg-input rounded-xl" value={formData.role_id} onChange={e => setFormData({ ...formData, role_id: parseInt(e.target.value) })}>
                                             {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">البريد الإلكتروني</label>
-                                        <input type="email" className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                                        <input type="email" className="w-full p-3 lg-input rounded-xl" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                                     </div>
                                 </div>
-                                <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-gray-100 dark:border-slate-700">
-                                    <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300">إلغاء</button>
-                                    <button type="submit" className="px-8 py-2.5 rounded-xl bg-slate-600 text-white hover:bg-slate-700 font-bold hover-scale">حفظ المستخدم</button>
+                                <div className="flex gap-3 justify-end mt-6 pt-4" style={{ borderTop: '1px solid var(--lg-glass-border-subtle)' }}>
+                                    <button type="button" onClick={() => setShowModal(false)} className="lg-btn lg-btn-secondary px-6 py-2.5">إلغاء</button>
+                                    <button type="submit" className="lg-btn lg-btn-primary px-8 py-2.5 font-bold">حفظ المستخدم</button>
                                 </div>
                             </form>
                         </div>
@@ -170,9 +206,9 @@ function UserManagement() {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-people-fill text-lg" />
                             </div>
                             <div>
@@ -181,9 +217,9 @@ function UserManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-check-circle text-lg text-green-300" />
                             </div>
                             <div>
@@ -192,9 +228,9 @@ function UserManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-x-circle text-lg text-red-300" />
                             </div>
                             <div>
@@ -219,22 +255,22 @@ function UserManagement() {
             </div>
 
             {/* Users Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-slate-500" />
                         قائمة المستخدمين
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-400">{filteredUsers.length}</span>
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(100,116,139,0.15)', color: 'rgb(71,85,105)' }}>{filteredUsers.length}</span>
                     </h5>
                 </div>
                 <div>
                     {filteredUsers.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-slate-100 to-zinc-100 dark:from-slate-900/30 dark:to-zinc-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-people text-5xl text-slate-400 dark:text-slate-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-people text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا يوجد مستخدمين</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">قم بإضافة مستخدمين للبدء</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا يوجد مستخدمين</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>قم بإضافة مستخدمين للبدء</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -251,13 +287,13 @@ function UserManagement() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                                     {filteredUsers.map((user, idx) => (
-                                        <tr key={user.user_id} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
+                                        <tr key={user.user_id} className="transition-all lg-animate-in" style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-100 to-zinc-100 dark:from-slate-900/50 dark:to-zinc-900/50 flex items-center justify-center text-slate-600 dark:text-slate-400">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--lg-glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--lg-glass-border)', color: 'var(--lg-primary)' }}>
                                                         <i className="bi bi-person" />
                                                     </div>
-                                                    <span className="font-bold text-gray-800 dark:text-gray-200">{user.username}</span>
+                                                    <span className="font-bold" style={{ color: 'var(--lg-text-primary)' }}>{user.username}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{user.full_name}</td>

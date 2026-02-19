@@ -18,7 +18,7 @@ import {
 } from '../api/purchases';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -44,7 +44,7 @@ describe('getPurchases', () => {
         const result = await getPurchases();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/purchases/');
+        expect(axios.get).toHaveBeenCalledWith('/purchases/');
     });
 
     test('should return empty array when no purchases', async () => {
@@ -90,7 +90,7 @@ describe('createPurchase', () => {
 
         expect(result).toEqual(mockResponse);
         // We compare validation output which uses snake_case
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/purchases/', expect.objectContaining({
+        expect(axios.post).toHaveBeenCalledWith('/purchases/', expect.objectContaining({
             crop_id: 1,
             supplier_id: 1
         }));
@@ -170,7 +170,7 @@ describe('updatePurchase', () => {
 
         expect(result).toEqual(mockResponse);
         // Use objectContaining because Schema may add defaults
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/purchases/1', expect.objectContaining({
+        expect(axios.put).toHaveBeenCalledWith('/purchases/1', expect.objectContaining({
             quantity_kg: 1500,
             total_cost: 7500
         }));
@@ -198,7 +198,7 @@ describe('getLastPurchasePrice', () => {
         const result = await getLastPurchasePrice(1, 2);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/purchases/last-price/1/2');
+        expect(axios.get).toHaveBeenCalledWith('/purchases/last-price/1/2');
     });
 
     test('should return null values when no previous purchase exists', async () => {

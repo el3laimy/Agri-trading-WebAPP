@@ -619,7 +619,8 @@ export function RealTimeClock({ className = '' }) {
         return date.toLocaleTimeString('ar-EG', {
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            numberingSystem: 'latn'
         });
     };
 
@@ -627,7 +628,8 @@ export function RealTimeClock({ className = '' }) {
         return date.toLocaleDateString('ar-EG', {
             weekday: 'long',
             day: 'numeric',
-            month: 'long'
+            month: 'long',
+            numberingSystem: 'latn'
         });
     };
 

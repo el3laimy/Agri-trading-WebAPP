@@ -118,3 +118,7 @@ Thumbs.db
 
 # Test output
 test_invoice.pdf
+backend/*.txt
+frontend/*.txt
+trace.txt
+test_results.txt

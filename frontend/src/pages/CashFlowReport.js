@@ -11,6 +11,8 @@ function CashFlowReport() {
     const [endDate, setEndDate] = useState(new Date());
 
     useEffect(() => {
+        import('../styles/dashboardAnimations.css');
+        import('../styles/liquidglass.css');
         fetchReport();
     }, []);
 
@@ -66,22 +68,22 @@ function CashFlowReport() {
                     <p className="text-gray-500 dark:text-gray-400">مصادر واستخدامات النقدية</p>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2 lg-card p-2">
                         <span className="text-gray-500 dark:text-gray-400 text-sm">من:</span>
                         <DatePicker
                             selected={startDate}
                             onChange={setStartDate}
-                            className="px-2 py-1 text-sm border-0 bg-transparent text-gray-900 dark:text-gray-100 w-28"
+                            className="px-2 py-1 text-sm border-0 bg-transparent text-gray-900 dark:text-gray-100 w-28 focus:outline-none"
                             dateFormat="yyyy-MM-dd"
                         />
                         <span className="text-gray-500 dark:text-gray-400 text-sm">إلى:</span>
                         <DatePicker
                             selected={endDate}
                             onChange={setEndDate}
-                            className="px-2 py-1 text-sm border-0 bg-transparent text-gray-900 dark:text-gray-100 w-28"
+                            className="px-2 py-1 text-sm border-0 bg-transparent text-gray-900 dark:text-gray-100 w-28 focus:outline-none"
                             dateFormat="yyyy-MM-dd"
                         />
-                        <button className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors" onClick={fetchReport}>
+                        <button className="px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors" onClick={fetchReport}>
                             <i className="bi bi-search"></i>
                         </button>
                     </div>
@@ -96,24 +98,24 @@ function CashFlowReport() {
                 <>
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 text-center">
+                        <div className="lg-card p-5 text-center mb-6 lg-animate-in">
                             <small className="text-gray-500 dark:text-gray-400">رصيد البداية</small>
                             <h4 className="text-xl font-bold text-gray-600 dark:text-gray-300">{formatCurrency(report.opening_balance)}</h4>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 text-center border-t-4 border-green-500">
+                        <div className="lg-card p-5 text-center border-t-4 border-green-500 mb-6 lg-animate-in" style={{ animationDelay: '100ms' }}>
                             <small className="text-gray-500 dark:text-gray-400">صافي التدفق التشغيلي</small>
                             <h4 className={`text-xl font-bold ${report.operating_activities.net_operating_cash_flow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                 {formatCurrency(report.operating_activities.net_operating_cash_flow)}
                             </h4>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-5 text-center border-t-4 border-cyan-500">
+                        <div className="lg-card p-5 text-center border-t-4 border-cyan-500 mb-6 lg-animate-in" style={{ animationDelay: '200ms' }}>
                             <small className="text-gray-500 dark:text-gray-400">صافي التغير</small>
                             <h4 className={`text-xl font-bold ${report.net_cash_change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                 {formatCurrency(report.net_cash_change)}
                             </h4>
                         </div>
-                        <div className="rounded-xl shadow-sm p-5 text-center text-white" style={{ background: 'linear-gradient(135deg, #1E5631 0%, #3D8B4F 100%)' }}>
-                            <small className="text-white/60">رصيد الإغلاق</small>
+                        <div className="rounded-xl shadow-lg p-5 text-center text-white mb-6 lg-animate-in" style={{ background: 'linear-gradient(135deg, var(--lg-primary) 0%, var(--lg-primary-dark) 100%)', animationDelay: '300ms' }}>
+                            <small className="text-white/80">رصيد الإغلاق</small>
                             <h4 className="text-xl font-bold">{formatCurrency(report.closing_balance)}</h4>
                         </div>
                     </div>
@@ -121,7 +123,7 @@ function CashFlowReport() {
                     {/* Cash Flow Statement */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2">
-                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                            <div className="lg-card overflow-hidden">
                                 <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700">
                                     <h5 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                                         <i className="bi bi-file-text text-emerald-600"></i>
@@ -191,7 +193,7 @@ function CashFlowReport() {
 
                         {/* Recent Transactions */}
                         <div>
-                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                            <div className="lg-card overflow-hidden">
                                 <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700">
                                     <h6 className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                                         <i className="bi bi-list-ul"></i>

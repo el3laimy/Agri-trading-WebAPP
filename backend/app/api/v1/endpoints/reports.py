@@ -57,12 +57,20 @@ class EquityStatementResponse(BaseModel):
     ending_equity: float
 
 @router.get("/general-ledger", response_model=List[GeneralLedgerRead])
-def get_general_ledger(db: Session = Depends(get_db)):
-    return reporting.get_general_ledger_entries(db)
+def get_general_ledger(
+    start_date: Optional[date] = Query(None, description="Start date"),
+    end_date: Optional[date] = Query(None, description="End date"),
+    account_id: Optional[int] = Query(None, description="Filter by account ID"),
+    db: Session = Depends(get_db)
+):
+    return reporting.get_general_ledger_entries(db, start_date, end_date, account_id)
 
 @router.get("/trial-balance", response_model=List[TrialBalanceEntry])
-def get_trial_balance(db: Session = Depends(get_db)):
-    return reporting.generate_trial_balance(db)
+def get_trial_balance(
+    end_date: Optional[date] = Query(None, description="End date for the trial balance, format YYYY-MM-DD"),
+    db: Session = Depends(get_db)
+):
+    return reporting.generate_trial_balance(db, end_date)
 
 @router.get("/income-statement", response_model=IncomeStatementResponse)
 def get_income_statement(
@@ -139,27 +147,30 @@ def check_system_balance(db: Session = Depends(get_db)):
     physical = dual_report.physical_balance
     
     return {
+        # المعاملات غير المتوازنة (المسبب المحتمل للفرق)
+        "unbalanced_transactions": engine.get_unbalanced_transactions(),
+        
         # التوازن الدفتري (الأساسي - يتطابق مع ميزان المراجعة)
         "is_balanced": ledger.is_balanced,
-        "difference": float(ledger.difference),
-        "total_assets": float(ledger.total_assets),
-        "total_liabilities_and_equity": float(ledger.total_liabilities_and_equity),
+        "difference": str(ledger.difference),
+        "total_assets": str(ledger.total_assets),
+        "total_liabilities_and_equity": str(ledger.total_liabilities_and_equity),
         "details": ledger.details,
         "status": "متوازن ✅" if ledger.is_balanced else f"غير متوازن ❌ (الفرق: {ledger.difference} ج.م)",
         
         # معلومات إضافية عن التوازن الفعلي
         "physical_balance": {
             "is_balanced": physical.is_balanced,
-            "difference": float(physical.difference),
-            "total_assets": float(physical.total_assets),
-            "total_liabilities_and_equity": float(physical.total_liabilities_and_equity),
+            "difference": str(physical.difference),
+            "total_assets": str(physical.total_assets),
+            "total_liabilities_and_equity": str(physical.total_liabilities_and_equity),
             "details": physical.details,
         },
         
         # الفرق بين المخزون الدفتري والفعلي
         "inventory_discrepancy": {
             "has_discrepancy": dual_report.has_discrepancy,
-            "amount": float(dual_report.discrepancy_amount),
+            "amount": str(dual_report.discrepancy_amount),
             "ledger_inventory": ledger.details.get("inventory", 0),
             "physical_inventory": physical.details.get("inventory", 0),
             "message": f"فرق المخزون: {dual_report.discrepancy_amount} ج.م" if dual_report.has_discrepancy else "المخزون متطابق ✅"

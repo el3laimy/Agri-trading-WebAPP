@@ -51,6 +51,19 @@ def read_inventory_levels(db: Session = Depends(get_db)):
 def create_inventory_adjustment(adjustment: schemas.InventoryAdjustmentCreate, db: Session = Depends(get_db)):
     return crud.create_inventory_adjustment(db=db, adjustment=adjustment)
 
+@router.delete("/adjustments/{adjustment_id}", status_code=204)
+def delete_inventory_adjustment(
+    adjustment_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an inventory adjustment. This reverses the inventory and financial impact.
+    """
+    success = crud.delete_inventory_adjustment(db, adjustment_id=adjustment_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Inventory adjustment not found")
+    return
+
 @router.get("/{crop_id}/batches")
 def get_crop_batches(crop_id: int, db: Session = Depends(get_db)):
     """Get active batches for a specific crop"""
@@ -153,6 +166,7 @@ def get_inventory_cardex(
     for a in adj_query.all():
         direction = "IN" if a.adjustment_type == "SURPLUS" else "OUT"
         movements.append({
+            "id": a.adjustment_id,
             "date": str(a.adjustment_date),
             "type": "ADJUSTMENT",
             "type_ar": "تسوية",

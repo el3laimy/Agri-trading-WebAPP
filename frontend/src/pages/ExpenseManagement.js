@@ -1,25 +1,38 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useToast } from '../components/common';
+import { useDebounce } from '../hooks';
+import { useToast, ConfirmationModal } from '../components/common';
 import { useAuth } from '../context/AuthContext';
 import { getCrops } from '../api/crops';
-import { getExpenses, createExpense, deleteExpense } from '../api/expenses';
+import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useExpenses';
 import { safeParseFloat } from '../utils/mathUtils'; // Import safe parser
+import { handleApiError } from '../utils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, FilterChip, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function ExpenseManagement() {
     const { hasPermission } = useAuth();
     const { showSuccess, showError } = useToast();
 
-    const [expenses, setExpenses] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: expenses = [], isLoading } = useExpenses();
+    const createMutation = useCreateExpense();
+    const updateMutation = useUpdateExpense();
+    const deleteMutation = useDeleteExpense();
+
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editingExpenseId, setEditingExpenseId] = useState(null);
+
+    // Delete confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingExpenseId, setDeletingExpenseId] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [formState, setFormState] = useState({
         description: '',
@@ -34,25 +47,10 @@ function ExpenseManagement() {
     const [crops, setCrops] = useState([]);
     const [accounts, setAccounts] = useState([]);
 
-    // Fetch expenses
-    const fetchExpenses = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const data = await getExpenses();
-            setExpenses(data);
-        } catch (err) {
-            console.error('Failed to fetch expenses:', err);
-            // Don't call showError here to avoid dependency issues
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        fetchExpenses();
         fetchCrops();
         fetchAccounts();
-    }, [fetchExpenses]);
+    }, []);
 
     const fetchCrops = async () => {
         try {
@@ -85,7 +83,7 @@ function ExpenseManagement() {
 
     const formatCurrency = (value) => {
         if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
-        return value?.toLocaleString('ar-EG') + ' ج.م';
+        return value?.toLocaleString('en-US') + ' ج.م';
     };
 
     const handleInputChange = (e) => {
@@ -108,8 +106,15 @@ function ExpenseManagement() {
                 expense_type: formState.expense_type,
                 crop_id: formState.crop_id ? parseInt(formState.crop_id) : null
             };
-            await createExpense(payload);
-            showSuccess('تم تسجيل المصروف بنجاح');
+
+            if (editingExpenseId) {
+                await updateMutation.mutateAsync({ expenseId: editingExpenseId, data: payload });
+                showSuccess('تم تعديل المصروف بنجاح');
+            } else {
+                await createMutation.mutateAsync(payload);
+                showSuccess('تم تسجيل المصروف بنجاح');
+            }
+
             setFormState({
                 description: '',
                 amount: '',
@@ -121,39 +126,70 @@ function ExpenseManagement() {
                 debit_account_id: ''
             });
             setShowAddForm(false);
-            fetchExpenses();
+            setEditingExpenseId(null);
         } catch (err) {
-            console.error('Expense creation error:', err);
-            showError(err.response?.data?.detail || 'فشل في تسجيل المصروف');
+            console.error('Expense operation error:', err);
+            showError(handleApiError(err, 'expense_operation'));
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
+    const handleEdit = (expense) => {
+        setFormState({
+            description: expense.description,
+            amount: expense.amount,
+            expense_date: expense.expense_date ? new Date(expense.expense_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+            category: expense.category || 'عام',
+            expense_type: expense.expense_type || 'INDIRECT',
+            crop_id: expense.crop_id || '',
+            credit_account_id: expense.credit_account_id || '',
+            debit_account_id: expense.debit_account_id || ''
+        });
+        setEditingExpenseId(expense.expense_id);
+        setShowAddForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Delete handler - opens confirmation modal
+    const handleDelete = (id) => {
+        setDeletingExpenseId(id);
+        setShowDeleteConfirm(true);
+    };
+
+    // Confirm delete
+    const confirmDelete = async () => {
+        if (!deletingExpenseId) return;
+        setIsDeleting(true);
         try {
-            await deleteExpense(id);
+            await deleteMutation.mutateAsync(deletingExpenseId);
             showSuccess('تم حذف المصروف');
-            fetchExpenses();
+            setShowDeleteConfirm(false);
+            setDeletingExpenseId(null);
         } catch (err) {
-            showError('فشل في حذف المصروف');
+            showError(handleApiError(err, 'expense_delete'));
+        } finally {
+            setIsDeleting(false);
         }
+    };
+
+    // Cancel delete
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false);
+        setDeletingExpenseId(null);
     };
 
     // Filter
     const filteredExpenses = useMemo(() => {
         return expenses.filter(e =>
-            e.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            e.category?.toLowerCase().includes(searchTerm.toLowerCase())
+            e.description?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+            e.category?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
         );
-    }, [expenses, searchTerm]);
+    }, [expenses, debouncedSearchTerm]);
 
     if (isLoading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
-                    <div className="h-40 bg-gradient-to-br from-rose-200 to-red-200 dark:from-rose-800/30 dark:to-red-800/30" />
-                </div>
-                <div className="neumorphic p-6">
+                <div className="lg-skeleton h-40 rounded-3xl mb-6" />
+                <div className="lg-card p-6">
                     <LoadingCard rows={6} />
                 </div>
             </div>
@@ -162,6 +198,19 @@ function ExpenseManagement() {
 
     return (
         <div className="p-6 max-w-full mx-auto">
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
+                title="تأكيد حذف المصروف"
+                message="هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء."
+                confirmText="حذف"
+                cancelText="إلغاء"
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
             {/* Page Header */}
             <PageHeader
                 title="إدارة المصروفات"
@@ -173,7 +222,10 @@ function ExpenseManagement() {
                         <ActionButton
                             label={showAddForm ? 'إلغاء' : 'تسجيل مصروف'}
                             icon={showAddForm ? 'bi-x-lg' : 'bi-plus-lg'}
-                            onClick={() => setShowAddForm(!showAddForm)}
+                            onClick={() => {
+                                setShowAddForm(!showAddForm);
+                                if (showAddForm) setEditingExpenseId(null);
+                            }}
                             variant={showAddForm ? 'danger' : 'primary'}
                         />
                     )
@@ -181,9 +233,9 @@ function ExpenseManagement() {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-wallet2 text-lg" />
                             </div>
                             <div>
@@ -192,9 +244,9 @@ function ExpenseManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-rose-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-rose-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-calendar-month text-lg text-rose-300" />
                             </div>
                             <div>
@@ -203,9 +255,9 @@ function ExpenseManagement() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-receipt text-lg text-red-300" />
                             </div>
                             <div>
@@ -229,11 +281,11 @@ function ExpenseManagement() {
 
             {/* Add Form */}
             {showAddForm && (
-                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
-                    <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
-                            <i className="bi bi-plus-circle-fill ml-2 text-rose-600 dark:text-rose-400" />
-                            تسجيل مصروف جديد
+                <div className="mb-6 lg-card overflow-hidden lg-animate-fade">
+                    <div className="p-6" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                        <h3 className="text-lg font-bold flex items-center" style={{ color: 'var(--lg-text-primary)' }}>
+                            <i className={`bi ${editingExpenseId ? 'bi-pencil-square' : 'bi-plus-circle-fill'} ml-2`} style={{ color: 'var(--lg-primary)' }} />
+                            {editingExpenseId ? 'تعديل المصروف' : 'تسجيل مصروف جديد'}
                         </h3>
                     </div>
                     <form onSubmit={handleSubmit} className="p-6">
@@ -246,7 +298,7 @@ function ExpenseManagement() {
                                     value={formState.description}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -257,7 +309,7 @@ function ExpenseManagement() {
                                     value={formState.amount}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -267,7 +319,7 @@ function ExpenseManagement() {
                                     name="expense_date"
                                     value={formState.expense_date}
                                     onChange={handleInputChange}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 />
                             </div>
                             <div>
@@ -276,7 +328,7 @@ function ExpenseManagement() {
                                     name="category"
                                     value={formState.category}
                                     onChange={handleInputChange}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 >
                                     <option value="عام">عام</option>
                                     <option value="نقل">نقل</option>
@@ -292,7 +344,7 @@ function ExpenseManagement() {
                                     value={formState.debit_account_id}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 >
                                     <option value="">-- اختر حساب المصروف --</option>
                                     {accounts.filter(a => a.account_type === 'EXPENSE').map(acc => (
@@ -307,7 +359,7 @@ function ExpenseManagement() {
                                     value={formState.credit_account_id}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 >
                                     <option value="">-- اختر طريقة الدفع --</option>
                                     {accounts.filter(a => ['ASSET', 'LIABILITY'].includes(a.account_type)).map(acc => (
@@ -321,7 +373,7 @@ function ExpenseManagement() {
                                     name="expense_type"
                                     value={formState.expense_type}
                                     onChange={handleInputChange}
-                                    className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                    className="w-full p-3 lg-input rounded-xl"
                                 >
                                     <option value="INDIRECT">عام (تشغيلي)</option>
                                     <option value="DIRECT">خاص بمحصول</option>
@@ -334,7 +386,7 @@ function ExpenseManagement() {
                                         name="crop_id"
                                         value={formState.crop_id}
                                         onChange={handleInputChange}
-                                        className="w-full p-3 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100"
+                                        className="w-full p-3 lg-input rounded-xl"
                                     >
                                         <option value="">-- اختر محصول --</option>
                                         {crops.map(crop => (
@@ -347,17 +399,18 @@ function ExpenseManagement() {
                         <div className="flex justify-end gap-3 mt-6">
                             <button
                                 type="button"
-                                onClick={() => setShowAddForm(false)}
-                                className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300"
+                                onClick={() => { setShowAddForm(false); setEditingExpenseId(null); }}
+                                className="lg-btn lg-btn-secondary px-6 py-2.5"
                             >
                                 إلغاء
                             </button>
                             <button
                                 type="submit"
-                                className="px-8 py-2.5 rounded-xl bg-rose-600 text-white hover:bg-rose-700 font-bold hover-scale"
+                                disabled={createMutation.isPending || updateMutation.isPending}
+                                className="lg-btn lg-btn-primary px-8 py-2.5 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <i className="bi bi-check-lg ml-2" />
-                                حفظ
+                                {editingExpenseId ? 'حفظ التعديلات' : 'حفظ'}
                             </button>
                         </div>
                     </form>
@@ -365,24 +418,24 @@ function ExpenseManagement() {
             )}
 
             {/* Expenses Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-list-ul text-rose-500" />
                         سجل المصروفات
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(244,63,94,0.15)', color: 'rgb(225,29,72)' }}>
                             {filteredExpenses.length}
                         </span>
                     </h5>
                 </div>
                 <div>
                     {filteredExpenses.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-rose-100 to-red-100 dark:from-rose-900/30 dark:to-red-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-wallet2 text-5xl text-rose-400 dark:text-rose-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-wallet2 text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد مصروفات</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">ابدأ بتسجيل مصروفاتك اليومية</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد مصروفات</h4>
+                            <p className="text-sm" style={{ color: 'var(--lg-text-muted)' }}>ابدأ بتسجيل مصروفاتك اليومية</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -400,7 +453,7 @@ function ExpenseManagement() {
                                     {filteredExpenses.map((expense, idx) => (
                                         <tr key={expense.expense_id} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                                                {new Date(expense.expense_date).toLocaleDateString('ar-EG')}
+                                                {new Date(expense.expense_date).toLocaleDateString('en-US')}
                                             </td>
                                             <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                                                 {expense.description}
@@ -411,9 +464,16 @@ function ExpenseManagement() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 font-bold text-rose-600 dark:text-rose-400">
-                                                {expense.amount?.toLocaleString('ar-EG')} ج.م
+                                                {expense.amount?.toLocaleString('en-US')} ج.م
                                             </td>
                                             <td className="px-6 py-4">
+                                                <button
+                                                    onClick={() => handleEdit(expense)}
+                                                    className="p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all ml-2"
+                                                    title="تعديل"
+                                                >
+                                                    <i className="bi bi-pencil" />
+                                                </button>
                                                 <button
                                                     onClick={() => handleDelete(expense.expense_id)}
                                                     className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"

@@ -1,16 +1,17 @@
 /**
  * PurchasesCharts.js
  * ApexCharts components for Purchases Management page
+ * Optimized with React.memo and useMemo to prevent unnecessary re-renders
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import Chart from 'react-apexcharts';
 import { useTheme } from '../../../context/ThemeContext';
 
 /**
  * PurchasesTrendChart - خط بياني لاتجاه المشتريات
  */
-export function PurchasesTrendChart({ purchases = [] }) {
+const PurchasesTrendChart = memo(function PurchasesTrendChart({ purchases = [] }) {
     const { theme } = useTheme();
 
     const chartData = useMemo(() => {
@@ -31,7 +32,7 @@ export function PurchasesTrendChart({ purchases = [] }) {
         const last14Days = sortedDates.slice(-14);
 
         return {
-            labels: last14Days.map(d => new Date(d).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })),
+            labels: last14Days.map(d => new Date(d).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', numberingSystem: 'latn' })),
             values: last14Days.map(d => dailyData[d]?.total || 0),
             counts: last14Days.map(d => dailyData[d]?.count || 0)
         };
@@ -93,7 +94,7 @@ export function PurchasesTrendChart({ purchases = [] }) {
         tooltip: {
             theme: theme,
             y: {
-                formatter: (val) => val.toLocaleString('ar-EG') + ' ج.م'
+                formatter: (val) => val.toLocaleString('en-US') + ' ج.م'
             }
         }
     };
@@ -119,12 +120,12 @@ export function PurchasesTrendChart({ purchases = [] }) {
             <Chart options={options} series={series} type="area" height="100%" />
         </div>
     );
-}
+});
 
 /**
  * PurchasesByStatusChart - دائري لحالة الدفع
  */
-export function PurchasesByStatusChart({ purchases = [] }) {
+const PurchasesByStatusChart = memo(function PurchasesByStatusChart({ purchases = [] }) {
     const { theme } = useTheme();
 
     const statusData = useMemo(() => {
@@ -193,7 +194,7 @@ export function PurchasesByStatusChart({ purchases = [] }) {
             y: {
                 formatter: (val, { seriesIndex }) => {
                     const labels = ['PAID', 'PARTIAL', 'PENDING'];
-                    return statusData.amounts[labels[seriesIndex]]?.toLocaleString('ar-EG') + ' ج.م';
+                    return statusData.amounts[labels[seriesIndex]]?.toLocaleString('en-US') + ' ج.م';
                 }
             }
         }
@@ -221,12 +222,12 @@ export function PurchasesByStatusChart({ purchases = [] }) {
             <Chart options={options} series={series} type="donut" height="100%" />
         </div>
     );
-}
+});
 
 /**
  * TopSuppliersChart - أفضل الموردين
  */
-export function TopSuppliersChart({ purchases = [] }) {
+const TopSuppliersChart = memo(function TopSuppliersChart({ purchases = [] }) {
     const { theme } = useTheme();
 
     const supplierData = useMemo(() => {
@@ -304,7 +305,7 @@ export function TopSuppliersChart({ purchases = [] }) {
         tooltip: {
             theme: theme,
             y: {
-                formatter: (val) => val.toLocaleString('ar-EG') + ' ج.م'
+                formatter: (val) => val.toLocaleString('en-US') + ' ج.م'
             }
         }
     };
@@ -330,12 +331,12 @@ export function TopSuppliersChart({ purchases = [] }) {
             <Chart options={options} series={series} type="bar" height="100%" />
         </div>
     );
-}
+});
 
 /**
  * PurchasesStatsCards - بطاقات إحصائيات المشتريات
  */
-export function PurchasesStatsCards({ purchases = [] }) {
+const PurchasesStatsCards = memo(function PurchasesStatsCards({ purchases = [] }) {
     const stats = useMemo(() => {
         const totalExpense = purchases.reduce((sum, p) => sum + (parseFloat(p.total_cost) || 0), 0);
         const totalPaid = purchases.reduce((sum, p) => sum + (parseFloat(p.amount_paid) || 0), 0);
@@ -356,64 +357,65 @@ export function PurchasesStatsCards({ purchases = [] }) {
     const formatCurrency = (val) => {
         if (val >= 1000000) return (val / 1000000).toFixed(1) + ' م';
         if (val >= 1000) return (val / 1000).toFixed(0) + ' ك';
-        return val.toLocaleString('ar-EG');
+        return val.toLocaleString('en-US');
     };
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* إجمالي المشتريات */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <i className="bi bi-bag-check text-lg" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'var(--lg-glass-bg)', border: '1px solid var(--lg-glass-border)' }}>
+                        <i className="bi bi-bag-check text-lg text-blue-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">المشتريات</p>
-                        <p className="text-lg font-bold">{formatCurrency(stats.totalExpense)}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المشتريات</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{formatCurrency(stats.totalExpense)}</p>
                     </div>
                 </div>
             </div>
 
             {/* المدفوع */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center">
-                        <i className="bi bi-check-circle text-lg text-green-300" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                        <i className="bi bi-check-circle text-lg text-green-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">المدفوع</p>
-                        <p className="text-lg font-bold">{formatCurrency(stats.totalPaid)}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المدفوع</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{formatCurrency(stats.totalPaid)}</p>
                     </div>
                 </div>
             </div>
 
             {/* المستحق */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '150ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-500/30 flex items-center justify-center">
-                        <i className="bi bi-exclamation-circle text-lg text-red-300" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                        <i className="bi bi-exclamation-circle text-lg text-red-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">المستحق</p>
-                        <p className="text-lg font-bold">{formatCurrency(stats.totalPending)}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المستحق</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{formatCurrency(stats.totalPending)}</p>
                     </div>
                 </div>
             </div>
 
             {/* عدد العمليات */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '200ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/30 flex items-center justify-center">
-                        <i className="bi bi-receipt text-lg text-amber-300" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                        <i className="bi bi-receipt text-lg text-amber-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">العمليات</p>
-                        <p className="text-lg font-bold">{stats.purchasesCount}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>العمليات</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{stats.purchasesCount}</p>
                     </div>
                 </div>
             </div>
         </div>
     );
-}
+});
 
+export { PurchasesTrendChart, PurchasesByStatusChart, TopSuppliersChart, PurchasesStatsCards };
 export default PurchasesTrendChart;

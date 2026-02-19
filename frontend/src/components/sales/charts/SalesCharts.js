@@ -1,16 +1,17 @@
 /**
  * SalesCharts.js
  * ApexCharts components for Sales Management page
+ * Optimized with React.memo and useMemo to prevent unnecessary re-renders
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import Chart from 'react-apexcharts';
 import { useTheme } from '../../../context/ThemeContext';
 
 /**
  * SalesTrendChart - خط بياني لاتجاه المبيعات
  */
-export function SalesTrendChart({ sales = [] }) {
+const SalesTrendChart = memo(function SalesTrendChart({ sales = [] }) {
     const { theme } = useTheme();
 
     // Process data - group by date
@@ -32,7 +33,7 @@ export function SalesTrendChart({ sales = [] }) {
         const last14Days = sortedDates.slice(-14);
 
         return {
-            labels: last14Days.map(d => new Date(d).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' })),
+            labels: last14Days.map(d => new Date(d).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', numberingSystem: 'latn' })),
             values: last14Days.map(d => dailyData[d]?.total || 0),
             counts: last14Days.map(d => dailyData[d]?.count || 0)
         };
@@ -95,7 +96,7 @@ export function SalesTrendChart({ sales = [] }) {
         tooltip: {
             theme: theme,
             y: {
-                formatter: (val) => val.toLocaleString('ar-EG') + ' ج.م'
+                formatter: (val) => val.toLocaleString('en-US') + ' ج.م'
             }
         }
     };
@@ -121,12 +122,12 @@ export function SalesTrendChart({ sales = [] }) {
             <Chart options={options} series={series} type="area" height="100%" />
         </div>
     );
-}
+});
 
 /**
  * SalesByStatusChart - دائري لحالة الدفع
  */
-export function SalesByStatusChart({ sales = [] }) {
+const SalesByStatusChart = memo(function SalesByStatusChart({ sales = [] }) {
     const { theme } = useTheme();
 
     const statusData = useMemo(() => {
@@ -195,7 +196,7 @@ export function SalesByStatusChart({ sales = [] }) {
             y: {
                 formatter: (val, { seriesIndex }) => {
                     const labels = ['PAID', 'PARTIAL', 'PENDING'];
-                    return statusData.amounts[labels[seriesIndex]]?.toLocaleString('ar-EG') + ' ج.م';
+                    return statusData.amounts[labels[seriesIndex]]?.toLocaleString('en-US') + ' ج.م';
                 }
             }
         }
@@ -223,12 +224,12 @@ export function SalesByStatusChart({ sales = [] }) {
             <Chart options={options} series={series} type="donut" height="100%" />
         </div>
     );
-}
+});
 
 /**
  * TopCropsChart - أفضل المحاصيل مبيعاً
  */
-export function TopCropsChart({ sales = [] }) {
+const TopCropsChart = memo(function TopCropsChart({ sales = [] }) {
     const { theme } = useTheme();
 
     const cropData = useMemo(() => {
@@ -306,7 +307,7 @@ export function TopCropsChart({ sales = [] }) {
         tooltip: {
             theme: theme,
             y: {
-                formatter: (val) => val.toLocaleString('ar-EG') + ' ج.م'
+                formatter: (val) => val.toLocaleString('en-US') + ' ج.م'
             }
         }
     };
@@ -332,12 +333,12 @@ export function TopCropsChart({ sales = [] }) {
             <Chart options={options} series={series} type="bar" height="100%" />
         </div>
     );
-}
+});
 
 /**
  * SalesStatsCards - بطاقات إحصائيات المبيعات
  */
-export function SalesStatsCards({ sales = [] }) {
+const SalesStatsCards = memo(function SalesStatsCards({ sales = [] }) {
     const stats = useMemo(() => {
         const totalRevenue = sales.reduce((sum, s) => sum + (parseFloat(s.total_sale_amount) || 0), 0);
         const totalPaid = sales.reduce((sum, s) => sum + (parseFloat(s.amount_received) || 0), 0);
@@ -358,64 +359,65 @@ export function SalesStatsCards({ sales = [] }) {
     const formatCurrency = (val) => {
         if (val >= 1000000) return (val / 1000000).toFixed(1) + ' م';
         if (val >= 1000) return (val / 1000).toFixed(0) + ' ك';
-        return val.toLocaleString('ar-EG');
+        return val.toLocaleString('en-US');
     };
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* إجمالي الإيرادات */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '50ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <i className="bi bi-cash-stack text-lg" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'var(--lg-glass-bg)', border: '1px solid var(--lg-glass-border)' }}>
+                        <i className="bi bi-cash-stack text-lg text-emerald-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">الإيرادات</p>
-                        <p className="text-lg font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>الإيرادات</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{formatCurrency(stats.totalRevenue)}</p>
                     </div>
                 </div>
             </div>
 
             {/* المدفوع */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '100ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-green-500/30 flex items-center justify-center">
-                        <i className="bi bi-check-circle text-lg text-green-300" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
+                        <i className="bi bi-check-circle text-lg text-green-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">المدفوع</p>
-                        <p className="text-lg font-bold">{formatCurrency(stats.totalPaid)}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المدفوع</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{formatCurrency(stats.totalPaid)}</p>
                     </div>
                 </div>
             </div>
 
             {/* المعلق */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '150ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/30 flex items-center justify-center">
-                        <i className="bi bi-clock-history text-lg text-amber-300" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                        <i className="bi bi-clock-history text-lg text-amber-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">المعلق</p>
-                        <p className="text-lg font-bold">{formatCurrency(stats.totalPending)}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>المعلق</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{formatCurrency(stats.totalPending)}</p>
                     </div>
                 </div>
             </div>
 
             {/* عدد العمليات */}
-            <div className="glass-premium px-4 py-3 rounded-xl text-white">
+            <div className="lg-card px-4 py-3 rounded-xl lg-animate-in" style={{ animationDelay: '200ms' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/30 flex items-center justify-center">
-                        <i className="bi bi-receipt text-lg text-blue-300" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center lg-animate-float" style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)' }}>
+                        <i className="bi bi-receipt text-lg text-blue-500" />
                     </div>
                     <div>
-                        <p className="text-xs text-white/70">العمليات</p>
-                        <p className="text-lg font-bold">{stats.salesCount}</p>
+                        <p className="text-xs" style={{ color: 'var(--lg-text-muted)' }}>العمليات</p>
+                        <p className="text-lg font-bold" style={{ color: 'var(--lg-text-primary)' }}>{stats.salesCount}</p>
                     </div>
                 </div>
             </div>
         </div>
     );
-}
+});
 
+export { SalesTrendChart, SalesByStatusChart, TopCropsChart, SalesStatsCards };
 export default SalesTrendChart;

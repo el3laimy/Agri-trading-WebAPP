@@ -19,7 +19,7 @@ import {
 } from '../api/sales';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -45,7 +45,7 @@ describe('getSales', () => {
         const result = await getSales();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/sales/');
+        expect(axios.get).toHaveBeenCalledWith('/sales/');
     });
 
     test('should return empty array when no sales', async () => {
@@ -91,7 +91,7 @@ describe('createSale', () => {
         const result = await createSale(saleData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/sales/', saleData);
+        expect(axios.post).toHaveBeenCalledWith('/sales/', saleData);
     });
 
     test('should throw on validation error (422)', async () => {
@@ -160,7 +160,7 @@ describe('updateSale', () => {
         const result = await updateSale(1, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/sales/1', updateData);
+        expect(axios.put).toHaveBeenCalledWith('/sales/1', updateData);
     });
 
     test('should throw on not found (404)', async () => {
@@ -172,17 +172,13 @@ describe('updateSale', () => {
     });
 
     test('should handle null saleId (edge case)', async () => {
-        axios.put.mockRejectedValue({ response: { status: 404 } });
-
-        await expect(updateSale(null, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/sales/null', {});
+        await expect(updateSale(null, {})).rejects.toThrow('Sale ID is required');
+        expect(axios.put).not.toHaveBeenCalled();
     });
 
     test('should handle undefined saleId (edge case)', async () => {
-        axios.put.mockRejectedValue({ response: { status: 404 } });
-
-        await expect(updateSale(undefined, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/sales/undefined', {});
+        await expect(updateSale(undefined, {})).rejects.toThrow('Sale ID is required');
+        expect(axios.put).not.toHaveBeenCalled();
     });
 
     test('should throw on validation error', async () => {
@@ -207,7 +203,7 @@ describe('deleteSale', () => {
         const result = await deleteSale(1);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/sales/1');
+        expect(axios.delete).toHaveBeenCalledWith('/sales/1');
     });
 
     test('should throw on not found (404)', async () => {
@@ -227,10 +223,8 @@ describe('deleteSale', () => {
     });
 
     test('should handle null saleId (edge case)', async () => {
-        axios.delete.mockRejectedValue({ response: { status: 400 } });
-
-        await expect(deleteSale(null)).rejects.toBeDefined();
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/sales/null');
+        await expect(deleteSale(null)).rejects.toThrow('Sale ID is required');
+        expect(axios.delete).not.toHaveBeenCalled();
     });
 
     test('should throw on network error', async () => {
@@ -253,7 +247,7 @@ describe('downloadInvoice', () => {
         const result = await downloadInvoice(1);
 
         expect(result).toEqual(mockBlob);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/sales/1/invoice', {
+        expect(axios.get).toHaveBeenCalledWith('/sales/1/invoice', {
             responseType: 'blob'
         });
     });
@@ -275,12 +269,8 @@ describe('downloadInvoice', () => {
     });
 
     test('should handle null saleId (edge case)', async () => {
-        axios.get.mockRejectedValue({ response: { status: 400 } });
-
-        await expect(downloadInvoice(null)).rejects.toBeDefined();
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/sales/null/invoice', {
-            responseType: 'blob'
-        });
+        await expect(downloadInvoice(null)).rejects.toThrow('Sale ID is required');
+        expect(axios.get).not.toHaveBeenCalled();
     });
 
     test('should throw on network error', async () => {
@@ -307,7 +297,7 @@ describe('getLastSalePrice', () => {
         const result = await getLastSalePrice(1, 2);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/sales/last-price/1/2');
+        expect(axios.get).toHaveBeenCalledWith('/sales/last-price/1/2');
     });
 
     test('should return null values when no previous sale exists', async () => {
@@ -337,29 +327,13 @@ describe('getLastSalePrice', () => {
     });
 
     test('should handle null cropId (edge case)', async () => {
-        axios.get.mockRejectedValue({ response: { status: 400 } });
-
-        const result = await getLastSalePrice(null, 2);
-
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/sales/last-price/null/2');
-        expect(result).toEqual({
-            selling_unit_price: null,
-            sale_date: null,
-            quantity_sold_kg: null
-        });
+        await expect(getLastSalePrice(null, 2)).rejects.toThrow();
+        expect(axios.get).not.toHaveBeenCalled();
     });
 
     test('should handle null customerId (edge case)', async () => {
-        axios.get.mockRejectedValue({ response: { status: 400 } });
-
-        const result = await getLastSalePrice(1, null);
-
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/sales/last-price/1/null');
-        expect(result).toEqual({
-            selling_unit_price: null,
-            sale_date: null,
-            quantity_sold_kg: null
-        });
+        await expect(getLastSalePrice(1, null)).rejects.toThrow();
+        expect(axios.get).not.toHaveBeenCalled();
     });
 });
 
@@ -370,13 +344,9 @@ describe('getLastSalePrice', () => {
 describe('Sales API Edge Cases Summary', () => {
 
     test('All functions should handle null IDs', async () => {
-        axios.put.mockRejectedValue({ response: { status: 400 } });
-        axios.delete.mockRejectedValue({ response: { status: 400 } });
-        axios.get.mockRejectedValue({ response: { status: 400 } });
-
-        await expect(updateSale(null, {})).rejects.toBeDefined();
-        await expect(deleteSale(null)).rejects.toBeDefined();
-        await expect(downloadInvoice(null)).rejects.toBeDefined();
+        await expect(updateSale(null, {})).rejects.toThrow();
+        await expect(deleteSale(null)).rejects.toThrow();
+        await expect(downloadInvoice(null)).rejects.toThrow();
     });
 
     test('createSale should validate positive quantities', async () => {

@@ -17,7 +17,7 @@ import {
 } from '../api/expenses';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -43,7 +43,7 @@ describe('getExpenses', () => {
         const result = await getExpenses();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/expenses/');
+        expect(axios.get).toHaveBeenCalledWith('/expenses/');
     });
 
     test('should return empty array when no expenses', async () => {
@@ -87,7 +87,7 @@ describe('createExpense', () => {
         const result = await createExpense(expenseData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/expenses/', expenseData);
+        expect(axios.post).toHaveBeenCalledWith('/expenses/', expenseData);
     });
 
     test('should throw on validation error (422) - missing description', async () => {
@@ -129,7 +129,7 @@ describe('updateExpense', () => {
         const result = await updateExpense(1, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/expenses/1', updateData);
+        expect(axios.put).toHaveBeenCalledWith('/expenses/1', updateData);
     });
 
     test('should throw on not found (404)', async () => {
@@ -144,14 +144,14 @@ describe('updateExpense', () => {
         axios.put.mockRejectedValue({ response: { status: 404 } });
 
         await expect(updateExpense(null, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/expenses/null', {});
+        expect(axios.put).toHaveBeenCalledWith('/expenses/null', {});
     });
 
     test('should handle undefined expenseId (edge case)', async () => {
         axios.put.mockRejectedValue({ response: { status: 404 } });
 
         await expect(updateExpense(undefined, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/expenses/undefined', {});
+        expect(axios.put).toHaveBeenCalledWith('/expenses/undefined', {});
     });
 });
 
@@ -168,7 +168,7 @@ describe('deleteExpense', () => {
         const result = await deleteExpense(1);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/expenses/1');
+        expect(axios.delete).toHaveBeenCalledWith('/expenses/1');
     });
 
     test('should throw on not found (404)', async () => {
@@ -183,7 +183,7 @@ describe('deleteExpense', () => {
         axios.delete.mockRejectedValue({ response: { status: 400 } });
 
         await expect(deleteExpense(null)).rejects.toBeDefined();
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/expenses/null');
+        expect(axios.delete).toHaveBeenCalledWith('/expenses/null');
     });
 
     test('should throw on network error', async () => {

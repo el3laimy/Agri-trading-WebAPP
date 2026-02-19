@@ -6,6 +6,7 @@ import { PageHeader } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 function ReportsHub() {
     const reports = [
@@ -86,9 +87,9 @@ function ReportsHub() {
             >
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in lg-glass-thin">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-file-earmark-text text-lg" />
                             </div>
                             <div>
@@ -97,9 +98,9 @@ function ReportsHub() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in lg-glass-thin" style={{ animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-check-circle text-lg text-emerald-300" />
                             </div>
                             <div>
@@ -108,20 +109,20 @@ function ReportsHub() {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in lg-glass-thin" style={{ animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-calendar-date text-lg text-blue-300" />
                             </div>
                             <div>
                                 <p className="text-xs text-white/70">التاريخ</p>
-                                <p className="text-sm font-bold">{new Date().toLocaleDateString('ar-EG')}</p>
+                                <p className="text-sm font-bold">{new Date().toLocaleDateString('en-US')}</p>
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-4">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in lg-glass-thin" style={{ animationDelay: '300ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-purple-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-printer text-lg text-purple-300" />
                             </div>
                             <div>
@@ -134,12 +135,13 @@ function ReportsHub() {
             </PageHeader>
 
             {/* Reports Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg-animate-fade">
                 {reports.map((report, index) => (
                     <Link
                         key={index}
                         to={report.to}
-                        className={`group neumorphic overflow-hidden hover-scale animate-fade-in-up stagger-${Math.min(index + 1, 8)}`}
+                        className={`group lg-card lg-hover-lift overflow-hidden lg-animate-in`}
+                        style={{ animationDelay: `${Math.min(index, 7) * 80}ms` }}
                     >
                         {/* Card Header Gradient */}
                         <div className={`h-24 bg-gradient-to-br ${report.gradient} relative overflow-hidden`}>
@@ -157,10 +159,10 @@ function ReportsHub() {
                         </div>
                         {/* Card Body */}
                         <div className="p-5">
-                            <h5 className="font-bold text-gray-800 dark:text-gray-100 mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            <h5 className="font-bold mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" style={{ color: 'var(--lg-text-primary)' }}>
                                 {report.title}
                             </h5>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                            <p className="text-sm line-clamp-2" style={{ color: 'var(--lg-text-muted)' }}>
                                 {report.description}
                             </p>
                             {/* Arrow */}

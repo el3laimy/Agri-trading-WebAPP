@@ -34,7 +34,7 @@ export function SearchInput({ value, onChange, placeholder = 'بحث...' }) {
             </div>
             <input
                 type="text"
-                className="block w-full text-sm rounded-lg border-gray-300 dark:border-slate-600 ps-10 p-2.5 focus:ring-emerald-500 focus:border-emerald-500 bg-gray-50 dark:bg-slate-800 border placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-gray-100"
+                className="block w-full text-sm rounded-xl lg-input ps-10 p-2.5"
                 placeholder={placeholder}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -49,7 +49,7 @@ export function SearchInput({ value, onChange, placeholder = 'بحث...' }) {
 export function AddButton({ isOpen, onClick, openText = 'إلغاء', closedText = 'إضافة جديد' }) {
     return (
         <button
-            className={`nav-link px-6 py-2.5 rounded-lg font-bold transition-all shadow-sm flex items-center gap-2 ${isOpen ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50' : 'bg-emerald-600 text-white hover:bg-emerald-700 border border-transparent'}`}
+            className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2 ${isOpen ? 'lg-btn-secondary' : 'lg-btn-primary'}`}
             onClick={onClick}
         >
             <i className={`bi ${isOpen ? 'bi-x-lg' : 'bi-plus-lg'}`}></i>
@@ -63,9 +63,9 @@ export function AddButton({ isOpen, onClick, openText = 'إلغاء', closedText
  */
 export function Card({ title, icon, children, headerActions, className = '' }) {
     return (
-        <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 transition-colors ${className}`}>
+        <div className={`lg-card ${className}`}>
             {(title || headerActions) && (
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+                <div className="px-6 py-4 lg-card-header flex justify-between items-center">
                     <h5 className="font-bold text-gray-800 dark:text-gray-100 mb-0 flex items-center gap-2">
                         {icon && <i className={`bi ${icon} text-emerald-600 dark:text-emerald-400`}></i>}
                         {title}

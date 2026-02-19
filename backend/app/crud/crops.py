@@ -23,10 +23,7 @@ def create_crop(db: Session, crop: schemas.CropCreate):
         crop_name=crop.crop_name,
         allowed_pricing_units=json.dumps(crop.allowed_pricing_units),
         conversion_factors=json.dumps(crop.conversion_factors),
-        is_active=crop.is_active,
-        is_complex_unit=crop.is_complex_unit,
-        default_tare_per_bag=crop.default_tare_per_bag,
-        standard_unit_weight=crop.standard_unit_weight
+        is_active=crop.is_active
     )
     db.add(db_crop)
     db.commit()

@@ -89,7 +89,17 @@ def update_balance_by_nature(db: Session, account_id: int, amount: float, entry_
 
 
 def update_account_balance(db: Session, account_id: int, amount: float):
-    """Legacy wrapper for backward compatibility"""
+    """
+    ⚠️ DEPRECATED - لا تستخدم هذه الدالة!
+    استخدم AccountingEngine._update_account_balance بدلاً منها.
+    هذه الدالة لا تراعي طبيعة الحساب (مدين/دائن) مما يؤدي لأخطاء في الأرصدة.
+    """
+    import warnings
+    warnings.warn(
+        "update_account_balance is deprecated. Use AccountingEngine instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     account = db.query(models.FinancialAccount).filter(models.FinancialAccount.account_id == account_id).first()
     if account:
         account.current_balance += Decimal(str(amount))

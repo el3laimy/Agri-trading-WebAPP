@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getDailyPrices, createDailyPrice } from '../api/daily_prices';
 import { getCrops } from '../api/crops';
 import { useToast } from '../components/common';
+import { handleApiError } from '../utils';
 
 // Import shared components
 import { PageHeader, ActionButton, SearchBox, LoadingCard } from '../components/common/PageHeader';
 
 // Import CSS animations
 import '../styles/dashboardAnimations.css';
+import '../styles/liquidglass.css';
 
 const DailyPrices = () => {
     const { showSuccess, showError } = useToast();
@@ -89,7 +91,7 @@ const DailyPrices = () => {
             });
             fetchPrices();
         } catch (err) {
-            showError('فشل في إضافة السعر');
+            showError(handleApiError(err, 'price_create'));
         }
     };
 
@@ -105,10 +107,10 @@ const DailyPrices = () => {
     if (loading) {
         return (
             <div className="p-6 max-w-full mx-auto">
-                <div className="neumorphic overflow-hidden mb-6 animate-pulse">
+                <div className="lg-card overflow-hidden mb-6 animate-pulse">
                     <div className="h-40 bg-gradient-to-br from-orange-200 to-amber-200 dark:from-orange-800/30 dark:to-amber-800/30" />
                 </div>
-                <div className="neumorphic p-6"><LoadingCard rows={6} /></div>
+                <div className="lg-card p-6"><LoadingCard rows={6} /></div>
             </div>
         );
     }
@@ -132,9 +134,9 @@ const DailyPrices = () => {
             >
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-1">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-graph-up-arrow text-lg" />
                             </div>
                             <div>
@@ -143,9 +145,9 @@ const DailyPrices = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-2">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '100ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-orange-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-orange-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-calendar-day text-lg text-orange-300" />
                             </div>
                             <div>
@@ -154,9 +156,9 @@ const DailyPrices = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="glass-premium px-4 py-3 rounded-xl text-white animate-fade-in-up stagger-3">
+                    <div className="px-4 py-3 rounded-xl text-white lg-animate-in" style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.18)', animationDelay: '200ms' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/30 flex items-center justify-center animate-float">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/30 flex items-center justify-center lg-animate-float">
                                 <i className="bi bi-cash-coin text-lg text-amber-300" />
                             </div>
                             <div>
@@ -169,25 +171,25 @@ const DailyPrices = () => {
             </PageHeader>
 
             {/* Filters */}
-            <div className="neumorphic p-4 mb-6 animate-fade-in">
+            <div className="lg-card p-4 mb-6 lg-animate-fade">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">المحصول</label>
-                        <select className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="crop_id" value={filters.crop_id} onChange={handleFilterChange}>
+                        <label className="block mb-1 text-sm font-medium" style={{ color: 'var(--lg-text-secondary)' }}>المحصول</label>
+                        <select className="w-full p-2.5 lg-input rounded-xl" name="crop_id" value={filters.crop_id} onChange={handleFilterChange}>
                             <option value="">الكل</option>
                             {crops.map(crop => <option key={crop.crop_id} value={crop.crop_id}>{crop.crop_name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">من تاريخ</label>
-                        <input type="date" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="start_date" value={filters.start_date} onChange={handleFilterChange} />
+                        <label className="block mb-1 text-sm font-medium" style={{ color: 'var(--lg-text-secondary)' }}>من تاريخ</label>
+                        <input type="date" className="w-full p-2.5 lg-input rounded-xl" name="start_date" value={filters.start_date} onChange={handleFilterChange} />
                     </div>
                     <div>
-                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">إلى تاريخ</label>
-                        <input type="date" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="end_date" value={filters.end_date} onChange={handleFilterChange} />
+                        <label className="block mb-1 text-sm font-medium" style={{ color: 'var(--lg-text-secondary)' }}>إلى تاريخ</label>
+                        <input type="date" className="w-full p-2.5 lg-input rounded-xl" name="end_date" value={filters.end_date} onChange={handleFilterChange} />
                     </div>
                     <div className="flex items-end">
-                        <button onClick={fetchPrices} className="w-full px-6 py-2.5 rounded-xl bg-orange-600 text-white hover:bg-orange-700 font-bold hover-scale">
+                        <button onClick={fetchPrices} className="w-full lg-btn lg-btn-primary px-6 py-2.5 font-bold">
                             <i className="bi bi-search ml-2" /> بحث
                         </button>
                     </div>
@@ -196,10 +198,10 @@ const DailyPrices = () => {
 
             {/* Add Form */}
             {showForm && (
-                <div className="mb-6 neumorphic overflow-hidden animate-fade-in">
-                    <div className="p-6 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center">
-                            <i className="bi bi-plus-circle-fill ml-2 text-orange-600 dark:text-orange-400" />
+                <div className="mb-6 lg-card overflow-hidden lg-animate-fade">
+                    <div className="p-6" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                        <h3 className="text-lg font-bold flex items-center" style={{ color: 'var(--lg-text-primary)' }}>
+                            <i className="bi bi-plus-circle-fill ml-2" style={{ color: 'var(--lg-primary)' }} />
                             إضافة سعر يومي جديد
                         </h3>
                     </div>
@@ -207,40 +209,40 @@ const DailyPrices = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">المحصول *</label>
-                                <select className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="crop_id" value={formData.crop_id} onChange={handleFormChange} required>
+                                <select className="w-full p-2.5 lg-input rounded-xl" name="crop_id" value={formData.crop_id} onChange={handleFormChange} required>
                                     <option value="">اختر المحصول</option>
                                     {crops.map(crop => <option key={crop.crop_id} value={crop.crop_id}>{crop.crop_name}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">التاريخ *</label>
-                                <input type="date" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="price_date" value={formData.price_date} onChange={handleFormChange} required />
+                                <input type="date" className="w-full p-2.5 lg-input rounded-xl" name="price_date" value={formData.price_date} onChange={handleFormChange} required />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">سعر الافتتاح *</label>
-                                <input type="number" step="0.01" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="opening_price" value={formData.opening_price} onChange={handleFormChange} required />
+                                <input type="number" step="0.01" className="w-full p-2.5 lg-input rounded-xl" name="opening_price" value={formData.opening_price} onChange={handleFormChange} required />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">أعلى سعر *</label>
-                                <input type="number" step="0.01" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="high_price" value={formData.high_price} onChange={handleFormChange} required />
+                                <input type="number" step="0.01" className="w-full p-2.5 lg-input rounded-xl" name="high_price" value={formData.high_price} onChange={handleFormChange} required />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">أقل سعر *</label>
-                                <input type="number" step="0.01" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="low_price" value={formData.low_price} onChange={handleFormChange} required />
+                                <input type="number" step="0.01" className="w-full p-2.5 lg-input rounded-xl" name="low_price" value={formData.low_price} onChange={handleFormChange} required />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">سعر الإغلاق *</label>
-                                <input type="number" step="0.01" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="closing_price" value={formData.closing_price} onChange={handleFormChange} required />
+                                <input type="number" step="0.01" className="w-full p-2.5 lg-input rounded-xl" name="closing_price" value={formData.closing_price} onChange={handleFormChange} required />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">متوسط السعر *</label>
-                                <input type="number" step="0.01" className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="average_price" value={formData.average_price} onChange={handleFormChange} required />
+                                <input type="number" step="0.01" className="w-full p-2.5 lg-input rounded-xl" name="average_price" value={formData.average_price} onChange={handleFormChange} required />
                             </div>
                             <div>
                                 <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">حالة السوق</label>
-                                <select className="w-full p-2.5 neumorphic-inset rounded-xl text-gray-900 dark:text-gray-100" name="market_condition" value={formData.market_condition} onChange={handleFormChange}>
+                                <select className="w-full p-2.5 lg-input rounded-xl" name="market_condition" value={formData.market_condition} onChange={handleFormChange}>
                                     <option value="">---</option>
                                     <option value="مرتفع">مرتفع</option>
                                     <option value="منخفض">منخفض</option>
@@ -248,9 +250,9 @@ const DailyPrices = () => {
                                 </select>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
-                            <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300">إلغاء</button>
-                            <button type="submit" className="px-8 py-2.5 rounded-xl bg-orange-600 text-white hover:bg-orange-700 font-bold hover-scale">
+                        <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid var(--lg-glass-border-subtle)' }}>
+                            <button type="button" onClick={() => setShowForm(false)} className="lg-btn lg-btn-secondary px-6 py-2.5">إلغاء</button>
+                            <button type="submit" className="lg-btn lg-btn-primary px-8 py-2.5 font-bold">
                                 <i className="bi bi-check-lg ml-2" /> حفظ
                             </button>
                         </div>
@@ -259,22 +261,22 @@ const DailyPrices = () => {
             )}
 
             {/* Prices Table */}
-            <div className="neumorphic overflow-hidden animate-fade-in">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <h5 className="text-gray-800 dark:text-gray-100 font-bold flex items-center gap-2">
+            <div className="lg-card overflow-hidden lg-animate-fade">
+                <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--lg-glass-border-subtle)', background: 'var(--lg-glass-bg)' }}>
+                    <h5 className="font-bold flex items-center gap-2" style={{ color: 'var(--lg-text-primary)' }}>
                         <i className="bi bi-table text-orange-500" />
                         سجل الأسعار
-                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">{prices.length}</span>
+                        <span className="lg-badge px-2.5 py-1 text-xs font-bold" style={{ background: 'rgba(249,115,22,0.15)', color: 'rgb(234,88,12)' }}>{prices.length}</span>
                     </h5>
                 </div>
                 <div>
                     {prices.length === 0 ? (
-                        <div className="text-center py-16 animate-fade-in">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 flex items-center justify-center animate-float">
-                                <i className="bi bi-graph-up-arrow text-5xl text-orange-400 dark:text-orange-500" />
+                        <div className="text-center py-16 lg-animate-fade">
+                            <div className="w-24 h-24 mx-auto mb-6 flex items-center justify-center lg-animate-float" style={{ borderRadius: 'var(--lg-radius-lg)', background: 'var(--lg-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid var(--lg-glass-border)' }}>
+                                <i className="bi bi-graph-up-arrow text-5xl" style={{ color: 'var(--lg-text-muted)' }} />
                             </div>
-                            <h4 className="text-gray-700 dark:text-gray-300 font-semibold text-lg mb-2">لا توجد أسعار</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">ابدأ بتسجيل أسعار المحاصيل</p>
+                            <h4 className="font-semibold text-lg mb-2" style={{ color: 'var(--lg-text-primary)' }}>لا توجد أسعار</h4>
+                            <p className="text-sm mb-6" style={{ color: 'var(--lg-text-muted)' }}>ابدأ بتسجيل أسعار المحاصيل</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -295,8 +297,8 @@ const DailyPrices = () => {
                                     {prices.map((price, idx) => {
                                         const badge = getMarketBadge(price.market_condition);
                                         return (
-                                            <tr key={price.price_id} className={`bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all animate-fade-in-up stagger-${Math.min(idx + 1, 8)}`}>
-                                                <td className="px-4 py-4 text-gray-600 dark:text-gray-400">{new Date(price.price_date).toLocaleDateString('ar-EG')}</td>
+                                            <tr key={price.price_id} className="transition-all lg-animate-in" style={{ animationDelay: `${Math.min(idx, 7) * 50}ms` }}>
+                                                <td className="px-4 py-4 text-gray-600 dark:text-gray-400">{new Date(price.price_date).toLocaleDateString('en-US')}</td>
                                                 <td className="px-4 py-4 font-bold text-gray-800 dark:text-gray-200">{price.crop?.crop_name}</td>
                                                 <td className="px-4 py-4 text-gray-600 dark:text-gray-400">{price.opening_price?.toFixed(2)}</td>
                                                 <td className="px-4 py-4 text-green-600 dark:text-green-400 font-bold">{price.high_price?.toFixed(2)}</td>

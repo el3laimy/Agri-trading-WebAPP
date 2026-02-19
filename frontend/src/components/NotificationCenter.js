@@ -140,7 +140,9 @@ const NotificationCenter = () => {
                     ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shadow-inner'
                     : 'bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md'
                     }`}
-                title="التنبيهات"
+                aria-label={`التنبيهات${unreadCount > 0 ? ` (${unreadCount} غير مقروءة)` : ''}`}
+                aria-expanded={isOpen}
+                aria-haspopup="true"
             >
                 <FaBell className={`w-5 h-5 transition-transform duration-500 ${unreadCount > 0 ? 'animate-bounce-subtle' : ''}`} />
 
@@ -236,4 +238,4 @@ const NotificationCenter = () => {
     );
 };
 
-export default NotificationCenter;
+export default React.memo(NotificationCenter);

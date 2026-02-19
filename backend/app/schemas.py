@@ -8,10 +8,7 @@ from decimal import Decimal
 class CropBase(BaseModel):
     crop_name: str
     is_active: Optional[bool] = True
-    # New Fields
-    is_complex_unit: Optional[bool] = False
-    default_tare_per_bag: Optional[Decimal] = Decimal(0)
-    standard_unit_weight: Optional[Decimal] = None
+
 
 class ContactBase(BaseModel):
     name: str
@@ -39,7 +36,6 @@ class Crop(CropBase):
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator('allowed_pricing_units', 'conversion_factors', mode='before')
-    @classmethod
     def parse_json(cls, v):
         if isinstance(v, str):
             try:

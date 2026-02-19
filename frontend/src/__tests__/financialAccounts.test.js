@@ -17,7 +17,7 @@ import {
 } from '../api/financialAccounts';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -43,7 +43,7 @@ describe('getFinancialAccounts', () => {
         const result = await getFinancialAccounts();
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/financial-accounts/');
+        expect(axios.get).toHaveBeenCalledWith('/financial-accounts/');
     });
 
     test('should return empty array when no accounts', async () => {
@@ -85,7 +85,7 @@ describe('createFinancialAccount', () => {
         const result = await createFinancialAccount(accountData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/financial-accounts/', accountData);
+        expect(axios.post).toHaveBeenCalledWith('/financial-accounts/', accountData);
     });
 
     test('should throw on validation error (422) - missing account_name', async () => {
@@ -145,7 +145,7 @@ describe('updateFinancialAccount', () => {
         const result = await updateFinancialAccount(1, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/financial-accounts/1', updateData);
+        expect(axios.put).toHaveBeenCalledWith('/financial-accounts/1', updateData);
     });
 
     test('should throw on not found (404)', async () => {
@@ -168,21 +168,21 @@ describe('updateFinancialAccount', () => {
         axios.put.mockRejectedValue({ response: { status: 404 } });
 
         await expect(updateFinancialAccount(null, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/financial-accounts/null', {});
+        expect(axios.put).toHaveBeenCalledWith('/financial-accounts/null', {});
     });
 
     test('should handle undefined accountId (edge case)', async () => {
         axios.put.mockRejectedValue({ response: { status: 404 } });
 
         await expect(updateFinancialAccount(undefined, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/financial-accounts/undefined', {});
+        expect(axios.put).toHaveBeenCalledWith('/financial-accounts/undefined', {});
     });
 
     test('should handle negative accountId (edge case)', async () => {
         axios.put.mockRejectedValue({ response: { status: 400 } });
 
         await expect(updateFinancialAccount(-1, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/financial-accounts/-1', {});
+        expect(axios.put).toHaveBeenCalledWith('/financial-accounts/-1', {});
     });
 });
 
@@ -199,7 +199,7 @@ describe('deleteFinancialAccount', () => {
         const result = await deleteFinancialAccount(3);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/financial-accounts/3');
+        expect(axios.delete).toHaveBeenCalledWith('/financial-accounts/3');
     });
 
     test('should throw on not found (404)', async () => {
@@ -230,14 +230,14 @@ describe('deleteFinancialAccount', () => {
         axios.delete.mockRejectedValue({ response: { status: 400 } });
 
         await expect(deleteFinancialAccount(null)).rejects.toBeDefined();
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/financial-accounts/null');
+        expect(axios.delete).toHaveBeenCalledWith('/financial-accounts/null');
     });
 
     test('should handle undefined accountId (edge case)', async () => {
         axios.delete.mockRejectedValue({ response: { status: 400 } });
 
         await expect(deleteFinancialAccount(undefined)).rejects.toBeDefined();
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/financial-accounts/undefined');
+        expect(axios.delete).toHaveBeenCalledWith('/financial-accounts/undefined');
     });
 
     test('should throw on network error', async () => {

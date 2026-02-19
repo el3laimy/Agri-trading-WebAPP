@@ -133,7 +133,7 @@ class AccountingEngine:
         if not is_valid:
             raise AccountingError(message, {
                 "entries": [
-                    {"account_id": e.account_id, "debit": float(e.debit), "credit": float(e.credit)}
+                    {"account_id": e.account_id, "debit": str(e.debit), "credit": str(e.credit)}
                     for e in entries
                 ],
                 "source_type": source_type,
@@ -304,12 +304,15 @@ class AccountingEngine:
             total_liabilities_and_equity=total_liabilities_and_equity.quantize(Decimal("0.01")),
             checked_at=checked_at,
             details={
-                "assets": float(total_assets),
-                "liabilities": float(total_liabilities),
-                "capital": float(total_equity_capital),
-                "revenue": float(total_revenue),
-                "expense": float(total_expense),
-                "net_profit": float(net_profit)
+                "assets": str(total_assets),
+                "liabilities": str(total_liabilities),
+                "capital": str(total_equity_capital),
+                "revenue": str(total_revenue),
+                "expense": str(total_expense),
+                "net_profit": str(net_profit),
+                "inventory": str(self.db.query(func.sum(models.FinancialAccount.current_balance))
+                    .filter(models.FinancialAccount.account_type == 'INVENTORY')
+                    .scalar() or Decimal("0"))
             },
             report_type="physical"
         )
@@ -364,10 +367,6 @@ class AccountingEngine:
         difference = total_assets - total_liabilities_and_equity
         is_balanced = abs(difference) < Decimal("1.00")
         
-        # حساب الفرق
-        difference = total_assets - total_liabilities_and_equity
-        is_balanced = abs(difference) < Decimal("1.00")
-        
         return BalanceReport(
             is_balanced=is_balanced,
             difference=difference.quantize(Decimal("0.01")),
@@ -375,12 +374,15 @@ class AccountingEngine:
             total_liabilities_and_equity=total_liabilities_and_equity.quantize(Decimal("0.01")),
             checked_at=checked_at,
             details={
-                "assets": float(total_assets),
-                "liabilities": float(total_liabilities),
-                "capital": float(total_equity_capital),
-                "revenue": float(total_revenue),
-                "expense": float(total_expense),
-                "net_profit": float(net_profit)
+                "assets": str(total_assets),
+                "liabilities": str(total_liabilities),
+                "capital": str(total_equity_capital),
+                "revenue": str(total_revenue),
+                "expense": str(total_expense),
+                "net_profit": str(net_profit),
+                "inventory": str(self.db.query(func.sum(models.FinancialAccount.current_balance))
+                    .filter(models.FinancialAccount.account_type == 'INVENTORY')
+                    .scalar() or Decimal("0"))
             },
             report_type="ledger"
         )
@@ -411,6 +413,36 @@ class AccountingEngine:
             discrepancy_amount=discrepancy.quantize(Decimal("0.01")),
             checked_at=checked_at
         )
+
+    def get_unbalanced_transactions(self) -> List[Dict]:
+        """
+        فحص عميق للعثور على المعاملات غير المتوازنة في دفتر الأستاذ
+        """
+        # تجميع حسب المصدر (نوع المعاملة ورقمها)
+        unbalanced = self.db.query(
+            models.GeneralLedger.source_type,
+            models.GeneralLedger.source_id,
+            func.sum(models.GeneralLedger.debit).label('total_debit'),
+            func.sum(models.GeneralLedger.credit).label('total_credit')
+        ).group_by(
+            models.GeneralLedger.source_type,
+            models.GeneralLedger.source_id
+        ).having(
+            func.abs(func.sum(models.GeneralLedger.debit) - func.sum(models.GeneralLedger.credit)) > 0.01
+        ).all()
+        
+        results = []
+        for row in unbalanced:
+            diff = row.total_debit - row.total_credit
+            results.append({
+                "source_type": row.source_type,
+                "source_id": row.source_id,
+                "total_debit": str(row.total_debit),
+                "total_credit": str(row.total_credit),
+                "difference": str(diff)
+            })
+            
+        return results
 
 
 # Helper function للوصول السريع

@@ -24,3 +24,8 @@ export const deleteSeason = async (id) => {
     const response = await apiClient.delete(`/seasons/${id}`);
     return response.data;
 };
+
+export const activateSeason = async (id) => {
+    const response = await apiClient.post(`/seasons/${id}/activate`);
+    return response.data;
+};

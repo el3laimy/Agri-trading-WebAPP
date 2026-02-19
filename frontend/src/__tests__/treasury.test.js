@@ -22,7 +22,7 @@ import {
 } from '../api/treasury';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -50,7 +50,7 @@ describe('getTreasurySummary', () => {
         const result = await getTreasurySummary('2024-01-15');
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/treasury/summary', {
+        expect(axios.get).toHaveBeenCalledWith('/treasury/summary', {
             params: { target_date: '2024-01-15' }
         });
     });
@@ -62,7 +62,7 @@ describe('getTreasurySummary', () => {
         const result = await getTreasurySummary(null);
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/treasury/summary', {
+        expect(axios.get).toHaveBeenCalledWith('/treasury/summary', {
             params: { target_date: null }
         });
     });
@@ -96,7 +96,7 @@ describe('getTreasuryTransactions', () => {
         const result = await getTreasuryTransactions('2024-01-15');
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/treasury/transactions', {
+        expect(axios.get).toHaveBeenCalledWith('/treasury/transactions', {
             params: { target_date: '2024-01-15', limit: 100 }
         });
     });
@@ -108,7 +108,7 @@ describe('getTreasuryTransactions', () => {
         const result = await getTreasuryTransactions('2024-01-15', 50);
 
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/treasury/transactions', {
+        expect(axios.get).toHaveBeenCalledWith('/treasury/transactions', {
             params: { target_date: '2024-01-15', limit: 50 }
         });
     });
@@ -139,7 +139,7 @@ describe('createCashReceipt', () => {
         const result = await createCashReceipt(receiptData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/cash-receipt', {
+        expect(axios.post).toHaveBeenCalledWith('/treasury/cash-receipt', {
             ...receiptData,
             receipt_date: new Date('2024-01-15')
         });
@@ -190,7 +190,7 @@ describe('createCashPayment', () => {
         const result = await createCashPayment(paymentData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/cash-payment', {
+        expect(axios.post).toHaveBeenCalledWith('/treasury/cash-payment', {
             ...paymentData,
             payment_date: new Date('2024-01-15')
         });
@@ -235,7 +235,7 @@ describe('createQuickExpense', () => {
         const result = await createQuickExpense(expenseData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/treasury/quick-expense', {
+        expect(axios.post).toHaveBeenCalledWith('/treasury/quick-expense', {
             ...expenseData,
             expense_date: expect.any(Date) // Match Date object
         });
@@ -272,7 +272,7 @@ describe('updateCashReceipt', () => {
         const result = await updateCashReceipt(1, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/treasury/cash-receipt/1', updateData);
+        expect(axios.put).toHaveBeenCalledWith('/treasury/cash-receipt/1', updateData);
     });
 
     test('should throw on not found (404)', async () => {
@@ -287,7 +287,7 @@ describe('updateCashReceipt', () => {
         axios.put.mockRejectedValue({ response: { status: 404 } });
 
         await expect(updateCashReceipt(null, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/treasury/cash-receipt/null', {});
+        expect(axios.put).toHaveBeenCalledWith('/treasury/cash-receipt/null', {});
     });
 });
 
@@ -305,7 +305,7 @@ describe('updateCashPayment', () => {
         const result = await updateCashPayment(2, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/treasury/cash-payment/2', updateData);
+        expect(axios.put).toHaveBeenCalledWith('/treasury/cash-payment/2', updateData);
     });
 
     test('should throw on not found', async () => {
@@ -331,7 +331,7 @@ describe('updateQuickExpense', () => {
         const result = await updateQuickExpense(3, updateData);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/treasury/quick-expense/3', updateData);
+        expect(axios.put).toHaveBeenCalledWith('/treasury/quick-expense/3', updateData);
     });
 
     test('should throw on not found', async () => {
@@ -346,7 +346,7 @@ describe('updateQuickExpense', () => {
         axios.put.mockRejectedValue({ response: { status: 400 } });
 
         await expect(updateQuickExpense(-1, {})).rejects.toBeDefined();
-        expect(axios.put).toHaveBeenCalledWith('/api/v1/treasury/quick-expense/-1', {});
+        expect(axios.put).toHaveBeenCalledWith('/treasury/quick-expense/-1', {});
     });
 });
 
@@ -363,7 +363,7 @@ describe('deleteTransaction', () => {
         const result = await deleteTransaction(1);
 
         expect(result).toEqual(mockResponse);
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/treasury/1');
+        expect(axios.delete).toHaveBeenCalledWith('/treasury/1');
     });
 
     test('should throw on not found (404)', async () => {
@@ -386,14 +386,14 @@ describe('deleteTransaction', () => {
         axios.delete.mockRejectedValue({ response: { status: 400 } });
 
         await expect(deleteTransaction(null)).rejects.toBeDefined();
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/treasury/null');
+        expect(axios.delete).toHaveBeenCalledWith('/treasury/null');
     });
 
     test('should handle undefined ID (edge case)', async () => {
         axios.delete.mockRejectedValue({ response: { status: 400 } });
 
         await expect(deleteTransaction(undefined)).rejects.toBeDefined();
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/treasury/undefined');
+        expect(axios.delete).toHaveBeenCalledWith('/treasury/undefined');
     });
 
     test('should throw on network error', async () => {

@@ -2,13 +2,19 @@ import apiClient from './client';
 
 const API_URL = '/reports';
 
-export const getGeneralLedger = async () => {
-    const response = await apiClient.get(`${API_URL}/general-ledger`);
+export const getGeneralLedger = async (startDate = null, endDate = null, accountId = null) => {
+    const params = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    if (accountId) params.account_id = accountId;
+    const response = await apiClient.get(`${API_URL}/general-ledger`, { params });
     return response.data;
 };
 
-export const getTrialBalance = async () => {
-    const response = await apiClient.get(`${API_URL}/trial-balance`);
+export const getTrialBalance = async (endDate = null) => {
+    const params = {};
+    if (endDate) params.end_date = endDate;
+    const response = await apiClient.get(`${API_URL}/trial-balance`, { params });
     return response.data;
 };
 

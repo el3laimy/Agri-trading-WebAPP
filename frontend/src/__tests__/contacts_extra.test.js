@@ -19,7 +19,7 @@ import {
 } from '../api/contacts';
 
 // Mock axios
-vi.mock('axios');
+// vi.mock('axios'); removed to use setup.js mock
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -41,7 +41,7 @@ describe('Contact Statements & Summaries', () => {
 
         const result = await getContactSummary(1);
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/contacts/1/summary');
+        expect(axios.get).toHaveBeenCalledWith('/contacts/1/summary');
     });
 
     test('getContactStatement should fetch without optional dates', async () => {
@@ -50,7 +50,7 @@ describe('Contact Statements & Summaries', () => {
 
         const result = await getContactStatement(1);
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('/api/v1/contacts/1/statement'));
+        expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('/contacts/1/statement'));
     });
 
     test('getContactStatement should fetch WITH dates', async () => {
@@ -71,7 +71,7 @@ describe('Contact Statements & Summaries', () => {
 
         const result = await getCustomersBalances();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/contacts/customers/balances');
+        expect(axios.get).toHaveBeenCalledWith('/contacts/customers/balances');
     });
 
     test('getSuppliersBalances should fetch balances', async () => {
@@ -80,7 +80,7 @@ describe('Contact Statements & Summaries', () => {
 
         const result = await getSuppliersBalances();
         expect(result).toEqual(mockData);
-        expect(axios.get).toHaveBeenCalledWith('/api/v1/contacts/suppliers/balances');
+        expect(axios.get).toHaveBeenCalledWith('/contacts/suppliers/balances');
     });
 });
 
@@ -96,7 +96,7 @@ describe('Advanced Deletion', () => {
 
         const result = await migrateAndDeleteContact(1, 2);
         expect(result).toEqual(mockResponse);
-        expect(axios.post).toHaveBeenCalledWith('/api/v1/contacts/1/migrate-and-delete', {
+        expect(axios.post).toHaveBeenCalledWith('/contacts/1/migrate-and-delete', {
             target_contact_id: 2
         });
     });
@@ -107,7 +107,7 @@ describe('Advanced Deletion', () => {
 
         const result = await forceDeleteContact(1);
         expect(result).toEqual(mockResponse);
-        expect(axios.delete).toHaveBeenCalledWith('/api/v1/contacts/1/force');
+        expect(axios.delete).toHaveBeenCalledWith('/contacts/1/force');
     });
 });
 

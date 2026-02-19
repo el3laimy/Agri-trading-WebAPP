@@ -184,7 +184,7 @@ const AdvancedChartWidget = () => {
             },
             y: {
                 formatter: (value) => {
-                    return new Intl.NumberFormat('ar-EG', {
+                    return new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: 'EGP',
                         minimumFractionDigits: 0
@@ -222,7 +222,7 @@ const AdvancedChartWidget = () => {
 
     const formatCurrency = (value) => {
         const num = parseFloat(value) || 0;
-        return new Intl.NumberFormat('ar-EG', {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: 'EGP',
             minimumFractionDigits: 0
@@ -230,7 +230,7 @@ const AdvancedChartWidget = () => {
     };
 
     return (
-        <div className="neumorphic h-[480px] flex flex-col overflow-hidden animate-fade-in">
+        <div className="lg-card h-[480px] flex flex-col overflow-hidden lg-animate-fade">
             {/* Header & Controls */}
             <div className="p-6 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
